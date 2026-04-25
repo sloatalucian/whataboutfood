@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useApp } from "../context/AppContext";
+import { supabase } from "../supabase";
 
 // ─── ANIMAȚIE FARFURIE ────────────────────────────────────────────────────────
 function FoodAnimation({ onComplete }) {
@@ -43,7 +44,6 @@ function FoodAnimation({ onComplete }) {
         }}
       />
 
-      {/* Farfurie */}
       <div
         style={{
           position: "relative",
@@ -67,12 +67,10 @@ function FoodAnimation({ onComplete }) {
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            boxShadow:
-              "0 20px 60px rgba(0,0,0,.6), inset 0 2px 4px rgba(255,255,255,.05)",
+            boxShadow: "0 20px 60px rgba(0,0,0,.6)",
             position: "relative",
           }}
         >
-          {/* Capac */}
           <div
             style={{
               position: "absolute",
@@ -89,7 +87,6 @@ function FoodAnimation({ onComplete }) {
               opacity: phase >= 2 ? 0 : 1,
               transition:
                 "transform .6s cubic-bezier(.4,0,.2,1), opacity .4s ease",
-              boxShadow: "0 -4px 20px rgba(0,0,0,.4)",
               display: "flex",
               alignItems: "flex-start",
               justifyContent: "center",
@@ -105,7 +102,6 @@ function FoodAnimation({ onComplete }) {
               }}
             />
           </div>
-          {/* Mâncare */}
           <div
             style={{
               fontSize: 52,
@@ -120,38 +116,6 @@ function FoodAnimation({ onComplete }) {
             🍝
           </div>
         </div>
-
-        {/* Abur */}
-        {phase >= 2 && (
-          <>
-            <div
-              style={{
-                position: "absolute",
-                top: -20,
-                left: "30%",
-                fontSize: 16,
-                opacity: 0.6,
-                animation: "steam1 2s ease-in-out infinite",
-              }}
-            >
-              〰️
-            </div>
-            <div
-              style={{
-                position: "absolute",
-                top: -30,
-                left: "50%",
-                fontSize: 14,
-                opacity: 0.5,
-                animation: "steam2 2s ease-in-out infinite .4s",
-              }}
-            >
-              〰️
-            </div>
-          </>
-        )}
-
-        {/* Emoji orbită */}
         {phase >= 2 &&
           ["🍕", "🍷", "🥗", "☕", "🍰"].map((emoji, i) => (
             <div
@@ -162,7 +126,7 @@ function FoodAnimation({ onComplete }) {
                 top: "50%",
                 left: "50%",
                 transform: `rotate(${i * 72}deg) translateX(90px) rotate(-${i * 72}deg)`,
-                opacity: phase >= 2 ? 1 : 0,
+                opacity: 1,
                 transition: `all .5s cubic-bezier(.34,1.56,.64,1) ${0.1 + i * 0.08}s`,
               }}
             >
@@ -171,7 +135,6 @@ function FoodAnimation({ onComplete }) {
           ))}
       </div>
 
-      {/* Logo */}
       <div
         style={{
           textAlign: "center",
@@ -202,11 +165,6 @@ function FoodAnimation({ onComplete }) {
           Rezervări · Comenzi · Plăți
         </div>
       </div>
-
-      <style>{`
-        @keyframes steam1 { 0%,100%{transform:translateY(0);} 50%{transform:translateY(-12px);} }
-        @keyframes steam2 { 0%,100%{transform:translateY(0);} 50%{transform:translateY(-16px);} }
-      `}</style>
     </div>
   );
 }
@@ -225,21 +183,47 @@ function WaiterLoginModal({ onLogin, onClose }) {
     }
     setLoading(true);
     setError("");
-    await new Promise((r) => setTimeout(r, 800));
-    if (email.includes("@") && password.length >= 4) {
+
+    // Verifică în tabelul waiter_accounts
+    try {
+      const { data, error: dbError } = await supabase
+        .from("waiter_accounts")
+        .select("*")
+        .eq("email", email.toLowerCase())
+        .eq("is_active", true)
+        .single();
+
+      if (dbError || !data) {
+        setError("Cont de ospătar inexistent sau dezactivat.");
+        setLoading(false);
+        return;
+      }
+
+      // Demo: verificăm parola simplu (în producție va fi hash)
+      // Pentru moment acceptăm orice parolă dacă emailul există
       onLogin({
-        id: Date.now(),
-        name:
-          email.split("@")[0].charAt(0).toUpperCase() +
-          email.split("@")[0].slice(1),
-        email,
+        id: data.id,
+        name: data.name,
+        email: data.email,
         role: "waiter",
-        restaurantName: "Mama Mia",
+        restaurantId: data.restaurant_id,
       });
-    } else {
-      setError("Email sau parolă incorectă.");
-      setLoading(false);
+    } catch (err) {
+      // Fallback demo dacă Supabase nu e configurat
+      if (email.includes("@") && password.length >= 4) {
+        onLogin({
+          id: Date.now(),
+          name:
+            email.split("@")[0].charAt(0).toUpperCase() +
+            email.split("@")[0].slice(1),
+          email,
+          role: "waiter",
+        });
+      } else {
+        setError("Email sau parolă incorectă.");
+      }
     }
+    setLoading(false);
   };
 
   return (
@@ -270,7 +254,6 @@ function WaiterLoginModal({ onLogin, onClose }) {
           animation: "slideUp .35s cubic-bezier(.4,0,.2,1)",
         }}
       >
-        {/* Header */}
         <div style={{ textAlign: "center", marginBottom: 28 }}>
           <div
             style={{
@@ -406,7 +389,6 @@ function WaiterLoginModal({ onLogin, onClose }) {
         >
           {loading ? "Se verifică..." : "Intră în tabletă →"}
         </button>
-
         <button
           onClick={onClose}
           style={{
@@ -473,17 +455,16 @@ function DemoSelector({ onSelect, onClose }) {
             Alege experiența demo
           </div>
           <div style={{ fontSize: 13, color: "#6b6050" }}>
-            Explorează aplicația din perspectiva dorită
+            Explorează fără cont real
           </div>
         </div>
-
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           {[
             {
               role: "client",
               icon: "👤",
               label: "Sunt client",
-              desc: "Rezervă masă, explorează meniul, comandă și plătește",
+              desc: "Rezervă masă, explorează meniul, comandă",
               color: "#c0622f",
               bg: "rgba(192,98,47,.2)",
               border: "rgba(192,98,47,.35)",
@@ -492,7 +473,7 @@ function DemoSelector({ onSelect, onClose }) {
               role: "ospatar",
               icon: "🤵",
               label: "Sunt ospătar",
-              desc: "Gestionează comenzile active, confirmă rezervări",
+              desc: "Gestionează comenzile și rezervările",
               color: "#c8a97e",
               bg: "rgba(200,169,126,.15)",
               border: "rgba(200,169,126,.3)",
@@ -501,7 +482,7 @@ function DemoSelector({ onSelect, onClose }) {
               role: "proprietar",
               icon: "👑",
               label: "Sunt proprietar",
-              desc: "Dashboard, editor planșeu, statistici, meniu",
+              desc: "Dashboard, statistici, editor planșeu",
               color: "#4a6e4a",
               bg: "rgba(74,110,74,.15)",
               border: "rgba(74,110,74,.3)",
@@ -567,7 +548,6 @@ function DemoSelector({ onSelect, onClose }) {
             </button>
           ))}
         </div>
-
         <button
           onClick={onClose}
           style={{
@@ -591,7 +571,7 @@ function DemoSelector({ onSelect, onClose }) {
 
 // ─── SPLASH SCREEN PRINCIPAL ──────────────────────────────────────────────────
 export default function SplashScreen({ onComplete, onWaiterLogin }) {
-  const { dispatch, navigate, showToast } = useApp();
+  const { dispatch, showToast } = useApp();
   const [showSplash, setShowSplash] = useState(true);
   const [showDemo, setShowDemo] = useState(false);
   const [showWaiterLogin, setShowWaiterLogin] = useState(false);
@@ -607,6 +587,109 @@ export default function SplashScreen({ onComplete, onWaiterLogin }) {
 
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
 
+  // ── Login real cu Supabase ──
+  const handleLogin = async () => {
+    if (!form.email || !form.password) {
+      setError("Completează email și parola.");
+      return;
+    }
+    setLoading(true);
+    setError("");
+
+    const { data, error: authError } = await supabase.auth.signInWithPassword({
+      email: form.email,
+      password: form.password,
+    });
+
+    if (authError) {
+      setError("Email sau parolă incorectă.");
+      setLoading(false);
+      return;
+    }
+
+    // Încarcă profilul din baza de date
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("*")
+      .eq("id", data.user.id)
+      .single();
+
+    dispatch({
+      type: "SET_USER",
+      payload: {
+        id: data.user.id,
+        name: profile?.full_name || data.user.email.split("@")[0],
+        email: data.user.email,
+        plan: profile?.plan || "free",
+        restName: profile?.restaurant_name || "Restaurantul meu",
+        role: profile?.role || "owner",
+      },
+    });
+
+    showToast("👋 Bine ai venit!");
+    onComplete("owner");
+    setLoading(false);
+  };
+
+  // ── Înregistrare reală cu Supabase ──
+  const handleRegister = async () => {
+    if (!form.name || !form.email || !form.password || !form.restName) {
+      setError("Completează toate câmpurile.");
+      return;
+    }
+    if (form.password.length < 6) {
+      setError("Parola trebuie să aibă minim 6 caractere.");
+      return;
+    }
+    setLoading(true);
+    setError("");
+
+    const { data, error: authError } = await supabase.auth.signUp({
+      email: form.email,
+      password: form.password,
+      options: {
+        data: {
+          full_name: form.name,
+          restaurant_name: form.restName,
+        },
+      },
+    });
+
+    if (authError) {
+      setError(authError.message);
+      setLoading(false);
+      return;
+    }
+
+    // Actualizează profilul cu numele restaurantului
+    if (data.user) {
+      await supabase.from("profiles").upsert({
+        id: data.user.id,
+        full_name: form.name,
+        restaurant_name: form.restName,
+        plan: "free",
+        role: "owner",
+      });
+    }
+
+    dispatch({
+      type: "SET_USER",
+      payload: {
+        id: data.user?.id,
+        name: form.name,
+        email: form.email,
+        plan: "free",
+        restName: form.restName,
+        role: "owner",
+      },
+    });
+
+    showToast(`🎉 Bun venit, ${form.name}!`);
+    onComplete("owner");
+    setLoading(false);
+  };
+
+  // ── Demo ──
   const handleDemo = (role) => {
     setShowDemo(false);
     if (role === "client") {
@@ -615,6 +698,7 @@ export default function SplashScreen({ onComplete, onWaiterLogin }) {
         payload: { name: "Client Demo", role: "client", plan: "free" },
       });
       onComplete("client");
+      showToast("👤 Demo client activat!");
     } else if (role === "ospatar") {
       setShowWaiterLogin(true);
     } else if (role === "proprietar") {
@@ -629,58 +713,13 @@ export default function SplashScreen({ onComplete, onWaiterLogin }) {
         },
       });
       onComplete("owner");
+      showToast("👑 Demo proprietar activat!");
     }
   };
 
-  const handleWaiterLogin = (waiter) => {
+  const handleWaiterLoginSuccess = (waiter) => {
     setShowWaiterLogin(false);
     onWaiterLogin(waiter);
-    showToast(`👋 Bun venit, ${waiter.name}!`);
-  };
-
-  const handleLogin = async () => {
-    if (!form.email || !form.password) {
-      setError("Completează email și parola.");
-      return;
-    }
-    setLoading(true);
-    setError("");
-    await new Promise((r) => setTimeout(r, 800));
-    // Demo: orice email cu @
-    dispatch({
-      type: "SET_USER",
-      payload: {
-        name: "Admin",
-        email: form.email,
-        plan: "pro",
-        restName: "Restaurantul meu",
-        role: "owner",
-      },
-    });
-    onComplete("owner");
-    setLoading(false);
-  };
-
-  const handleRegister = async () => {
-    if (!form.name || !form.email || !form.password || !form.restName) {
-      setError("Completează toate câmpurile.");
-      return;
-    }
-    setLoading(true);
-    setError("");
-    await new Promise((r) => setTimeout(r, 1000));
-    dispatch({
-      type: "SET_USER",
-      payload: {
-        name: form.name,
-        email: form.email,
-        plan: "free",
-        restName: form.restName,
-        role: "owner",
-      },
-    });
-    onComplete("owner");
-    setLoading(false);
   };
 
   if (showSplash)
@@ -696,7 +735,7 @@ export default function SplashScreen({ onComplete, onWaiterLogin }) {
       )}
       {showWaiterLogin && (
         <WaiterLoginModal
-          onLogin={handleWaiterLogin}
+          onLogin={handleWaiterLoginSuccess}
           onClose={() => setShowWaiterLogin(false)}
         />
       )}
@@ -1014,7 +1053,7 @@ export default function SplashScreen({ onComplete, onWaiterLogin }) {
                   }}
                 />
               </div>
-              <div style={{ marginBottom: 20 }}>
+              <div style={{ marginBottom: 8 }}>
                 <label
                   style={{
                     fontSize: 11,
@@ -1029,7 +1068,7 @@ export default function SplashScreen({ onComplete, onWaiterLogin }) {
                 </label>
                 <input
                   type="password"
-                  placeholder="Min. 8 caractere"
+                  placeholder="Min. 6 caractere"
                   value={form.password}
                   onChange={(e) => set("password", e.target.value)}
                   style={{
@@ -1045,6 +1084,19 @@ export default function SplashScreen({ onComplete, onWaiterLogin }) {
                     boxSizing: "border-box",
                   }}
                 />
+              </div>
+              <div
+                style={{
+                  fontSize: 11,
+                  color: "#6b6050",
+                  marginBottom: 16,
+                  padding: "10px 14px",
+                  background: "rgba(255,255,255,.03)",
+                  borderRadius: 10,
+                }}
+              >
+                🔒 Datele tale sunt stocate securizat în Supabase. Parola e
+                criptată.
               </div>
               <button
                 onClick={handleRegister}
@@ -1120,7 +1172,7 @@ export default function SplashScreen({ onComplete, onWaiterLogin }) {
             </span>
           </button>
 
-          {/* Buton ospătar — mic și discret */}
+          {/* Ospătar */}
           <button
             onClick={() => setShowWaiterLogin(true)}
             style={{
@@ -1136,7 +1188,7 @@ export default function SplashScreen({ onComplete, onWaiterLogin }) {
               alignItems: "center",
               justifyContent: "center",
               gap: 6,
-              marginBottom: 8,
+              marginBottom: 24,
             }}
           >
             <span>🤵</span>

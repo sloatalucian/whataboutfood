@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { AppProvider, useApp } from "./context/AppContext";
 import { TableProvider } from "./context/TableContext";
 import BottomNav from "./components/BottomNav";
@@ -9,11 +9,8 @@ import { SelectTable, WaiterTablet } from "./pages/SelectTable";
 import { WaiterLogin, WaiterManagement } from "./pages/WaiterManagement";
 import StatisticiProprietar from "./pages/StatisticiProprietar";
 import SplashScreen from "./pages/SplashScreen";
+import { supabase } from "./supabase";
 import "./styles/global.css";
-
-// ─── CONTURI DEMO PREDEFINITE ─────────────────────────────────────────────────
-// Ospătar Mama Mia: andrei@mamamia.ro / 1234
-// Proprietar:       proprietar@mamamia.ro / 1234
 
 function Router() {
   const { state, dispatch, navigate, showToast } = useApp();
@@ -21,6 +18,54 @@ function Router() {
 
   const [splashDone, setSplashDone] = useState(false);
   const [waiterUser, setWaiterUser] = useState(null);
+  const [checkingSession, setCheckingSession] = useState(true);
+
+  // ── Verifică sesiunea existentă la pornire ──
+  useEffect(() => {
+    const checkSession = async () => {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
+      if (session?.user) {
+        // Utilizator deja logat — sare peste splash
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("*")
+          .eq("id", session.user.id)
+          .single();
+
+        dispatch({
+          type: "SET_USER",
+          payload: {
+            id: session.user.id,
+            name: profile?.full_name || session.user.email.split("@")[0],
+            email: session.user.email,
+            plan: profile?.plan || "free",
+            restName: profile?.restaurant_name || "Restaurantul meu",
+            role: profile?.role || "owner",
+          },
+        });
+        setSplashDone(true);
+      }
+      setCheckingSession(false);
+    };
+
+    checkSession();
+
+    // Ascultă schimbări de sesiune
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (event === "SIGNED_OUT") {
+        dispatch({ type: "SET_USER", payload: null });
+        setSplashDone(false);
+        setWaiterUser(null);
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
 
   const noNav = ["auth", "selectTable", "newRestaurant", "waiterLogin"];
 
@@ -49,7 +94,36 @@ function Router() {
     showToast("👋 Ai ieșit din tabletă.");
   };
 
-  // ── Splash ──
+  // Logout proprietar
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    dispatch({ type: "SET_USER", payload: null });
+    setSplashDone(false);
+    showToast("👋 Ai ieșit din cont.");
+  };
+
+  // Loading inițial
+  if (checkingSession) {
+    return (
+      <div
+        className="app"
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          minHeight: "100vh",
+          background: "#0d0a07",
+        }}
+      >
+        <div style={{ textAlign: "center", color: "#6b6050" }}>
+          <div style={{ fontSize: 36, marginBottom: 12 }}>🍽️</div>
+          <div style={{ fontSize: 14 }}>Se încarcă...</div>
+        </div>
+      </div>
+    );
+  }
+
+  // Splash screen
   if (!splashDone) {
     return (
       <div className="app">
@@ -62,44 +136,80 @@ function Router() {
     );
   }
 
-  // ── Dashboard Admin ──
+  // Tableta ospătarului
+  if (screen === "waiter") {
+    return (
+      <TableProvider restaurantId={selectedRest?.id}>
+        <div className="app">
+          {toast && <div className="toast">{toast}</div>}
+          <WaiterTablet
+            restaurant={selectedRest || { name: "Mama Mia", floors: [] }}
+            orders={orders}
+            onOrderUpdate={handleOrderUpdate}
+            onOrderClose={handleOrderClose}
+            onBack={handleWaiterLogout}
+            waiterName={waiterUser?.name || "Ospătar"}
+          />
+        </div>
+      </TableProvider>
+    );
+  }
+
+  // Dashboard Admin
   const AdminDashboard = () => (
     <div className="page fade-in">
       <div
         style={{
           display: "flex",
           alignItems: "center",
-          gap: 12,
+          justifyContent: "space-between",
           padding: "20px 20px 0",
         }}
       >
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <button
+            onClick={() => navigate("home")}
+            style={{
+              width: 38,
+              height: 38,
+              borderRadius: 12,
+              background: "var(--card2)",
+              border: "1px solid var(--border)",
+              color: "var(--cream)",
+              fontSize: 17,
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            ←
+          </button>
+          <span
+            style={{
+              fontFamily: "'Fraunces',serif",
+              fontSize: 21,
+              fontWeight: 700,
+            }}
+          >
+            🤵 Ospătari
+          </span>
+        </div>
         <button
-          onClick={() => navigate("home")}
+          onClick={handleLogout}
           style={{
-            width: 38,
-            height: 38,
-            borderRadius: 12,
-            background: "var(--card2)",
-            border: "1px solid var(--border)",
-            color: "var(--cream)",
-            fontSize: 17,
+            padding: "7px 14px",
+            borderRadius: 10,
+            background: "rgba(192,57,43,.15)",
+            border: "1px solid rgba(192,57,43,.3)",
+            color: "#e05050",
+            fontSize: 12,
             cursor: "pointer",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
+            fontWeight: 600,
           }}
         >
-          ←
+          Ieși din cont
         </button>
-        <span
-          style={{
-            fontFamily: "'Fraunces',serif",
-            fontSize: 21,
-            fontWeight: 700,
-          }}
-        >
-          🤵 Gestionare Ospătari
-        </span>
       </div>
       <div style={{ padding: 20 }}>
         <WaiterManagement
@@ -110,7 +220,6 @@ function Router() {
     </div>
   );
 
-  // ── Placeholder meniu editor ──
   const MenuEditorPage = () => (
     <div className="page fade-in">
       <div
@@ -169,9 +278,7 @@ function Router() {
           Editor Meniu
         </div>
         <div style={{ fontSize: 14, lineHeight: 1.6, marginBottom: 24 }}>
-          Această secțiune este în construcție.
-          <br />
-          Va fi disponibilă în curând!
+          În construcție — disponibil în curând!
         </div>
         <button
           onClick={() => navigate("home")}
@@ -193,7 +300,6 @@ function Router() {
     </div>
   );
 
-  // ── Placeholder restaurant nou ──
   const NewRestaurantPage = () => (
     <div className="page fade-in">
       <div
@@ -252,9 +358,7 @@ function Router() {
           Adaugă Restaurant
         </div>
         <div style={{ fontSize: 14, lineHeight: 1.6, marginBottom: 24 }}>
-          Completează datele restaurantului tău
-          <br />
-          și configurează planșeul.
+          Configurează planșeul restaurantului tău.
         </div>
         <button
           onClick={() => navigate("adminFloor")}
@@ -276,9 +380,8 @@ function Router() {
     </div>
   );
 
-  // ── Toate paginile sunt învelite în TableProvider ──
   const pages = {
-    home: <Home />,
+    home: <Home onLogout={handleLogout} />,
     restaurant: <Restaurant />,
     reserve: <Rezervare />,
     menu: <Meniu />,
@@ -294,19 +397,6 @@ function Router() {
         onBack={() => navigate("home")}
       />
     ),
-
-    // ── IMPORTANT: WaiterTablet e ÎNĂUNTRUL TableProvider ──
-    waiter: (
-      <WaiterTablet
-        restaurant={selectedRest || { name: "Mama Mia", floors: [] }}
-        orders={orders}
-        onOrderUpdate={handleOrderUpdate}
-        onOrderClose={handleOrderClose}
-        onBack={handleWaiterLogout}
-        waiterName={waiterUser?.name || "Ospătar"}
-      />
-    ),
-
     selectTable: (
       <SelectTable
         restaurant={selectedRest}
@@ -317,12 +407,10 @@ function Router() {
   };
 
   return (
-    // TableProvider învelește TOT — inclusiv WaiterTablet
     <TableProvider restaurantId={selectedRest?.id}>
       <div className="app">
         {toast && <div className="toast">{toast}</div>}
         {pages[screen] || <Home />}
-        {/* Footer nu apare la ospătar — are navigare proprie */}
         {screen !== "waiter" && !noNav.includes(screen) && (
           <BottomNav waiterLoggedIn={!!waiterUser} />
         )}
