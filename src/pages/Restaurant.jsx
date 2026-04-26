@@ -3,7 +3,243 @@ import { useApp } from "../context/AppContext";
 import { useTable, TABLE_STATUS } from "../context/TableContext";
 import { PLANS } from "../data/constants";
 
-// ── Componenta "Mese Ocupate Live" ────────────────────────────────────────────
+// ─── DATE IMPLICITE PROGRAM ───────────────────────────────────────────────────
+const ZILE = [
+  "Luni",
+  "Marți",
+  "Miercuri",
+  "Joi",
+  "Vineri",
+  "Sâmbătă",
+  "Duminică",
+];
+
+const DEFAULT_PROGRAM = {
+  Luni: { deschis: true, start: "10:00", end: "22:00" },
+  Marți: { deschis: true, start: "10:00", end: "22:00" },
+  Miercuri: { deschis: true, start: "10:00", end: "22:00" },
+  Joi: { deschis: true, start: "10:00", end: "22:00" },
+  Vineri: { deschis: true, start: "10:00", end: "23:00" },
+  Sâmbătă: { deschis: true, start: "10:00", end: "24:00" },
+  Duminică: { deschis: true, start: "12:00", end: "22:00" },
+};
+
+// Formatează programul pentru afișare
+function formatProgram(program) {
+  if (!program) return "12:00 — 23:00";
+  const azi = new Date().toLocaleDateString("ro-RO", { weekday: "long" });
+  const ziCapitalizata = azi.charAt(0).toUpperCase() + azi.slice(1);
+  const ziProgram = program[ziCapitalizata];
+  if (!ziProgram || !ziProgram.deschis) return "Închis azi";
+  return `${ziProgram.start} — ${ziProgram.end}`;
+}
+
+// ─── MODAL PROGRAM EDITOR ─────────────────────────────────────────────────────
+function ProgramEditor({ program, onSave, onClose }) {
+  const [prog, setProg] = useState(program || DEFAULT_PROGRAM);
+
+  const update = (zi, key, value) => {
+    setProg((prev) => ({ ...prev, [zi]: { ...prev[zi], [key]: value } }));
+  };
+
+  return (
+    <div
+      style={{
+        position: "fixed",
+        inset: 0,
+        zIndex: 300,
+        background: "rgba(0,0,0,.8)",
+        backdropFilter: "blur(8px)",
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "flex-end",
+      }}
+      onClick={onClose}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          background: "#161210",
+          borderRadius: "24px 24px 0 0",
+          border: "1px solid #2a2218",
+          width: "100%",
+          maxWidth: 430,
+          maxHeight: "85vh",
+          overflowY: "auto",
+          padding: "24px 20px 40px",
+          animation: "slideUp .3s ease",
+        }}
+      >
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            marginBottom: 20,
+          }}
+        >
+          <div
+            style={{
+              fontFamily: "'Fraunces',serif",
+              fontSize: 20,
+              fontWeight: 700,
+            }}
+          >
+            🕐 Program restaurant
+          </div>
+          <button
+            onClick={onClose}
+            style={{
+              width: 32,
+              height: 32,
+              borderRadius: 8,
+              background: "#1e1a14",
+              border: "1px solid #2a2218",
+              color: "#6b6050",
+              fontSize: 16,
+              cursor: "pointer",
+            }}
+          >
+            ✕
+          </button>
+        </div>
+
+        {ZILE.map((zi) => (
+          <div
+            key={zi}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 10,
+              padding: "12px 0",
+              borderBottom: "1px solid #1e1a14",
+            }}
+          >
+            {/* Toggle deschis/închis */}
+            <div
+              onClick={() => update(zi, "deschis", !prog[zi]?.deschis)}
+              style={{
+                width: 36,
+                height: 20,
+                borderRadius: 10,
+                cursor: "pointer",
+                background: prog[zi]?.deschis ? "#c0622f" : "#2a2218",
+                position: "relative",
+                transition: "background .2s",
+                flexShrink: 0,
+              }}
+            >
+              <div
+                style={{
+                  position: "absolute",
+                  top: 2,
+                  width: 16,
+                  height: 16,
+                  borderRadius: "50%",
+                  background: "#fff",
+                  transition: "left .2s",
+                  left: prog[zi]?.deschis ? 18 : 2,
+                }}
+              />
+            </div>
+
+            {/* Zi */}
+            <div
+              style={{
+                width: 72,
+                fontSize: 13,
+                fontWeight: 600,
+                color: prog[zi]?.deschis ? "#f0ebe3" : "#6b6050",
+              }}
+            >
+              {zi}
+            </div>
+
+            {prog[zi]?.deschis ? (
+              /* Ore deschis */
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 6,
+                  flex: 1,
+                }}
+              >
+                <input
+                  type="time"
+                  value={prog[zi]?.start || "10:00"}
+                  onChange={(e) => update(zi, "start", e.target.value)}
+                  style={{
+                    flex: 1,
+                    background: "#1e1a14",
+                    border: "1px solid #2a2218",
+                    borderRadius: 8,
+                    padding: "6px 8px",
+                    color: "#f0ebe3",
+                    fontFamily: "'Plus Jakarta Sans',sans-serif",
+                    fontSize: 12,
+                    outline: "none",
+                  }}
+                />
+                <span style={{ fontSize: 12, color: "#6b6050" }}>—</span>
+                <input
+                  type="time"
+                  value={prog[zi]?.end || "22:00"}
+                  onChange={(e) => update(zi, "end", e.target.value)}
+                  style={{
+                    flex: 1,
+                    background: "#1e1a14",
+                    border: "1px solid #2a2218",
+                    borderRadius: 8,
+                    padding: "6px 8px",
+                    color: "#f0ebe3",
+                    fontFamily: "'Plus Jakarta Sans',sans-serif",
+                    fontSize: 12,
+                    outline: "none",
+                  }}
+                />
+              </div>
+            ) : (
+              <div
+                style={{
+                  flex: 1,
+                  fontSize: 12,
+                  color: "#6b6050",
+                  fontStyle: "italic",
+                }}
+              >
+                Închis
+              </div>
+            )}
+          </div>
+        ))}
+
+        <button
+          onClick={() => onSave(prog)}
+          style={{
+            width: "100%",
+            marginTop: 20,
+            padding: 14,
+            background: "linear-gradient(135deg,#c0622f,#8b3a18)",
+            border: "none",
+            borderRadius: 14,
+            color: "#fff",
+            fontFamily: "'Fraunces',serif",
+            fontSize: 16,
+            fontWeight: 700,
+            cursor: "pointer",
+          }}
+        >
+          ✅ Salvează programul
+        </button>
+      </div>
+      <style>{`@keyframes slideUp{from{transform:translateY(100%);}to{transform:translateY(0);}}`}</style>
+    </div>
+  );
+}
+
+// ─── MODAL MESE LIVE ──────────────────────────────────────────────────────────
 function LiveTablesModal({ restaurant, onClose }) {
   const { tableStates } = useTable();
   const [activeFloor, setActiveFloor] = useState(0);
@@ -11,7 +247,6 @@ function LiveTablesModal({ restaurant, onClose }) {
   const floors = restaurant?.floors || [];
   const floor = floors[activeFloor];
   const tables = floor?.tables || [];
-
   const allTables = floors.flatMap((f) => f.tables || []);
   const freeCount = allTables.filter(
     (t) => !tableStates[t.id] || tableStates[t.id] === "free",
@@ -54,7 +289,6 @@ function LiveTablesModal({ restaurant, onClose }) {
           margin: "0 auto",
         }}
       >
-        {/* Header */}
         <div
           style={{
             padding: "20px 20px 0",
@@ -74,7 +308,7 @@ function LiveTablesModal({ restaurant, onClose }) {
               🔴 Mese Ocupate Live
             </div>
             <div style={{ fontSize: 12, color: "#6b6050", marginTop: 2 }}>
-              {restaurant?.name} • actualizat în timp real
+              {restaurant?.name} • timp real
             </div>
           </div>
           <button
@@ -94,7 +328,6 @@ function LiveTablesModal({ restaurant, onClose }) {
           </button>
         </div>
 
-        {/* Stats overview */}
         <div
           style={{
             display: "grid",
@@ -162,7 +395,6 @@ function LiveTablesModal({ restaurant, onClose }) {
           ))}
         </div>
 
-        {/* Progress bar */}
         <div style={{ padding: "0 20px 16px" }}>
           <div
             style={{
@@ -177,7 +409,8 @@ function LiveTablesModal({ restaurant, onClose }) {
               {freeCount} mese libere din {total}
             </span>
             <span>
-              {Math.round((freeCount / total) * 100)}% disponibilitate
+              {Math.round((freeCount / Math.max(total, 1)) * 100)}%
+              disponibilitate
             </span>
           </div>
           <div
@@ -192,7 +425,7 @@ function LiveTablesModal({ restaurant, onClose }) {
               style={{
                 height: "100%",
                 borderRadius: 20,
-                width: `${(freeCount / total) * 100}%`,
+                width: `${(freeCount / Math.max(total, 1)) * 100}%`,
                 background: "linear-gradient(90deg,#4a6e4a,#6b9e6b)",
                 transition: "width .3s",
               }}
@@ -200,7 +433,6 @@ function LiveTablesModal({ restaurant, onClose }) {
           </div>
         </div>
 
-        {/* Floor tabs */}
         {floors.length > 1 && (
           <div
             style={{
@@ -231,7 +463,6 @@ function LiveTablesModal({ restaurant, onClose }) {
           </div>
         )}
 
-        {/* Tables grid */}
         <div style={{ padding: "0 20px 32px" }}>
           <div
             style={{
@@ -299,19 +530,24 @@ function LiveTablesModal({ restaurant, onClose }) {
   );
 }
 
-// ── Pagina principală restaurant ─────────────────────────────────────────────
+// ─── PAGINA RESTAURANT ────────────────────────────────────────────────────────
 export default function Restaurant() {
   const { state, navigate, showToast, isLocked } = useApp();
   const { tableStates } = useTable();
-  const { selectedRest } = state;
+  const { selectedRest, user } = state;
+
   const [showLive, setShowLive] = useState(false);
+  const [showProgram, setShowProgram] = useState(false);
+  // Programul e stocat local — în producție va fi în Supabase
+  const [program, setProgram] = useState(
+    selectedRest?.program || DEFAULT_PROGRAM,
+  );
 
   if (!selectedRest) {
     navigate("home");
     return null;
   }
 
-  // Calculează mese libere pentru butonul live
   const allTables = (selectedRest.floors || []).flatMap((f) => f.tables || []);
   const freeCount = allTables.filter(
     (t) => !tableStates[t.id] || tableStates[t.id] === "free",
@@ -319,20 +555,23 @@ export default function Restaurant() {
   const occCount = allTables.filter(
     (t) => tableStates[t.id] === "occupied" || tableStates[t.id] === "reserved",
   ).length;
+  const isOwner = user?.role === "owner";
 
-  const handleOrder = () => {
-    if (isLocked("orders")) {
-      showToast("🔒 Comenzile necesită plan Pro!");
-      return;
-    }
-    navigate("selectTable");
+  const handleSaveProgram = (newProg) => {
+    setProgram(newProg);
+    setShowProgram(false);
+    showToast("✅ Programul a fost salvat!");
   };
 
-  // "Vezi meniu" — merge la meniu dar fără masă selectată
-  // Comanda va fi blocată până selectează masa
-  const handleViewMenu = () => {
-    navigate("menu");
-  };
+  // Formatează programul pentru afișare pe pagina restaurantului
+  const programZiCurenta = formatProgram(program);
+
+  // Construiește string-ul cu programul complet
+  const programComplet = ZILE.map((zi) => {
+    const z = program[zi];
+    if (!z || !z.deschis) return `${zi}: Închis`;
+    return `${zi}: ${z.start} — ${z.end}`;
+  });
 
   return (
     <>
@@ -342,6 +581,13 @@ export default function Restaurant() {
           onClose={() => setShowLive(false)}
         />
       )}
+      {showProgram && (
+        <ProgramEditor
+          program={program}
+          onSave={handleSaveProgram}
+          onClose={() => setShowProgram(false)}
+        />
+      )}
 
       <div className="page fade-in">
         {/* Hero */}
@@ -349,7 +595,6 @@ export default function Restaurant() {
           style={{
             padding: "48px 20px 24px",
             position: "relative",
-            minHeight: 200,
             background: selectedRest.cover,
             display: "flex",
             flexDirection: "column",
@@ -386,7 +631,6 @@ export default function Restaurant() {
               {PLANS[selectedRest.plan]?.label}
             </span>
           </div>
-
           <div style={{ fontSize: 48, marginBottom: 10 }}>
             {selectedRest.emoji}
           </div>
@@ -423,7 +667,7 @@ export default function Restaurant() {
               ★ {selectedRest.rating} ({selectedRest.reviews} recenzii)
             </span>
             <span style={{ fontSize: 12, color: "rgba(255,255,255,.5)" }}>
-              ⏰ {selectedRest.hours}
+              ⏰ {programZiCurenta}
             </span>
           </div>
           <div
@@ -488,7 +732,7 @@ export default function Restaurant() {
           </button>
         </div>
 
-        {/* Action buttons */}
+        {/* Butoane acțiuni */}
         <div style={{ padding: "12px 20px 0" }}>
           <div
             style={{
@@ -522,9 +766,14 @@ export default function Restaurant() {
                 Rezervă o masă
               </div>
             </div>
-
             <div
-              onClick={handleOrder}
+              onClick={() => {
+                if (isLocked("orders")) {
+                  showToast("🔒 Necesită plan Pro!");
+                  return;
+                }
+                navigate("selectTable");
+              }}
               style={{
                 padding: "16px 14px",
                 borderRadius: 16,
@@ -536,7 +785,7 @@ export default function Restaurant() {
             >
               <div style={{ fontSize: 22, marginBottom: 4 }}>🪑</div>
               <div style={{ fontSize: 13, fontWeight: 700, color: "#fff" }}>
-                Selectează masa {isLocked("orders") ? "🔒" : ""}
+                Selectează masa
               </div>
               <div
                 style={{
@@ -549,14 +798,11 @@ export default function Restaurant() {
               </div>
             </div>
           </div>
-
-          {/* Vezi meniu */}
           <div
-            onClick={handleViewMenu}
+            onClick={() => navigate("menu")}
             style={{
               padding: "14px",
               borderRadius: 16,
-              textAlign: "center",
               cursor: "pointer",
               background: "var(--card)",
               border: "1px solid var(--border)",
@@ -594,6 +840,7 @@ export default function Restaurant() {
             <div style={{ fontSize: 14, marginBottom: 12 }}>
               {selectedRest.address}
             </div>
+
             <div
               style={{
                 height: 1,
@@ -601,14 +848,90 @@ export default function Restaurant() {
                 marginBottom: 12,
               }}
             />
+
+            {/* Program customizabil */}
             <div
-              style={{ fontSize: 12, color: "var(--muted)", marginBottom: 4 }}
+              style={{
+                display: "flex",
+                alignItems: "flex-start",
+                justifyContent: "space-between",
+                marginBottom: 4,
+              }}
             >
-              ⏰ Program
+              <div style={{ fontSize: 12, color: "var(--muted)" }}>
+                ⏰ Program
+              </div>
+              {/* Buton editare — doar pentru proprietar */}
+              {isOwner && (
+                <button
+                  onClick={() => setShowProgram(true)}
+                  style={{
+                    padding: "3px 10px",
+                    borderRadius: 8,
+                    background: "rgba(192,98,47,.15)",
+                    border: "1px solid rgba(192,98,47,.3)",
+                    color: "#e07a47",
+                    fontSize: 10,
+                    cursor: "pointer",
+                    fontWeight: 600,
+                  }}
+                >
+                  ✏️ Editează
+                </button>
+              )}
             </div>
-            <div style={{ fontSize: 14, marginBottom: 12 }}>
-              {selectedRest.hours}
+
+            {/* Afișare program pe zile */}
+            <div
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                gap: 4,
+                marginBottom: 12,
+              }}
+            >
+              {ZILE.map((zi) => {
+                const z = program[zi];
+                const azi = new Date().toLocaleDateString("ro-RO", {
+                  weekday: "long",
+                });
+                const eAzi = zi.toLowerCase() === azi.toLowerCase();
+                return (
+                  <div
+                    key={zi}
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      fontSize: 12,
+                      padding: "3px 0",
+                    }}
+                  >
+                    <span
+                      style={{
+                        color: eAzi ? "#c0622f" : "var(--muted)",
+                        fontWeight: eAzi ? 700 : 400,
+                      }}
+                    >
+                      {eAzi ? "• " : ""}
+                      {zi}
+                    </span>
+                    <span
+                      style={{
+                        color: !z?.deschis
+                          ? "#6b6050"
+                          : eAzi
+                            ? "#f0ebe3"
+                            : "var(--muted)",
+                        fontStyle: !z?.deschis ? "italic" : "normal",
+                      }}
+                    >
+                      {!z || !z.deschis ? "Închis" : `${z.start} — ${z.end}`}
+                    </span>
+                  </div>
+                );
+              })}
             </div>
+
             <div
               style={{
                 height: 1,
@@ -626,7 +949,7 @@ export default function Restaurant() {
             </div>
           </div>
 
-          {/* Cum functioneaza */}
+          {/* Cum funcționează */}
           <div
             style={{
               background: "rgba(192,98,47,.08)",

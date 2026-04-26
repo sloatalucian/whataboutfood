@@ -43,7 +43,6 @@ function FoodAnimation({ onComplete }) {
           transition: "opacity .8s ease",
         }}
       />
-
       <div
         style={{
           position: "relative",
@@ -134,7 +133,6 @@ function FoodAnimation({ onComplete }) {
             </div>
           ))}
       </div>
-
       <div
         style={{
           textAlign: "center",
@@ -183,8 +181,6 @@ function WaiterLoginModal({ onLogin, onClose }) {
     }
     setLoading(true);
     setError("");
-
-    // Verifică în tabelul waiter_accounts
     try {
       const { data, error: dbError } = await supabase
         .from("waiter_accounts")
@@ -192,15 +188,11 @@ function WaiterLoginModal({ onLogin, onClose }) {
         .eq("email", email.toLowerCase())
         .eq("is_active", true)
         .single();
-
       if (dbError || !data) {
         setError("Cont de ospătar inexistent sau dezactivat.");
         setLoading(false);
         return;
       }
-
-      // Demo: verificăm parola simplu (în producție va fi hash)
-      // Pentru moment acceptăm orice parolă dacă emailul există
       onLogin({
         id: data.id,
         name: data.name,
@@ -208,14 +200,11 @@ function WaiterLoginModal({ onLogin, onClose }) {
         role: "waiter",
         restaurantId: data.restaurant_id,
       });
-    } catch (err) {
-      // Fallback demo dacă Supabase nu e configurat
+    } catch {
       if (email.includes("@") && password.length >= 4) {
         onLogin({
           id: Date.now(),
-          name:
-            email.split("@")[0].charAt(0).toUpperCase() +
-            email.split("@")[0].slice(1),
+          name: email.split("@")[0],
           email,
           role: "waiter",
         });
@@ -284,7 +273,6 @@ function WaiterLoginModal({ onLogin, onClose }) {
             Intră în contul tău de ospătar
           </div>
         </div>
-
         {error && (
           <div
             style={{
@@ -300,7 +288,6 @@ function WaiterLoginModal({ onLogin, onClose }) {
             ⚠️ {error}
           </div>
         )}
-
         <div style={{ marginBottom: 14 }}>
           <label
             style={{
@@ -367,7 +354,6 @@ function WaiterLoginModal({ onLogin, onClose }) {
             }}
           />
         </div>
-
         <button
           onClick={handleLogin}
           disabled={loading}
@@ -405,10 +391,7 @@ function WaiterLoginModal({ onLogin, onClose }) {
           Anulează
         </button>
       </div>
-      <style>{`
-        @keyframes slideUp { from{transform:translateY(100%);} to{transform:translateY(0);} }
-        @keyframes fadeIn  { from{opacity:0;} to{opacity:1;} }
-      `}</style>
+      <style>{`@keyframes slideUp{from{transform:translateY(100%);}to{transform:translateY(0);}} @keyframes fadeIn{from{opacity:0;}to{opacity:1;}}`}</style>
     </div>
   );
 }
@@ -576,18 +559,12 @@ export default function SplashScreen({ onComplete, onWaiterLogin }) {
   const [showDemo, setShowDemo] = useState(false);
   const [showWaiterLogin, setShowWaiterLogin] = useState(false);
   const [loginMode, setLoginMode] = useState("login");
-  const [form, setForm] = useState({
-    email: "",
-    password: "",
-    name: "",
-    restName: "",
-  });
+  const [form, setForm] = useState({ email: "", password: "", name: "" });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
 
-  // ── Login real cu Supabase ──
   const handleLogin = async () => {
     if (!form.email || !form.password) {
       setError("Completează email și parola.");
@@ -595,25 +572,20 @@ export default function SplashScreen({ onComplete, onWaiterLogin }) {
     }
     setLoading(true);
     setError("");
-
     const { data, error: authError } = await supabase.auth.signInWithPassword({
       email: form.email,
       password: form.password,
     });
-
     if (authError) {
       setError("Email sau parolă incorectă.");
       setLoading(false);
       return;
     }
-
-    // Încarcă profilul din baza de date
     const { data: profile } = await supabase
       .from("profiles")
       .select("*")
       .eq("id", data.user.id)
       .single();
-
     dispatch({
       type: "SET_USER",
       payload: {
@@ -625,15 +597,13 @@ export default function SplashScreen({ onComplete, onWaiterLogin }) {
         role: profile?.role || "owner",
       },
     });
-
     showToast("👋 Bine ai venit!");
     onComplete("owner");
     setLoading(false);
   };
 
-  // ── Înregistrare reală cu Supabase ──
   const handleRegister = async () => {
-    if (!form.name || !form.email || !form.password || !form.restName) {
+    if (!form.name || !form.email || !form.password) {
       setError("Completează toate câmpurile.");
       return;
     }
@@ -643,35 +613,26 @@ export default function SplashScreen({ onComplete, onWaiterLogin }) {
     }
     setLoading(true);
     setError("");
-
     const { data, error: authError } = await supabase.auth.signUp({
       email: form.email,
       password: form.password,
-      options: {
-        data: {
-          full_name: form.name,
-          restaurant_name: form.restName,
-        },
-      },
+      options: { data: { full_name: form.name } },
     });
-
     if (authError) {
       setError(authError.message);
       setLoading(false);
       return;
     }
-
-    // Actualizează profilul cu numele restaurantului
     if (data.user) {
-      await supabase.from("profiles").upsert({
-        id: data.user.id,
-        full_name: form.name,
-        restaurant_name: form.restName,
-        plan: "free",
-        role: "owner",
-      });
+      await supabase
+        .from("profiles")
+        .upsert({
+          id: data.user.id,
+          full_name: form.name,
+          plan: "free",
+          role: "owner",
+        });
     }
-
     dispatch({
       type: "SET_USER",
       payload: {
@@ -679,17 +640,15 @@ export default function SplashScreen({ onComplete, onWaiterLogin }) {
         name: form.name,
         email: form.email,
         plan: "free",
-        restName: form.restName,
+        restName: "Restaurantul meu",
         role: "owner",
       },
     });
-
     showToast(`🎉 Bun venit, ${form.name}!`);
     onComplete("owner");
     setLoading(false);
   };
 
-  // ── Demo ──
   const handleDemo = (role) => {
     setShowDemo(false);
     if (role === "client") {
@@ -701,7 +660,7 @@ export default function SplashScreen({ onComplete, onWaiterLogin }) {
       showToast("👤 Demo client activat!");
     } else if (role === "ospatar") {
       setShowWaiterLogin(true);
-    } else if (role === "proprietar") {
+    } else {
       dispatch({
         type: "SET_USER",
         payload: {
@@ -717,11 +676,6 @@ export default function SplashScreen({ onComplete, onWaiterLogin }) {
     }
   };
 
-  const handleWaiterLoginSuccess = (waiter) => {
-    setShowWaiterLogin(false);
-    onWaiterLogin(waiter);
-  };
-
   if (showSplash)
     return <FoodAnimation onComplete={() => setShowSplash(false)} />;
 
@@ -735,7 +689,10 @@ export default function SplashScreen({ onComplete, onWaiterLogin }) {
       )}
       {showWaiterLogin && (
         <WaiterLoginModal
-          onLogin={handleWaiterLoginSuccess}
+          onLogin={(w) => {
+            setShowWaiterLogin(false);
+            onWaiterLogin(w);
+          }}
           onClose={() => setShowWaiterLogin(false)}
         />
       )}
@@ -950,76 +907,37 @@ export default function SplashScreen({ onComplete, onWaiterLogin }) {
             </>
           ) : (
             <>
-              <div
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: "1fr 1fr",
-                  gap: 10,
-                  marginBottom: 14,
-                }}
-              >
-                <div>
-                  <label
-                    style={{
-                      fontSize: 11,
-                      letterSpacing: 1.5,
-                      textTransform: "uppercase",
-                      color: "#6b6050",
-                      marginBottom: 7,
-                      display: "block",
-                    }}
-                  >
-                    Numele tău
-                  </label>
-                  <input
-                    placeholder="Ion Popescu"
-                    value={form.name}
-                    onChange={(e) => set("name", e.target.value)}
-                    style={{
-                      width: "100%",
-                      background: "#1e1a14",
-                      border: "1px solid #2a2218",
-                      borderRadius: 12,
-                      padding: "12px 14px",
-                      color: "#f0ebe3",
-                      fontFamily: "'Plus Jakarta Sans',sans-serif",
-                      fontSize: 13,
-                      outline: "none",
-                      boxSizing: "border-box",
-                    }}
-                  />
-                </div>
-                <div>
-                  <label
-                    style={{
-                      fontSize: 11,
-                      letterSpacing: 1.5,
-                      textTransform: "uppercase",
-                      color: "#6b6050",
-                      marginBottom: 7,
-                      display: "block",
-                    }}
-                  >
-                    Restaurant
-                  </label>
-                  <input
-                    placeholder="Mama Mia"
-                    value={form.restName}
-                    onChange={(e) => set("restName", e.target.value)}
-                    style={{
-                      width: "100%",
-                      background: "#1e1a14",
-                      border: "1px solid #2a2218",
-                      borderRadius: 12,
-                      padding: "12px 14px",
-                      color: "#f0ebe3",
-                      fontFamily: "'Plus Jakarta Sans',sans-serif",
-                      fontSize: 13,
-                      outline: "none",
-                      boxSizing: "border-box",
-                    }}
-                  />
-                </div>
+              {/* FĂRĂ câmpul Restaurant — doar Nume + Email + Parolă */}
+              <div style={{ marginBottom: 14 }}>
+                <label
+                  style={{
+                    fontSize: 11,
+                    letterSpacing: 1.5,
+                    textTransform: "uppercase",
+                    color: "#6b6050",
+                    marginBottom: 7,
+                    display: "block",
+                  }}
+                >
+                  Numele tău
+                </label>
+                <input
+                  placeholder="Ion Popescu"
+                  value={form.name}
+                  onChange={(e) => set("name", e.target.value)}
+                  style={{
+                    width: "100%",
+                    background: "#1e1a14",
+                    border: "1px solid #2a2218",
+                    borderRadius: 14,
+                    padding: "13px 16px",
+                    color: "#f0ebe3",
+                    fontFamily: "'Plus Jakarta Sans',sans-serif",
+                    fontSize: 14,
+                    outline: "none",
+                    boxSizing: "border-box",
+                  }}
+                />
               </div>
               <div style={{ marginBottom: 14 }}>
                 <label
@@ -1095,8 +1013,7 @@ export default function SplashScreen({ onComplete, onWaiterLogin }) {
                   borderRadius: 10,
                 }}
               >
-                🔒 Datele tale sunt stocate securizat în Supabase. Parola e
-                criptată.
+                🔒 Datele tale sunt stocate securizat. Parola e criptată.
               </div>
               <button
                 onClick={handleRegister}
@@ -1122,7 +1039,6 @@ export default function SplashScreen({ onComplete, onWaiterLogin }) {
             </>
           )}
 
-          {/* Separator */}
           <div
             style={{
               display: "flex",
@@ -1136,7 +1052,6 @@ export default function SplashScreen({ onComplete, onWaiterLogin }) {
             <div style={{ flex: 1, height: 1, background: "#2a2218" }} />
           </div>
 
-          {/* Demo */}
           <button
             onClick={() => setShowDemo(true)}
             style={{
@@ -1158,8 +1073,7 @@ export default function SplashScreen({ onComplete, onWaiterLogin }) {
               marginBottom: 12,
             }}
           >
-            <span>✨</span>
-            Explorează demo-ul
+            <span>✨</span> Explorează demo-ul{" "}
             <span
               style={{
                 fontSize: 11,
@@ -1172,7 +1086,6 @@ export default function SplashScreen({ onComplete, onWaiterLogin }) {
             </span>
           </button>
 
-          {/* Ospătar */}
           <button
             onClick={() => setShowWaiterLogin(true)}
             style={{
@@ -1191,14 +1104,10 @@ export default function SplashScreen({ onComplete, onWaiterLogin }) {
               marginBottom: 24,
             }}
           >
-            <span>🤵</span>
-            Loghează-te ca ospătar
+            <span>🤵</span> Loghează-te ca ospătar
           </button>
         </div>
-
-        <style>{`
-          @keyframes fadeInUp { from{opacity:0;transform:translateY(16px);} to{opacity:1;transform:translateY(0);} }
-        `}</style>
+        <style>{`@keyframes fadeInUp{from{opacity:0;transform:translateY(16px);}to{opacity:1;transform:translateY(0);}}`}</style>
       </div>
     </>
   );
