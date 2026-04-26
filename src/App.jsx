@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useApp } from "../context/AppContext";
+import { AppProvider, useApp } from "./context/AppContext";
 
 const TIPURI = [
   "Ristorante Italian",
