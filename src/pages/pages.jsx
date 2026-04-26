@@ -8,12 +8,10 @@ import CartBar from "../components/CartBar";
 export function Rezervare() {
   const { state, dispatch, navigate, showToast } = useApp();
   const { selectedRest, resForm, reservations } = state;
-
   if (!selectedRest) {
     navigate("home");
     return null;
   }
-
   const floors = selectedRest.floors || [];
   const rsvp = reservations[selectedRest.id] || {};
   const taken = resForm.time ? rsvp[resForm.time] || [] : [];
@@ -72,8 +70,6 @@ export function Rezervare() {
               <br />
               👥 {resForm.persons} persoane
             </div>
-
-            {/* Status așteptare confirmare */}
             <div
               style={{
                 background: "rgba(200,169,126,.1)",
@@ -102,11 +98,9 @@ export function Rezervare() {
                 }}
               >
                 Rezervarea ta a fost primită. Un ospătar va confirma
-                disponibilitatea în scurt timp. Vei fi notificat când rezervarea
-                este confirmată.
+                disponibilitatea în scurt timp.
               </div>
             </div>
-
             <button
               className="btn-primary"
               onClick={() => dispatch({ type: "RES_RESET" })}
@@ -156,9 +150,7 @@ export function Rezervare() {
           Rezervare — {selectedRest.name}
         </span>
       </div>
-
       <div className="inner">
-        {/* Data */}
         <div className="form-group">
           <label className="form-label">Data</label>
           <input
@@ -169,8 +161,6 @@ export function Rezervare() {
             onChange={(e) => set({ date: e.target.value })}
           />
         </div>
-
-        {/* Persoane — max 20 */}
         <div className="form-group">
           <label className="form-label">Număr persoane (max. 20)</label>
           <div style={{ display: "flex", gap: 8 }}>
@@ -231,13 +221,10 @@ export function Rezervare() {
           </div>
           {resForm.persons > 8 && (
             <div style={{ fontSize: 12, color: "#c8a97e", marginTop: 6 }}>
-              💡 Pentru grupuri mari, te recomandăm să ne contactezi direct
-              pentru aranjamente speciale.
+              💡 Pentru grupuri mari, contactați restaurantul direct.
             </div>
           )}
         </div>
-
-        {/* Interval orar */}
         <div className="form-group">
           <label className="form-label">Interval orar</label>
           <div
@@ -269,8 +256,6 @@ export function Rezervare() {
             ))}
           </div>
         </div>
-
-        {/* Etaj + harta */}
         {resForm.time && (
           <div className="form-group">
             <label className="form-label">Etaj / Zonă</label>
@@ -302,22 +287,7 @@ export function Rezervare() {
                 </button>
               ))}
             </div>
-
             <label className="form-label">Selectează masa</label>
-            <div className="legend">
-              <div className="leg">
-                <div className="leg-dot dot-free" />
-                Liberă
-              </div>
-              <div className="leg">
-                <div className="leg-dot dot-taken" />
-                Ocupată
-              </div>
-              <div className="leg">
-                <div className="leg-dot dot-sel" />
-                Selectată
-              </div>
-            </div>
             <div
               className="floor-map"
               style={{ height: 360, marginBottom: 16 }}
@@ -343,7 +313,6 @@ export function Rezervare() {
             </div>
           </div>
         )}
-
         <button
           className="btn-primary"
           disabled={!resForm.date || !resForm.time || !resForm.tableId}
@@ -369,27 +338,21 @@ export function Meniu() {
     payMethod,
     orders,
   } = state;
-
   if (!selectedRest) {
     navigate("home");
     return null;
   }
-
   const menu = MENUS[selectedRest.id] || {};
   const cats = Object.keys(menu);
   const activeCat =
     activeMenuCat && cats.includes(activeMenuCat) ? activeMenuCat : cats[0];
   const cartQty = (id) => cart.find((i) => i.id === id)?.qty || 0;
-
-  // Verifică dacă clientul a selectat o masă
-  // orderTableNum e setat când clientul vine din SelectTable
-  // Dacă vine din "Vezi meniu" direct, e null sau numărul default
-  const hasTableSelected = orderTableNum && orderTableNum !== 1;
+  const hasTable = orderTableNum && orderTableNum !== 1;
 
   const placeOrder = (observations = "") => {
     if (!cart.length) return;
-    if (!hasTableSelected) {
-      showToast("⚠️ Selectează mai întâi masa la care stai!");
+    if (!hasTable) {
+      showToast("⚠️ Selectează mai întâi masa!");
       navigate("selectTable");
       return;
     }
@@ -412,11 +375,6 @@ export function Meniu() {
     showToast("✅ Comanda trimisă la bucătărie!");
   };
 
-  const handlePay = (method) => {
-    dispatch({ type: "SET_PAID", payload: { paid: true, method } });
-  };
-
-  // ── Plată confirmată ──
   if (paid)
     return (
       <div className="page fade-in">
@@ -435,7 +393,7 @@ export function Meniu() {
             Grazie mille!
           </div>
           <div style={{ fontSize: 14, color: "var(--muted)", lineHeight: 1.6 }}>
-            Plata cu {payMethod === "cash" ? "numerar" : "cardul"} confirmată.
+            Plata confirmată.
             <br />
             Vă așteptăm din nou! 🍝
           </div>
@@ -458,7 +416,6 @@ export function Meniu() {
       </div>
     );
 
-  // ── Notă de plată ──
   if (showPayment) {
     const pastOrders = orders.filter(
       (o) => o.table === orderTableNum || o.tableLabel === orderTableNum,
@@ -472,7 +429,6 @@ export function Meniu() {
         return acc;
       }, []);
     const total = allItems.reduce((s, i) => s + i.price * i.qty, 0);
-
     return (
       <div className="page fade-in">
         <div
@@ -549,9 +505,6 @@ export function Meniu() {
               <span>{total} lei</span>
             </div>
           </div>
-          <label className="form-label" style={{ marginBottom: 12 }}>
-            Metoda de plată
-          </label>
           <div
             style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}
           >
@@ -571,7 +524,12 @@ export function Meniu() {
             ].map((p) => (
               <button
                 key={p.method}
-                onClick={() => handlePay(p.method)}
+                onClick={() =>
+                  dispatch({
+                    type: "SET_PAID",
+                    payload: { paid: true, method: p.method },
+                  })
+                }
                 style={{
                   padding: "20px 14px",
                   borderRadius: 18,
@@ -599,10 +557,8 @@ export function Meniu() {
     );
   }
 
-  // ── Meniu principal ──
   return (
     <div className="page fade-in">
-      {/* Hero */}
       <div
         style={{ padding: "44px 20px 20px", background: selectedRest.cover }}
       >
@@ -632,9 +588,7 @@ export function Meniu() {
           >
             ←
           </button>
-
-          {/* Masa selectată sau buton selectare */}
-          {hasTableSelected ? (
+          {hasTable ? (
             <div
               style={{
                 background: "rgba(255,255,255,.1)",
@@ -679,9 +633,7 @@ export function Meniu() {
           {selectedRest.type}
         </div>
       </div>
-
-      {/* Banner selectare masă dacă nu e selectată */}
-      {!hasTableSelected && (
+      {!hasTable && (
         <div
           style={{
             margin: "12px 20px 0",
@@ -720,12 +672,10 @@ export function Meniu() {
           </button>
         </div>
       )}
-
       <div
         className="inner"
         style={{ paddingBottom: cart.length > 0 ? 160 : 90 }}
       >
-        {/* Categorii */}
         <div
           style={{
             display: "flex",
@@ -758,8 +708,6 @@ export function Meniu() {
             </div>
           ))}
         </div>
-
-        {/* Produse */}
         {(menu[activeCat] || []).map((item) => {
           const qty = cartQty(item.id);
           return (
@@ -922,8 +870,6 @@ export function Meniu() {
             </div>
           );
         })}
-
-        {/* Buton notă plată */}
         {orders.filter(
           (o) => o.table === orderTableNum || o.tableLabel === orderTableNum,
         ).length > 0 && (
@@ -936,19 +882,17 @@ export function Meniu() {
           </button>
         )}
       </div>
-
       <CartBar onOrder={placeOrder} />
     </div>
   );
 }
 
-// ─── WAITER stub ──────────────────────────────────────────────────────────────
 export function Waiter() {
   const { navigate } = useApp();
   return (
     <div className="page fade-in">
       <div style={{ textAlign: "center", padding: "60px 24px" }}>
-        <div style={{ fontSize: 48, marginBottom: 12 }}>🧑‍🍳</div>
+        <div style={{ fontSize: 48, marginBottom: 12 }}>🤵</div>
         <button className="btn-primary" onClick={() => navigate("home")}>
           Mergi la Home
         </button>
@@ -957,30 +901,84 @@ export function Waiter() {
   );
 }
 
-// ─── ADMIN ────────────────────────────────────────────────────────────────────
+// ─── ADMIN — EDITOR PLANȘEU ───────────────────────────────────────────────────
 export function Admin() {
   const { state, dispatch, navigate, showToast, isLocked } = useApp();
   const { user, adminFloors, adminFloorIdx, selectedNode } = state;
   const canvasRef = useRef(null);
   const dragRef = useRef(null);
 
-  const onNodeDown = (e, tableId) => {
+  // ── Elemente fixe disponibile ──
+  const FIXED_ELEMENTS = [
+    {
+      type: "entrance",
+      icon: "🚪",
+      label: "Intrare",
+      w: 80,
+      h: 40,
+      color: "#c8a97e",
+    },
+    { type: "bar", icon: "🍺", label: "Bar", w: 100, h: 50, color: "#c0622f" },
+    {
+      type: "kitchen",
+      icon: "👨‍🍳",
+      label: "Bucătărie",
+      w: 120,
+      h: 60,
+      color: "#e07a47",
+    },
+    {
+      type: "wc_f",
+      icon: "🚺",
+      label: "Toaletă Femei",
+      w: 70,
+      h: 40,
+      color: "#5b8dd9",
+    },
+    {
+      type: "wc_m",
+      icon: "🚹",
+      label: "Toaletă Bărbați",
+      w: 70,
+      h: 40,
+      color: "#4a6e4a",
+    },
+    {
+      type: "stairs",
+      icon: "🪜",
+      label: "Scări",
+      w: 70,
+      h: 40,
+      color: "#6b6050",
+    },
+    {
+      type: "reception",
+      icon: "💁",
+      label: "Recepție",
+      w: 90,
+      h: 40,
+      color: "#8b6a8a",
+    },
+  ];
+
+  const onNodeDown = (e, nodeId) => {
     e.preventDefault();
     e.stopPropagation();
-    dispatch({ type: "ADMIN_SET_NODE", payload: tableId });
+    dispatch({ type: "ADMIN_SET_NODE", payload: nodeId });
     const canvas = canvasRef.current;
     if (!canvas) return;
     const rect = canvas.getBoundingClientRect();
     const cx = e.touches ? e.touches[0].clientX : e.clientX;
     const cy = e.touches ? e.touches[0].clientY : e.clientY;
-    const table = adminFloors[adminFloorIdx]?.tables.find(
-      (t) => t.id === tableId,
+    const floor = adminFloors[adminFloorIdx];
+    const node = [...(floor?.tables || []), ...(floor?.elements || [])].find(
+      (n) => n.id === nodeId,
     );
-    if (!table) return;
+    if (!node) return;
     dragRef.current = {
-      tableId,
-      ox: cx - rect.left - table.x,
-      oy: cy - rect.top - table.y,
+      nodeId,
+      ox: cx - rect.left - node.x,
+      oy: cy - rect.top - node.y,
     };
     const move = (ev) => {
       if (!dragRef.current || !canvasRef.current) return;
@@ -997,15 +995,15 @@ export function Admin() {
       const ny = Math.max(
         0,
         Math.min(
-          cr.height - 80,
+          cr.height - 40,
           (ev.touches ? ev.touches[0].clientY : ev.clientY) -
             cr.top -
             dragRef.current.oy,
         ),
       );
       dispatch({
-        type: "ADMIN_MOVE_TABLE",
-        payload: { tableId: dragRef.current.tableId, x: nx, y: ny },
+        type: "ADMIN_MOVE_NODE",
+        payload: { nodeId: dragRef.current.nodeId, x: nx, y: ny },
       });
     };
     const up = () => {
@@ -1019,6 +1017,21 @@ export function Admin() {
     window.addEventListener("mouseup", up);
     window.addEventListener("touchmove", move, { passive: false });
     window.addEventListener("touchend", up);
+  };
+
+  const addElement = (el) => {
+    const newEl = {
+      id: `el_${Date.now()}`,
+      type: el.type,
+      icon: el.icon,
+      label: el.label,
+      w: el.w,
+      h: el.h,
+      color: el.color,
+      x: 20,
+      y: 20,
+    };
+    dispatch({ type: "ADMIN_ADD_ELEMENT", payload: newEl });
   };
 
   const deleteFloor = (idx) => {
@@ -1041,32 +1054,40 @@ export function Admin() {
     }
     dispatch({ type: "ADMIN_ADD_FLOOR" });
   };
-
-  // Adaugă terasă
   const addTerrace = () => {
     if (isLocked("multifloor") && adminFloors.length >= 1) {
       showToast("⬆️ Upgrade la Pro!");
       return;
     }
     const newId = Math.max(...adminFloors.map((f) => f.id)) + 1;
-    const terraceNum =
-      adminFloors.filter((f) => f.name.includes("Terasă")).length + 1;
-    const name = terraceNum === 1 ? "Terasă" : `Terasă ${terraceNum}`;
+    const n = adminFloors.filter((f) => f.name.includes("Terasă")).length + 1;
     dispatch({
       type: "ADMIN_SET_FLOORS",
       payload: [
         ...adminFloors,
-        { id: newId, name, tables: [], type: "terrace" },
+        {
+          id: newId,
+          name: n === 1 ? "Terasă" : `Terasă ${n}`,
+          tables: [],
+          elements: [],
+          type: "terrace",
+        },
       ],
     });
     dispatch({ type: "ADMIN_SET_FLOOR_IDX", payload: adminFloors.length });
   };
-
-  // Icon pentru tip etaj
   const floorIcon = (fl) => (fl?.type === "terrace" ? "☀️" : "🏢");
+
+  const currentFloor = adminFloors[adminFloorIdx];
+  const allNodes = [
+    ...(currentFloor?.tables || []),
+    ...(currentFloor?.elements || []),
+  ];
+  const selectedItem = allNodes.find((n) => n.id === selectedNode);
 
   return (
     <div className="page fade-in">
+      {/* Header */}
       <div
         style={{
           padding: "44px 20px 24px",
@@ -1117,6 +1138,7 @@ export function Admin() {
       </div>
 
       <div className="inner">
+        {/* Etaje */}
         <label className="form-label">Etaje & Terase</label>
         <div
           style={{
@@ -1150,9 +1172,6 @@ export function Admin() {
                   color: adminFloorIdx === i ? "#fff" : "var(--muted)",
                   fontWeight: adminFloorIdx === i ? 600 : 400,
                   fontSize: 13,
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 5,
                 }}
               >
                 {floorIcon(fl)} {fl.name}
@@ -1177,8 +1196,6 @@ export function Admin() {
               </button>
             </div>
           ))}
-
-          {/* Butoane adăugare */}
           <button
             onClick={addFloor}
             style={{
@@ -1189,8 +1206,6 @@ export function Admin() {
               color: "var(--muted)",
               fontSize: 12,
               cursor: "pointer",
-              whiteSpace: "nowrap",
-              flexShrink: 0,
               display: "flex",
               alignItems: "center",
               gap: 5,
@@ -1198,7 +1213,6 @@ export function Admin() {
           >
             🏢 + Etaj
           </button>
-
           <button
             onClick={addTerrace}
             style={{
@@ -1209,8 +1223,6 @@ export function Admin() {
               color: "var(--sage2)",
               fontSize: 12,
               cursor: "pointer",
-              whiteSpace: "nowrap",
-              flexShrink: 0,
               display: "flex",
               alignItems: "center",
               gap: 5,
@@ -1220,19 +1232,20 @@ export function Admin() {
           </button>
         </div>
 
-        {/* Toolbar mese */}
+        {/* Mese */}
+        <label className="form-label">Adaugă mese</label>
         <div
           style={{
             display: "flex",
             gap: 8,
             flexWrap: "wrap",
-            marginBottom: 12,
+            marginBottom: 14,
           }}
         >
           {[
-            { seats: 2, label: "+ ⭕ 2p" },
-            { seats: 4, label: "+ ⬛ 4p" },
-            { seats: 8, label: "+ ▬ 8p" },
+            { seats: 2, label: "⭕ 2p" },
+            { seats: 4, label: "⬛ 4p" },
+            { seats: 8, label: "▬ 8p" },
           ].map((b) => (
             <button
               key={b.seats}
@@ -1252,12 +1265,14 @@ export function Admin() {
                 cursor: "pointer",
               }}
             >
-              {b.label}
+              + {b.label}
             </button>
           ))}
-          {selectedNode && (
+          {selectedNode && selectedItem && (
             <button
-              onClick={() => dispatch({ type: "ADMIN_DELETE_TABLE" })}
+              onClick={() =>
+                dispatch({ type: "ADMIN_DELETE_NODE", payload: selectedNode })
+              }
               style={{
                 padding: "8px 14px",
                 borderRadius: 12,
@@ -1268,37 +1283,102 @@ export function Admin() {
                 cursor: "pointer",
               }}
             >
-              🗑️ Șterge masa
+              🗑️ Șterge
             </button>
           )}
+        </div>
+
+        {/* Elemente fixe */}
+        <label className="form-label">Adaugă elemente</label>
+        <div
+          style={{
+            display: "flex",
+            gap: 8,
+            flexWrap: "wrap",
+            marginBottom: 14,
+          }}
+        >
+          {FIXED_ELEMENTS.map((el) => (
+            <button
+              key={el.type}
+              onClick={() => addElement(el)}
+              style={{
+                padding: "7px 12px",
+                borderRadius: 12,
+                background: `rgba(${el.color === "#c8a97e" ? "200,169,126" : el.color === "#c0622f" ? "192,98,47" : el.color === "#e07a47" ? "224,122,71" : el.color === "#5b8dd9" ? "91,141,217" : el.color === "#4a6e4a" ? "74,110,74" : "107,96,80"},.15)`,
+                border: `1px solid ${el.color}44`,
+                color: el.color,
+                fontSize: 11,
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                gap: 5,
+                fontWeight: 600,
+              }}
+            >
+              {el.icon} {el.label}
+            </button>
+          ))}
         </div>
 
         {/* Canvas */}
         <div
           className="floor-map"
-          style={{ height: 400, marginBottom: 12 }}
+          style={{ height: 420, marginBottom: 12 }}
           ref={canvasRef}
         >
           <div className="fmap-grid" />
-          {/* Label diferit pentru terase */}
           <div className="fmap-label">
-            {floorIcon(adminFloors[adminFloorIdx])}{" "}
-            {adminFloors[adminFloorIdx]?.name} —{" "}
-            {adminFloors[adminFloorIdx]?.tables.length} mese
+            {floorIcon(currentFloor)} {currentFloor?.name} —{" "}
+            {currentFloor?.tables?.length || 0} mese,{" "}
+            {currentFloor?.elements?.length || 0} elemente
           </div>
-          {/* Background special pentru terase */}
-          {adminFloors[adminFloorIdx]?.type === "terrace" && (
+
+          {/* Elemente fixe */}
+          {(currentFloor?.elements || []).map((el) => (
             <div
+              key={el.id}
               style={{
                 position: "absolute",
-                inset: 0,
-                pointerEvents: "none",
-                background:
-                  "radial-gradient(ellipse at top, rgba(74,110,74,.06) 0%, transparent 70%)",
+                left: el.x,
+                top: el.y,
+                width: el.w,
+                height: el.h,
+                background: `${el.color}22`,
+                border: `2px solid ${el.color}88`,
+                borderRadius: 10,
+                cursor: "pointer",
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: 2,
+                outline:
+                  selectedNode === el.id ? `3px solid ${el.color}` : "none",
+                userSelect: "none",
               }}
-            />
-          )}
-          {adminFloors[adminFloorIdx]?.tables.map((t) => (
+              onMouseDown={(e) => onNodeDown(e, el.id)}
+              onTouchStart={(e) => onNodeDown(e, el.id)}
+              onClick={() =>
+                dispatch({ type: "ADMIN_SET_NODE", payload: el.id })
+              }
+            >
+              <span style={{ fontSize: 18 }}>{el.icon}</span>
+              <span
+                style={{
+                  fontSize: 9,
+                  color: el.color,
+                  fontWeight: 700,
+                  letterSpacing: 0.5,
+                }}
+              >
+                {el.label}
+              </span>
+            </div>
+          ))}
+
+          {/* Mese */}
+          {(currentFloor?.tables || []).map((t) => (
             <div
               key={t.id}
               className={`tnode ${tableClass(t.seats)} draggable ${selectedNode === t.id ? "sel-node" : ""}`}
@@ -1313,7 +1393,8 @@ export function Admin() {
               <span className="tnode-seats">{t.seats}p</span>
             </div>
           ))}
-          {adminFloors[adminFloorIdx]?.tables.length === 0 && (
+
+          {allNodes.length === 0 && (
             <div
               style={{
                 position: "absolute",
@@ -1327,39 +1408,36 @@ export function Admin() {
               }}
             >
               <span style={{ fontSize: 36 }}>
-                {adminFloors[adminFloorIdx]?.type === "terrace" ? "☀️" : "🪑"}
+                {currentFloor?.type === "terrace" ? "☀️" : "🏗️"}
               </span>
               <span style={{ fontSize: 13 }}>
-                {adminFloors[adminFloorIdx]?.type === "terrace"
-                  ? "Adaugă mese pentru terasă"
-                  : "Adaugă mese folosind butoanele de sus"}
+                Adaugă mese și elemente din butoanele de sus
               </span>
             </div>
           )}
         </div>
 
-        {selectedNode &&
-          (() => {
-            const t = adminFloors[adminFloorIdx]?.tables.find(
-              (t) => t.id === selectedNode,
-            );
-            return t ? (
-              <div
-                style={{
-                  background: "var(--card2)",
-                  border: "1px solid var(--border)",
-                  borderRadius: 14,
-                  padding: "12px 16px",
-                  marginBottom: 12,
-                  fontSize: 13,
-                  color: "var(--muted)",
-                }}
-              >
-                Selectat: <b style={{ color: "var(--cream)" }}>{t.label}</b> •{" "}
-                {t.seats} persoane • x={Math.round(t.x)}, y={Math.round(t.y)}
-              </div>
-            ) : null;
-          })()}
+        {/* Info element selectat */}
+        {selectedItem && (
+          <div
+            style={{
+              background: "var(--card2)",
+              border: "1px solid var(--border)",
+              borderRadius: 14,
+              padding: "12px 16px",
+              marginBottom: 12,
+              fontSize: 13,
+              color: "var(--muted)",
+            }}
+          >
+            Selectat:{" "}
+            <b style={{ color: "var(--cream)" }}>
+              {selectedItem.label || selectedItem.icon}
+            </b>
+            {selectedItem.seats && ` • ${selectedItem.seats} persoane`}
+            {` • x=${Math.round(selectedItem.x)}, y=${Math.round(selectedItem.y)}`}
+          </div>
+        )}
 
         <button
           className="btn-primary"
@@ -1393,6 +1471,7 @@ export function Auth() {
         email: form.email,
         plan: mode === "login" ? "pro" : plan,
         restName: mode === "login" ? "Mama Mia" : form.restName,
+        role: "owner",
       },
     });
     navigate("home");
@@ -1404,22 +1483,22 @@ export function Auth() {
       key: "free",
       icon: "🆓",
       name: "Gratuit",
-      desc: "Meniu digital + rezervări simple",
+      desc: "Funcționalități de bază",
       price: "0 lei/lună",
     },
     {
       key: "pro",
       icon: "⭐",
       name: "Pro",
-      desc: "Comenzi + tabletă ospătar + editor planșeu",
-      price: "99 lei/lună",
+      desc: "Rapoarte avansate per ospătar/produs",
+      price: "250 lei/lună",
     },
     {
       key: "business",
       icon: "👑",
       name: "Business",
-      desc: "Etaje nelimitate + branding + rapoarte avansate",
-      price: "249 lei/lună",
+      desc: "Multi-locații + rapoarte comparative",
+      price: "800 lei/lună",
     },
   ];
 
@@ -1490,7 +1569,6 @@ export function Auth() {
             </div>
           ))}
         </div>
-
         {mode === "login" ? (
           <>
             <div className="form-group">
@@ -1520,68 +1598,17 @@ export function Auth() {
             >
               Intră în cont
             </button>
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 12,
-                margin: "16px 0",
-              }}
-            >
-              <div
-                style={{ flex: 1, height: 1, background: "var(--border)" }}
-              />
-              <span style={{ fontSize: 12, color: "var(--muted)" }}>sau</span>
-              <div
-                style={{ flex: 1, height: 1, background: "var(--border)" }}
-              />
-            </div>
-            <button
-              className="btn-secondary"
-              onClick={() => {
-                dispatch({
-                  type: "SET_USER",
-                  payload: {
-                    name: "Demo Admin",
-                    email: "demo@mamamia.ro",
-                    plan: "pro",
-                    restName: "Mama Mia",
-                  },
-                });
-                navigate("home");
-                showToast("🎯 Demo activat!");
-              }}
-            >
-              🎯 Încearcă demo-ul
-            </button>
           </>
         ) : (
           <>
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "1fr 1fr",
-                gap: 10,
-              }}
-            >
-              <div className="form-group">
-                <label className="form-label">Numele tău</label>
-                <input
-                  className="form-input"
-                  placeholder="Ion Popescu"
-                  value={form.name}
-                  onChange={(e) => set("name", e.target.value)}
-                />
-              </div>
-              <div className="form-group">
-                <label className="form-label">Nume restaurant</label>
-                <input
-                  className="form-input"
-                  placeholder="Mama Mia"
-                  value={form.restName}
-                  onChange={(e) => set("restName", e.target.value)}
-                />
-              </div>
+            <div className="form-group">
+              <label className="form-label">Numele tău</label>
+              <input
+                className="form-input"
+                placeholder="Ion Popescu"
+                value={form.name}
+                onChange={(e) => set("name", e.target.value)}
+              />
             </div>
             <div className="form-group">
               <label className="form-label">Email</label>
@@ -1598,7 +1625,7 @@ export function Auth() {
               <input
                 className="form-input"
                 type="password"
-                placeholder="Min. 8 caractere"
+                placeholder="Min. 6 caractere"
                 value={form.password}
                 onChange={(e) => set("password", e.target.value)}
               />
@@ -1630,7 +1657,7 @@ export function Auth() {
                     cursor: "pointer",
                   }}
                 >
-                  <div style={{ fontSize: 22, flexShrink: 0 }}>{p.icon}</div>
+                  <div style={{ fontSize: 22 }}>{p.icon}</div>
                   <div style={{ flex: 1 }}>
                     <div
                       style={{ fontWeight: 700, fontSize: 15, marginBottom: 2 }}
