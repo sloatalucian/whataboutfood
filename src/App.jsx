@@ -11,6 +11,7 @@ import StatisticiProprietar from "./pages/StatisticiProprietar";
 import SplashScreen from "./pages/SplashScreen";
 import MenuEditor from "./pages/MenuEditor";
 import NewRestaurant from "./pages/NewRestaurant";
+import Notifications from "./pages/Notifications";
 import { supabase } from "./supabase";
 import "./styles/global.css";
 
@@ -22,7 +23,6 @@ function Router() {
   const [waiterUser, setWaiterUser] = useState(null);
   const [checkingSession, setCheckingSession] = useState(true);
 
-  // ── Verifică sesiunea existentă ──
   useEffect(() => {
     const checkSession = async () => {
       try {
@@ -49,7 +49,7 @@ function Router() {
           setSplashDone(true);
         }
       } catch (err) {
-        console.log("Session check failed:", err);
+        console.log("Session check:", err);
       }
       setCheckingSession(false);
     };
@@ -69,8 +69,9 @@ function Router() {
 
   const noNav = ["auth", "selectTable", "newRestaurant", "waiterLogin"];
 
-  const handleOrderUpdate = (id, status) =>
-    dispatch({ type: "ORDER_UPDATE", payload: { id, status } });
+  const handleOrderUpdate = (id, status, extra = {}) => {
+    dispatch({ type: "ORDER_UPDATE", payload: { id, status, ...extra } });
+  };
   const handleOrderClose = (id) =>
     dispatch({ type: "ORDER_REMOVE", payload: id });
   const handleTableSelected = ({ table }) => {
@@ -141,6 +142,7 @@ function Router() {
             onOrderClose={handleOrderClose}
             onBack={handleWaiterLogout}
             waiterName={waiterUser?.name || "Ospătar"}
+            waiterId={waiterUser?.id}
           />
         </div>
       </TableProvider>
@@ -223,6 +225,7 @@ function Router() {
     statistici: <StatisticiProprietar />,
     menuEditor: <MenuEditor />,
     newRestaurant: <NewRestaurant />,
+    notifications: <Notifications />,
     waiterLogin: (
       <WaiterLogin
         onLogin={handleWaiterLogin}

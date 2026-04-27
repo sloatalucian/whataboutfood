@@ -1,88 +1,131 @@
-import {
-  createContext,
-  useContext,
-  useReducer,
-  useCallback,
-  useEffect,
-} from "react";
-import { supabase } from "../supabase";
-import { TIME_SLOTS } from "../data/constants";
+import { createContext, useContext, useReducer, useCallback } from "react";
 
-const genFakeRsvp = (floors) => {
-  const r = {};
-  TIME_SLOTS.forEach((slot) => {
-    r[slot] = [];
-    (floors || []).forEach((fl) =>
-      (fl.tables || []).forEach((t) => {
-        if (Math.random() < 0.28) r[slot].push(t.id);
-      }),
-    );
-  });
-  return r;
-};
+const AppContext = createContext(null);
 
-const INITIAL = {
+const initialState = {
   screen: "home",
-  selectedRest: null,
   user: null,
-  restaurants: [],
-  loadingRests: true,
+  selectedRest: null,
+  cart: [],
+  orderTableNum: null,
+  activeMenuCat: null,
+  showPayment: false,
+  paid: false,
+  payMethod: null,
+  orders: [],
   reservations: {},
   resForm: {
     date: "",
-    time: "",
     persons: 2,
+    time: "",
     floorIdx: 0,
     tableId: null,
     done: false,
   },
-  cart: [],
-  orderTableNum: 1,
-  orders: [],
-  showPayment: false,
-  paid: false,
-  payMethod: null,
-  activeMenuCat: null,
-  adminFloors: [],
+  toast: null,
+  adminFloors: [
+    { id: 1, name: "Parter", tables: [], elements: [], type: "indoor" },
+  ],
   adminFloorIdx: 0,
   selectedNode: null,
-  toast: null,
+  // Notificări client
+  notifications: [],
+  unreadCount: 0,
+  // Restaurante proprietar
+  myRestaurants: [],
 };
 
-function reducer(state, action) {
-  switch (action.type) {
-    case "SET_SCREEN":
-      return { ...state, screen: action.payload };
+function reducer(state, { type, payload }) {
+  switch (type) {
+    case "NAVIGATE":
+      return { ...state, screen: payload };
     case "SET_REST":
-      return {
-        ...state,
-        selectedRest: action.payload,
-        resForm: INITIAL.resForm,
-        cart: [],
-        showPayment: false,
-        paid: false,
-      };
+      return { ...state, selectedRest: payload, screen: "restaurant" };
     case "SET_USER":
-      return { ...state, user: action.payload };
-    case "SET_RESTAURANTS":
+      return { ...state, user: payload };
+    case "SET_TOAST":
+      return { ...state, toast: payload };
+    case "SET_MENU_CAT":
+      return { ...state, activeMenuCat: payload };
+    case "SET_PAYMENT":
+      return { ...state, showPayment: payload };
+    case "SET_PAID":
+      return { ...state, paid: payload.paid, payMethod: payload.method };
+    case "SET_ORDER_TABLE":
+      return { ...state, orderTableNum: payload };
+
+    // ── Coș ──
+    case "CART_ADD": {
+      const ex = state.cart.find((i) => i.id === payload.id);
       return {
         ...state,
-        restaurants: action.payload,
-        loadingRests: false,
-        reservations: Object.fromEntries(
-          action.payload.map((r) => [r.id, genFakeRsvp(r.floors || [])]),
+        cart: ex
+          ? state.cart.map((i) =>
+              i.id === payload.id ? { ...i, qty: i.qty + 1 } : i,
+            )
+          : [...state.cart, { ...payload, qty: 1 }],
+      };
+    }
+    case "CART_REMOVE": {
+      const ex = state.cart.find((i) => i.id === payload);
+      return {
+        ...state,
+        cart:
+          ex?.qty === 1
+            ? state.cart.filter((i) => i.id !== payload)
+            : state.cart.map((i) =>
+                i.id === payload ? { ...i, qty: i.qty - 1 } : i,
+              ),
+      };
+    }
+    case "CART_CLEAR":
+      return { ...state, cart: [] };
+
+    // ── Comenzi ──
+    case "PLACE_ORDER":
+      return { ...state, cart: [], orders: [...state.orders, payload] };
+    case "ORDER_UPDATE":
+      return {
+        ...state,
+        orders: state.orders.map((o) =>
+          o.id === payload.id
+            ? {
+                ...o,
+                status: payload.status,
+                waiterId: payload.waiterId,
+                waiterName: payload.waiterName,
+              }
+            : o,
         ),
       };
+    case "ORDER_REMOVE":
+      return { ...state, orders: state.orders.filter((o) => o.id !== payload) };
+
+    // ── Notificări ──
+    case "ADD_NOTIFICATION":
+      return {
+        ...state,
+        notifications: [payload, ...state.notifications],
+        unreadCount: state.unreadCount + 1,
+      };
+    case "MARK_NOTIFICATIONS_READ":
+      return {
+        ...state,
+        notifications: state.notifications.map((n) => ({ ...n, isRead: true })),
+        unreadCount: 0,
+      };
+
+    // ── Rezervări ──
     case "RES_FORM":
-      return { ...state, resForm: { ...state.resForm, ...action.payload } };
+      return { ...state, resForm: { ...state.resForm, ...payload } };
     case "RES_CONFIRM": {
-      const { restId, slot, tableId } = action.payload;
+      const { restId, slot, tableId } = payload;
       return {
         ...state,
         reservations: {
           ...state.reservations,
           [restId]: {
-            ...state.reservations[restId],
+            ...(state.reservations[restId] || {}),
             [slot]: [...(state.reservations[restId]?.[slot] || []), tableId],
           },
         },
@@ -90,198 +133,138 @@ function reducer(state, action) {
       };
     }
     case "RES_RESET":
-      return { ...state, resForm: INITIAL.resForm };
-    case "CART_ADD": {
-      const item = action.payload;
-      const ex = state.cart.find((i) => i.id === item.id);
       return {
         ...state,
-        cart: ex
-          ? state.cart.map((i) =>
-              i.id === item.id ? { ...i, qty: i.qty + 1 } : i,
-            )
-          : [...state.cart, { ...item, qty: 1 }],
+        resForm: {
+          date: "",
+          persons: 2,
+          time: "",
+          floorIdx: 0,
+          tableId: null,
+          done: false,
+        },
       };
-    }
-    case "CART_REMOVE": {
-      const id = action.payload;
-      const ex = state.cart.find((i) => i.id === id);
-      return {
-        ...state,
-        cart:
-          ex?.qty > 1
-            ? state.cart.map((i) =>
-                i.id === id ? { ...i, qty: i.qty - 1 } : i,
-              )
-            : state.cart.filter((i) => i.id !== id),
-      };
-    }
-    case "CART_CLEAR":
-      return { ...state, cart: [] };
-    case "SET_ORDER_TABLE":
-      return { ...state, orderTableNum: action.payload };
-    case "SET_MENU_CAT":
-      return { ...state, activeMenuCat: action.payload };
-    case "PLACE_ORDER":
-      return {
-        ...state,
-        orders: [...state.orders, action.payload],
-        cart: [],
-        showPayment: false,
-      };
-    case "ORDER_UPDATE":
-      return {
-        ...state,
-        orders: state.orders.map((o) =>
-          o.id === action.payload.id ? { ...o, ...action.payload } : o,
-        ),
-      };
-    case "ORDER_REMOVE":
-      return {
-        ...state,
-        orders: state.orders.filter((o) => o.id !== action.payload),
-      };
-    case "SET_PAYMENT":
-      return { ...state, showPayment: action.payload };
-    case "SET_PAID":
-      return {
-        ...state,
-        paid: action.payload.paid,
-        payMethod: action.payload.method,
-      };
+
+    // ── Restaurante proprietar ──
+    case "SET_MY_RESTAURANTS":
+      return { ...state, myRestaurants: payload };
+    case "ADD_MY_RESTAURANT":
+      return { ...state, myRestaurants: [...state.myRestaurants, payload] };
+
+    // ── Admin planșeu ──
     case "ADMIN_SET_FLOORS":
-      return { ...state, adminFloors: action.payload };
+      return { ...state, adminFloors: payload };
     case "ADMIN_SET_FLOOR_IDX":
-      return { ...state, adminFloorIdx: action.payload, selectedNode: null };
+      return { ...state, adminFloorIdx: payload, selectedNode: null };
     case "ADMIN_SET_NODE":
-      return { ...state, selectedNode: action.payload };
-    case "ADMIN_ADD_TABLE": {
-      const { seats } = action.payload;
-      const newId =
-        Math.max(
-          0,
-          ...state.adminFloors.flatMap((f) => f.tables.map((t) => t.id)),
-        ) + 1;
-      const prefix = seats === 8 ? "G" : seats === 2 ? "B" : "T";
-      return {
-        ...state,
-        adminFloors: state.adminFloors.map((fl, i) =>
-          i !== state.adminFloorIdx
-            ? fl
-            : {
-                ...fl,
-                tables: [
-                  ...fl.tables,
-                  {
-                    id: newId,
-                    x: 50,
-                    y: 50,
-                    seats,
-                    label: `${prefix}${newId}`,
-                  },
-                ],
-              },
-        ),
-      };
-    }
-    case "ADMIN_MOVE_TABLE": {
-      const { tableId, x, y } = action.payload;
-      return {
-        ...state,
-        adminFloors: state.adminFloors.map((fl, i) =>
-          i !== state.adminFloorIdx
-            ? fl
-            : {
-                ...fl,
-                tables: fl.tables.map((t) =>
-                  t.id === tableId ? { ...t, x, y } : t,
-                ),
-              },
-        ),
-      };
-    }
-    case "ADMIN_DELETE_TABLE":
-      return {
-        ...state,
-        adminFloors: state.adminFloors.map((fl, i) =>
-          i !== state.adminFloorIdx
-            ? fl
-            : {
-                ...fl,
-                tables: fl.tables.filter((t) => t.id !== state.selectedNode),
-              },
-        ),
-        selectedNode: null,
-      };
+      return { ...state, selectedNode: payload };
     case "ADMIN_ADD_FLOOR": {
-      const newId = Math.max(0, ...state.adminFloors.map((f) => f.id)) + 1;
+      const newId = Math.max(...state.adminFloors.map((f) => f.id), 0) + 1;
+      const newNum = state.adminFloors.filter(
+        (f) => f.type !== "terrace",
+      ).length;
       return {
         ...state,
         adminFloors: [
           ...state.adminFloors,
-          { id: newId, name: `Etaj ${newId - 1}`, tables: [] },
+          {
+            id: newId,
+            name: `Etaj ${newNum}`,
+            tables: [],
+            elements: [],
+            type: "indoor",
+          },
         ],
         adminFloorIdx: state.adminFloors.length,
       };
     }
-    case "TOAST":
-      return { ...state, toast: action.payload };
-    case "TOAST_CLEAR":
-      return { ...state, toast: null };
+    case "ADMIN_ADD_TABLE": {
+      const floor = state.adminFloors[state.adminFloorIdx];
+      const tableNum = (floor.tables?.length || 0) + 1;
+      const prefix = floor.type === "terrace" ? "E" : "T";
+      const newTable = {
+        id: `t_${Date.now()}`,
+        label: `${prefix}${tableNum}`,
+        seats: payload.seats,
+        x: 20 + (tableNum % 5) * 60,
+        y: 20 + Math.floor(tableNum / 5) * 70,
+      };
+      return {
+        ...state,
+        adminFloors: state.adminFloors.map((f, i) =>
+          i === state.adminFloorIdx
+            ? { ...f, tables: [...(f.tables || []), newTable] }
+            : f,
+        ),
+      };
+    }
+    case "ADMIN_ADD_ELEMENT": {
+      return {
+        ...state,
+        adminFloors: state.adminFloors.map((f, i) =>
+          i === state.adminFloorIdx
+            ? { ...f, elements: [...(f.elements || []), payload] }
+            : f,
+        ),
+      };
+    }
+    case "ADMIN_MOVE_NODE": {
+      const { nodeId, x, y } = payload;
+      return {
+        ...state,
+        adminFloors: state.adminFloors.map((f, i) => {
+          if (i !== state.adminFloorIdx) return f;
+          return {
+            ...f,
+            tables: (f.tables || []).map((t) =>
+              t.id === nodeId ? { ...t, x, y } : t,
+            ),
+            elements: (f.elements || []).map((e) =>
+              e.id === nodeId ? { ...e, x, y } : e,
+            ),
+          };
+        }),
+      };
+    }
+    case "ADMIN_DELETE_NODE": {
+      return {
+        ...state,
+        selectedNode: null,
+        adminFloors: state.adminFloors.map((f, i) => {
+          if (i !== state.adminFloorIdx) return f;
+          return {
+            ...f,
+            tables: (f.tables || []).filter((t) => t.id !== payload),
+            elements: (f.elements || []).filter((e) => e.id !== payload),
+          };
+        }),
+      };
+    }
+
     default:
       return state;
   }
 }
 
-const AppContext = createContext(null);
-
 export function AppProvider({ children }) {
-  const [state, dispatch] = useReducer(reducer, INITIAL);
+  const [state, dispatch] = useReducer(reducer, initialState);
 
-  // ── Încarcă restaurantele din Supabase ──
-  useEffect(() => {
-    const loadRestaurants = async () => {
-      try {
-        const { data: rests, error } = await supabase
-          .from("restaurants")
-          .select("*")
-          .order("created_at");
-
-        if (error) throw error;
-
-        // Încarcă etajele și mesele pentru fiecare restaurant
-        const restsWithFloors = await Promise.all(
-          rests.map(async (rest) => {
-            const { data: floors } = await supabase
-              .from("floors")
-              .select("*, tables(*)")
-              .eq("restaurant_id", rest.id)
-              .order("floor_order");
-
-            return { ...rest, floors: floors || [], tags: rest.tags || [] };
-          }),
-        );
-
-        dispatch({ type: "SET_RESTAURANTS", payload: restsWithFloors });
-      } catch (err) {
-        console.error("Eroare la încărcarea restaurantelor:", err);
-        // Fallback la date hardcodate dacă Supabase nu răspunde
-        const { RESTAURANTS } = await import("../data/restaurants");
-        dispatch({ type: "SET_RESTAURANTS", payload: RESTAURANTS });
-      }
-    };
-
-    loadRestaurants();
-  }, []);
-
+  const navigate = useCallback(
+    (screen) => dispatch({ type: "NAVIGATE", payload: screen }),
+    [],
+  );
   const showToast = useCallback((msg) => {
-    dispatch({ type: "TOAST", payload: msg });
-    setTimeout(() => dispatch({ type: "TOAST_CLEAR" }), 2500);
+    dispatch({ type: "SET_TOAST", payload: msg });
+    setTimeout(() => dispatch({ type: "SET_TOAST", payload: null }), 3000);
   }, []);
-
-  const navigate = useCallback((screen) => {
-    dispatch({ type: "SET_SCREEN", payload: screen });
-  }, []);
+  const isLocked = useCallback(
+    (feature) => {
+      const plan = state.user?.plan || "free";
+      const locked = { orders: ["free"], multifloor: ["free"] };
+      return locked[feature]?.includes(plan);
+    },
+    [state.user],
+  );
 
   const cartTotal = state.cart.reduce((s, i) => s + i.price * i.qty, 0);
   const cartCount = state.cart.reduce((s, i) => s + i.qty, 0);
@@ -289,32 +272,17 @@ export function AppProvider({ children }) {
     (o) => o.status === "cooking",
   ).length;
 
-  const isLocked = useCallback(
-    (feature) => {
-      if (!state.user) return false;
-      const plan = state.user.plan || "free";
-      if (plan === "pro" || plan === "business") return false;
-      return !!{
-        orders: true,
-        waiter: true,
-        editorAdvanced: true,
-        multifloor: true,
-      }[feature];
-    },
-    [state.user],
-  );
-
   return (
     <AppContext.Provider
       value={{
         state,
         dispatch,
-        showToast,
         navigate,
+        showToast,
+        isLocked,
         cartTotal,
         cartCount,
         cookingCount,
-        isLocked,
       }}
     >
       {children}

@@ -2,7 +2,7 @@ import { useApp } from "../context/AppContext";
 
 export default function BottomNav({ onWaiterClick, waiterLoggedIn }) {
   const { state, navigate } = useApp();
-  const { screen, selectedRest, user } = state;
+  const { screen, selectedRest, user, unreadCount } = state;
 
   // ── PROPRIETAR ──
   if (user?.role === "owner") {
@@ -61,11 +61,17 @@ export default function BottomNav({ onWaiterClick, waiterLoggedIn }) {
     );
   }
 
-  // ── CLIENT (logat sau nelogat) ──
+  // ── CLIENT ──
   const clientItems = [
     { id: "home", icon: "🏠", label: "Acasă" },
     { id: "reserve", icon: "📅", label: "Rezervare", needsRest: true },
     { id: "menu", icon: "🍽️", label: "Meniu", needsRest: true },
+    {
+      id: "notifications",
+      icon: "🔔",
+      label: "Notificări",
+      badge: state.unreadCount,
+    },
     { id: "auth", icon: "👤", label: "Cont" },
   ];
 
@@ -104,9 +110,34 @@ export default function BottomNav({ onWaiterClick, waiterLoggedIn }) {
             gap: 3,
             cursor: "pointer",
             padding: "8px 4px",
+            position: "relative",
           }}
         >
-          <span style={{ fontSize: 20, lineHeight: 1 }}>{item.icon}</span>
+          <div style={{ position: "relative", display: "inline-block" }}>
+            <span style={{ fontSize: 20, lineHeight: 1 }}>{item.icon}</span>
+            {/* Badge notificări */}
+            {item.badge > 0 && (
+              <span
+                style={{
+                  position: "absolute",
+                  top: -4,
+                  right: -8,
+                  width: 16,
+                  height: 16,
+                  background: "#c0622f",
+                  borderRadius: "50%",
+                  fontSize: 9,
+                  fontWeight: 800,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  color: "#fff",
+                }}
+              >
+                {item.badge > 9 ? "9+" : item.badge}
+              </span>
+            )}
+          </div>
           <span
             style={{
               fontSize: 9,

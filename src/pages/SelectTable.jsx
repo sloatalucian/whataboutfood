@@ -29,7 +29,6 @@ export function SelectTable({ restaurant, onSelected, onBack }) {
       const session = await occupyTable(confirming.id, confirming.label);
       if (onSelected) onSelected({ table: confirming, session });
     } catch (err) {
-      console.error(err);
       if (onSelected) onSelected({ table: confirming, session: null });
     }
     setLoading(false);
@@ -45,7 +44,6 @@ export function SelectTable({ restaurant, onSelected, onBack }) {
         paddingBottom: 80,
       }}
     >
-      {/* Header */}
       <div
         style={{
           padding: "44px 20px 24px",
@@ -337,14 +335,16 @@ export function WaiterTablet({
   onOrderClose,
   onBack,
   waiterName,
+  waiterId,
 }) {
   const { tableStates, activeSessions, markPaid, freeTable, reload } =
     useTable();
-  const { showToast } = useApp();
+  const { dispatch, showToast } = useApp();
   const [tab, setTab] = useState("orders");
   const [reservations, setRes] = useState([]);
+  const [loadingRes, setLoadingRes] = useState(true);
 
-  // Date demo hardcodate — vizibile imediat fără Supabase
+  // Demo rezervări
   const DEMO_RESERVATIONS = [
     {
       id: "r1",
@@ -375,37 +375,6 @@ export function WaiterTablet({
     },
   ];
 
-  // Mese demo hardcodate pentru harta — vizibile imediat
-  const DEMO_FLOORS =
-    restaurant?.floors?.length > 0
-      ? restaurant.floors
-      : [
-          {
-            id: 1,
-            name: "Parter",
-            tables: [
-              { id: 1, label: "T1", seats: 4, x: 30, y: 30 },
-              { id: 2, label: "T2", seats: 4, x: 130, y: 30 },
-              { id: 3, label: "T3", seats: 2, x: 230, y: 30 },
-              { id: 4, label: "T4", seats: 8, x: 30, y: 130 },
-              { id: 5, label: "T5", seats: 8, x: 170, y: 130 },
-              { id: 6, label: "T6", seats: 4, x: 30, y: 240 },
-              { id: 7, label: "T7", seats: 4, x: 150, y: 240 },
-              { id: 8, label: "T8", seats: 2, x: 260, y: 240 },
-            ],
-          },
-          {
-            id: 2,
-            name: "Etaj 1 — Terasă",
-            tables: [
-              { id: 9, label: "E1", seats: 4, x: 40, y: 40 },
-              { id: 10, label: "E2", seats: 4, x: 180, y: 40 },
-              { id: 11, label: "E3", seats: 8, x: 40, y: 170 },
-              { id: 12, label: "E4", seats: 4, x: 200, y: 180 },
-            ],
-          },
-        ];
-
   const [displayReservations, setDisplayReservations] =
     useState(DEMO_RESERVATIONS);
   const [activeMapFloor, setActiveMapFloor] = useState(0);
@@ -417,7 +386,10 @@ export function WaiterTablet({
   }, [restaurant?.id]);
 
   const loadReservations = async () => {
-    if (!restaurant?.id) return;
+    if (!restaurant?.id) {
+      setLoadingRes(false);
+      return;
+    }
     try {
       const today = new Date().toISOString().split("T")[0];
       const { data } = await supabase
@@ -428,21 +400,56 @@ export function WaiterTablet({
         .order("date")
         .order("time");
       if (data && data.length > 0) setDisplayReservations(data);
-    } catch (err) {
-      console.log("Folosim date demo pentru rezervări");
-    }
+    } catch {}
+    setLoadingRes(false);
   };
 
-  // Confirmare rezervare
+  // ── Acceptă comanda — atribuie ospătarului și notifică clientul ──
+  const acceptOrder = (orderId) => {
+    onOrderUpdate(orderId, "cooking", { waiterId, waiterName });
+
+    // Trimite notificare clientului
+    dispatch({
+      type: "ADD_NOTIFICATION",
+      payload: {
+        id: Date.now(),
+        type: "order_accepted",
+        message: "Comanda ta a fost preluată!",
+        details: `Ospătarul ${waiterName || "nostru"} se ocupă de comanda ta.`,
+        isRead: false,
+        createdAt: new Date().toISOString(),
+      },
+    });
+
+    showToast("✅ Comandă acceptată!");
+  };
+
+  // ── Marchează gata — notifică clientul ──
+  const markReady = (orderId) => {
+    onOrderUpdate(orderId, "ready", {});
+
+    dispatch({
+      type: "ADD_NOTIFICATION",
+      payload: {
+        id: Date.now(),
+        type: "order_ready",
+        message: "Comanda ta este gata! 🍽️",
+        details: "Ospătarul vine cu comanda la masa ta.",
+        isRead: false,
+        createdAt: new Date().toISOString(),
+      },
+    });
+
+    showToast("🍽️ Comandă gata de servit!");
+  };
+
   const confirmReservation = async (resId) => {
     try {
       await supabase
         .from("reservations")
         .update({ confirmed: true, confirmed_at: new Date().toISOString() })
         .eq("id", resId);
-    } catch (err) {
-      console.log("Demo: actualizare locală");
-    }
+    } catch {}
     setDisplayReservations((prev) =>
       prev.map((r) => (r.id === resId ? { ...r, confirmed: true } : r)),
     );
@@ -454,12 +461,41 @@ export function WaiterTablet({
     showToast("❌ Rezervare refuzată");
   };
 
-  const pendingRes = displayReservations.filter((r) => !r.confirmed);
-  const confirmedRes = displayReservations.filter((r) => r.confirmed);
+  const pendingOrders = orders.filter((o) => o.status === "pending");
   const cookingOrders = orders.filter((o) => o.status === "cooking");
   const readyOrders = orders.filter((o) => o.status === "ready");
+  const pendingRes = displayReservations.filter((r) => !r.confirmed);
+  const confirmedRes = displayReservations.filter((r) => r.confirmed);
 
-  // Stats din mesele demo
+  const DEMO_FLOORS =
+    restaurant?.floors?.length > 0
+      ? restaurant.floors
+      : [
+          {
+            id: 1,
+            name: "Parter",
+            tables: [
+              { id: 1, label: "T1", seats: 4 },
+              { id: 2, label: "T2", seats: 4 },
+              { id: 3, label: "T3", seats: 2 },
+              { id: 4, label: "T4", seats: 8 },
+              { id: 5, label: "T5", seats: 8 },
+              { id: 6, label: "T6", seats: 4 },
+              { id: 7, label: "T7", seats: 4 },
+              { id: 8, label: "T8", seats: 2 },
+            ],
+          },
+          {
+            id: 2,
+            name: "Etaj 1 — Terasă",
+            tables: [
+              { id: 9, label: "E1", seats: 4 },
+              { id: 10, label: "E2", seats: 4 },
+              { id: 11, label: "E3", seats: 8 },
+              { id: 12, label: "E4", seats: 4 },
+            ],
+          },
+        ];
   const mapFloors = DEMO_FLOORS;
   const allTables = mapFloors.flatMap((f) => f.tables || []);
   const freeCount = allTables.filter(
@@ -479,6 +515,7 @@ export function WaiterTablet({
     day: "numeric",
     month: "long",
   });
+  const today = now.toISOString().split("T")[0];
 
   return (
     <div
@@ -550,12 +587,11 @@ export function WaiterTablet({
                   fontWeight: 600,
                 }}
               >
-                Ieși din cont
+                Ieși
               </button>
             )}
           </div>
         </div>
-
         {/* Stats */}
         <div
           style={{
@@ -569,8 +605,8 @@ export function WaiterTablet({
             { label: "Mese libere", value: freeCount, color: "#4a6e4a" },
             { label: "Mese ocupate", value: occCount, color: "#c0622f" },
             {
-              label: "Comenzi active",
-              value: cookingOrders.length,
+              label: "Comenzi noi",
+              value: pendingOrders.length,
               color: "#e07a47",
             },
             {
@@ -628,7 +664,7 @@ export function WaiterTablet({
             id: "orders",
             icon: "🍽️",
             label: "Comenzi",
-            badge: cookingOrders.length,
+            badge: pendingOrders.length + cookingOrders.length,
           },
           { id: "map", icon: "🗺️", label: "Harta mese" },
           {
@@ -691,6 +727,137 @@ export function WaiterTablet({
         {/* ── COMENZI ── */}
         {tab === "orders" && (
           <div>
+            {/* Comenzi noi — necesită acceptare */}
+            {pendingOrders.length > 0 && (
+              <div style={{ marginBottom: 20 }}>
+                <div
+                  style={{
+                    fontSize: 10,
+                    letterSpacing: 2,
+                    textTransform: "uppercase",
+                    color: "#e07a47",
+                    marginBottom: 10,
+                  }}
+                >
+                  🆕 Comenzi noi — necesită acceptare
+                </div>
+                {pendingOrders.map((o) => (
+                  <div
+                    key={o.id}
+                    style={{
+                      background: "rgba(224,122,71,.08)",
+                      border: "1px solid rgba(224,122,71,.3)",
+                      borderRadius: 16,
+                      padding: 16,
+                      marginBottom: 10,
+                    }}
+                  >
+                    <div
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "flex-start",
+                        marginBottom: 10,
+                      }}
+                    >
+                      <div>
+                        <div
+                          style={{
+                            fontFamily: "'Fraunces',serif",
+                            fontSize: 18,
+                            fontWeight: 900,
+                          }}
+                        >
+                          🪑 Masa {o.tableLabel || o.table}
+                        </div>
+                        <div
+                          style={{
+                            fontSize: 11,
+                            color: "#6b6050",
+                            marginTop: 2,
+                          }}
+                        >
+                          Ora {o.time}
+                        </div>
+                      </div>
+                      <div
+                        style={{
+                          fontSize: 10,
+                          fontWeight: 800,
+                          padding: "4px 10px",
+                          borderRadius: 20,
+                          background: "rgba(224,122,71,.2)",
+                          color: "#e07a47",
+                        }}
+                      >
+                        🆕 Nouă
+                      </div>
+                    </div>
+                    <div
+                      style={{
+                        display: "flex",
+                        flexDirection: "column",
+                        gap: 4,
+                        marginBottom: o.observations ? 8 : 12,
+                      }}
+                    >
+                      {(o.items || []).map((item, i) => (
+                        <div
+                          key={i}
+                          style={{
+                            display: "flex",
+                            justifyContent: "space-between",
+                            fontSize: 13,
+                          }}
+                        >
+                          <span style={{ color: "rgba(240,235,227,.7)" }}>
+                            {item.emoji} {item.name}
+                          </span>
+                          <span style={{ color: "#c8a97e", fontWeight: 700 }}>
+                            ×{item.qty}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                    {o.observations && (
+                      <div
+                        style={{
+                          background: "rgba(200,169,126,.08)",
+                          border: "1px solid rgba(200,169,126,.2)",
+                          borderRadius: 10,
+                          padding: "8px 12px",
+                          marginBottom: 12,
+                          fontSize: 12,
+                          color: "#c8a97e",
+                        }}
+                      >
+                        💬 <b>Observații:</b> {o.observations}
+                      </div>
+                    )}
+                    {/* Buton ACCEPTĂ */}
+                    <button
+                      onClick={() => acceptOrder(o.id)}
+                      style={{
+                        width: "100%",
+                        padding: 12,
+                        borderRadius: 12,
+                        background: "linear-gradient(135deg,#4a6e4a,#2d4a2d)",
+                        border: "none",
+                        color: "#fff",
+                        fontFamily: "'Fraunces',serif",
+                        fontSize: 15,
+                        fontWeight: 700,
+                        cursor: "pointer",
+                      }}
+                    >
+                      ✅ Acceptă comanda
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Comenzi în pregătire */}
             {cookingOrders.length > 0 && (
               <div style={{ marginBottom: 16 }}>
                 <div
@@ -708,12 +875,14 @@ export function WaiterTablet({
                   <WaiterOrderCard
                     key={o.id}
                     order={o}
-                    onUpdate={onOrderUpdate}
+                    onMarkReady={markReady}
                     onClose={onOrderClose}
                   />
                 ))}
               </div>
             )}
+
+            {/* Comenzi gata */}
             {readyOrders.length > 0 && (
               <div style={{ marginBottom: 16 }}>
                 <div
@@ -731,34 +900,36 @@ export function WaiterTablet({
                   <WaiterOrderCard
                     key={o.id}
                     order={o}
-                    onUpdate={onOrderUpdate}
+                    onMarkReady={markReady}
                     onClose={onOrderClose}
                   />
                 ))}
               </div>
             )}
-            {cookingOrders.length === 0 && readyOrders.length === 0 && (
-              <div
-                style={{
-                  textAlign: "center",
-                  padding: "60px 0",
-                  color: "#6b6050",
-                }}
-              >
-                <div style={{ fontSize: 40, marginBottom: 10 }}>🍽️</div>
-                <div style={{ fontSize: 15 }}>Nicio comandă activă</div>
-                <div style={{ fontSize: 12, marginTop: 6 }}>
-                  Comenzile clienților apar automat aici
+
+            {pendingOrders.length === 0 &&
+              cookingOrders.length === 0 &&
+              readyOrders.length === 0 && (
+                <div
+                  style={{
+                    textAlign: "center",
+                    padding: "60px 0",
+                    color: "#6b6050",
+                  }}
+                >
+                  <div style={{ fontSize: 40, marginBottom: 10 }}>🍽️</div>
+                  <div style={{ fontSize: 15 }}>Nicio comandă activă</div>
+                  <div style={{ fontSize: 12, marginTop: 6 }}>
+                    Comenzile clienților apar automat aici
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
           </div>
         )}
 
         {/* ── HARTA MESE ── */}
         {tab === "map" && (
           <div>
-            {/* Legendă */}
             <div
               style={{
                 display: "flex",
@@ -768,26 +939,10 @@ export function WaiterTablet({
               }}
             >
               {[
-                {
-                  color: "#4a6e4a",
-                  bg: "rgba(74,110,74,.15)",
-                  label: "🟢 Liberă",
-                },
-                {
-                  color: "#c8a97e",
-                  bg: "rgba(200,169,126,.15)",
-                  label: "🟡 Rezervată",
-                },
-                {
-                  color: "#c0622f",
-                  bg: "rgba(192,98,47,.15)",
-                  label: "🔴 Ocupată",
-                },
-                {
-                  color: "#5b8dd9",
-                  bg: "rgba(91,141,217,.15)",
-                  label: "🔵 Achitată",
-                },
+                { label: "🟢 Liberă" },
+                { label: "🟡 Rezervată" },
+                { label: "🔴 Ocupată" },
+                { label: "🔵 Achitată" },
               ].map((l) => (
                 <div
                   key={l.label}
@@ -803,8 +958,6 @@ export function WaiterTablet({
                 </div>
               ))}
             </div>
-
-            {/* Floor tabs */}
             {mapFloors.length > 1 && (
               <div
                 style={{
@@ -826,7 +979,6 @@ export function WaiterTablet({
                       background: activeMapFloor === i ? "#c0622f" : "#1e1a14",
                       border: `1px solid ${activeMapFloor === i ? "#c0622f" : "#2a2218"}`,
                       color: activeMapFloor === i ? "#fff" : "#6b6050",
-                      fontWeight: activeMapFloor === i ? 700 : 400,
                     }}
                   >
                     {fl.name}
@@ -834,8 +986,6 @@ export function WaiterTablet({
                 ))}
               </div>
             )}
-
-            {/* Grid mese */}
             <div
               style={{
                 fontSize: 10,
@@ -877,11 +1027,11 @@ export function WaiterTablet({
                       background: bgs[status],
                       border: `2px solid ${colors[status]}`,
                       borderRadius: 14,
-                      padding: "12px 6px",
+                      padding: "10px 6px",
                       textAlign: "center",
                     }}
                   >
-                    <div style={{ fontSize: 18, marginBottom: 2 }}>🪑</div>
+                    <div style={{ fontSize: 16, marginBottom: 2 }}>🪑</div>
                     <div
                       style={{
                         fontFamily: "'Fraunces',serif",
@@ -958,7 +1108,6 @@ export function WaiterTablet({
         {/* ── REZERVĂRI ── */}
         {tab === "reservations" && (
           <div>
-            {/* Necesită confirmare */}
             {pendingRes.length > 0 && (
               <div style={{ marginBottom: 20 }}>
                 <div
@@ -1067,8 +1216,6 @@ export function WaiterTablet({
                 ))}
               </div>
             )}
-
-            {/* Confirmate */}
             {confirmedRes.length > 0 && (
               <div>
                 <div
@@ -1141,7 +1288,6 @@ export function WaiterTablet({
                 ))}
               </div>
             )}
-
             {pendingRes.length === 0 && confirmedRes.length === 0 && (
               <div
                 style={{
@@ -1158,7 +1304,7 @@ export function WaiterTablet({
         )}
       </div>
 
-      {/* ── FOOTER NAV OSPĂTAR ── */}
+      {/* Footer nav ospătar */}
       <div
         style={{
           position: "sticky",
@@ -1175,7 +1321,7 @@ export function WaiterTablet({
             id: "orders",
             icon: "🍽️",
             label: "Comenzi",
-            badge: cookingOrders.length,
+            badge: pendingOrders.length + cookingOrders.length,
           },
           { id: "map", icon: "🗺️", label: "Harta mese" },
           {
@@ -1241,7 +1387,7 @@ export function WaiterTablet({
 }
 
 // ── Waiter Order Card ──────────────────────────────────────────────────────
-function WaiterOrderCard({ order, onUpdate, onClose }) {
+function WaiterOrderCard({ order, onMarkReady, onClose }) {
   return (
     <div
       style={{
@@ -1287,6 +1433,11 @@ function WaiterOrderCard({ order, onUpdate, onClose }) {
           </div>
           <div style={{ fontSize: 11, color: "#6b6050", marginTop: 2 }}>
             Ora {order.time}
+            {order.waiterName && (
+              <span style={{ marginLeft: 8, color: "#c8a97e" }}>
+                • {order.waiterName}
+              </span>
+            )}
           </div>
         </div>
         <div
@@ -1343,7 +1494,6 @@ function WaiterOrderCard({ order, onUpdate, onClose }) {
             marginBottom: 12,
             fontSize: 12,
             color: "#c8a97e",
-            lineHeight: 1.5,
           }}
         >
           💬 <b>Observații:</b> {order.observations}
@@ -1352,7 +1502,7 @@ function WaiterOrderCard({ order, onUpdate, onClose }) {
       <div style={{ display: "flex", gap: 8 }}>
         {order.status === "cooking" && (
           <button
-            onClick={() => onUpdate && onUpdate(order.id, "ready")}
+            onClick={() => onMarkReady(order.id)}
             style={{
               flex: 1,
               padding: 9,
@@ -1369,7 +1519,7 @@ function WaiterOrderCard({ order, onUpdate, onClose }) {
           </button>
         )}
         <button
-          onClick={() => onClose && onClose(order.id)}
+          onClick={() => onClose(order.id)}
           style={{
             flex: 1,
             padding: 9,
