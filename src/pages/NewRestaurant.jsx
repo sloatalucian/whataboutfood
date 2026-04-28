@@ -14,23 +14,54 @@ const TIPURI = [
   "Pub / Bar",
   "Internațional",
 ];
+
 const ORASE = [
-  "București",
-  "Cluj-Napoca",
-  "Timișoara",
-  "Iași",
-  "Constanța",
-  "Brașov",
-  "Galați",
-  "Craiova",
-  "Ploiești",
-  "Oradea",
-  "Sibiu",
-  "Bacău",
+  "Alba Iulia",
+  "Alexandria",
   "Arad",
+  "Bacău",
+  "Baia Mare",
+  "Bistrița",
+  "Botoșani",
+  "Brăila",
+  "Brașov",
+  "București",
+  "Buzău",
+  "Călărași",
+  "Cluj-Napoca",
+  "Constanța",
+  "Craiova",
+  "Deva",
+  "Drobeta-Turnu Severin",
+  "Drobeta",
+  "Focșani",
+  "Galați",
+  "Giurgiu",
+  "Iași",
+  "Miercurea Ciuc",
+  "Oradea",
+  "Piatra Neamț",
   "Pitești",
+  "Ploiești",
+  "Râmnicu Vâlcea",
+  "Reșița",
+  "Satu Mare",
+  "Sfântu Gheorghe",
+  "Sibiu",
+  "Slatina",
+  "Slobozia",
+  "Suceava",
+  "Târgoviște",
+  "Târgu Jiu",
+  "Târgu Mureș",
+  "Timișoara",
+  "Tulcea",
+  "Vaslui",
+  "Zalău",
+  "Alexandria",
   "Alte orașe",
-];
+].sort();
+
 const EMOJIS_REST = [
   "🍝",
   "🍕",
@@ -95,27 +126,21 @@ export default function NewRestaurant() {
     }
     setLoading(true);
     try {
-      const { data, error } = await supabase
-        .from("restaurants")
-        .insert({
-          owner_id: user.id,
-          name: form.name,
-          type: form.type,
-          emoji: form.emoji,
-          address: form.address,
-          city: form.city,
-          phone: form.phone || null,
-          email: form.email || null,
-          website: form.website || null,
-          description: form.description || null,
-          plan: user.plan || "free",
-          is_active: true,
-        })
-        .select()
-        .single();
-
+      const { error } = await supabase.from("restaurants").insert({
+        owner_id: user.id,
+        name: form.name,
+        type: form.type,
+        emoji: form.emoji,
+        address: form.address,
+        city: form.city,
+        phone: form.phone || null,
+        email: form.email || null,
+        website: form.website || null,
+        description: form.description || null,
+        plan: user.plan || "free",
+        is_active: true,
+      });
       if (error) throw error;
-
       showToast(`🎉 Restaurantul „${form.name}" a fost creat!`);
       navigate("adminFloor");
     } catch (err) {
@@ -283,7 +308,7 @@ export default function NewRestaurant() {
               />
             </div>
 
-            {/* Tip */}
+            {/* Tip bucătărie */}
             <div style={{ marginBottom: 16 }}>
               <label
                 style={{
@@ -352,7 +377,7 @@ export default function NewRestaurant() {
               />
             </div>
 
-            {/* Oraș */}
+            {/* Oraș — dropdown cu 8 opțiuni vizibile */}
             <div style={{ marginBottom: 24 }}>
               <label
                 style={{
@@ -360,32 +385,79 @@ export default function NewRestaurant() {
                   letterSpacing: 1.5,
                   textTransform: "uppercase",
                   color: "#6b6050",
-                  marginBottom: 10,
+                  marginBottom: 7,
                   display: "block",
                 }}
               >
                 Orașul *
               </label>
-              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                {ORASE.map((o) => (
-                  <div
-                    key={o}
-                    onClick={() => set("city", o)}
+              <div style={{ position: "relative" }}>
+                <select
+                  value={form.city}
+                  onChange={(e) => set("city", e.target.value)}
+                  size={8}
+                  style={{
+                    width: "100%",
+                    background: "#1e1a14",
+                    border: `1px solid ${form.city ? "#c0622f" : "#2a2218"}`,
+                    borderRadius: 14,
+                    color: "#f0ebe3",
+                    fontFamily: "'Plus Jakarta Sans',sans-serif",
+                    fontSize: 14,
+                    outline: "none",
+                    cursor: "pointer",
+                    padding: "4px 0",
+                  }}
+                >
+                  <option
+                    value=""
+                    disabled
+                    style={{ color: "#6b6050", padding: "10px 16px" }}
+                  >
+                    Selectează orașul...
+                  </option>
+                  {ORASE.map((oras) => (
+                    <option
+                      key={oras}
+                      value={oras}
+                      style={{
+                        padding: "10px 16px",
+                        background: form.city === oras ? "#c0622f" : "#1e1a14",
+                        color: form.city === oras ? "#fff" : "#f0ebe3",
+                      }}
+                    >
+                      {oras}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              {form.city && (
+                <div
+                  style={{
+                    marginTop: 8,
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 6,
+                  }}
+                >
+                  <span style={{ fontSize: 13, color: "#e07a47" }}>
+                    📍 {form.city} selectat
+                  </span>
+                  <button
+                    onClick={() => set("city", "")}
                     style={{
-                      padding: "7px 14px",
-                      borderRadius: 20,
+                      background: "none",
+                      border: "none",
+                      color: "#6b6050",
+                      fontSize: 11,
                       cursor: "pointer",
-                      background: form.city === o ? "#c0622f" : "#1e1a14",
-                      border: `1px solid ${form.city === o ? "#c0622f" : "#2a2218"}`,
-                      color: form.city === o ? "#fff" : "#6b6050",
-                      fontSize: 12,
-                      fontWeight: form.city === o ? 700 : 400,
+                      padding: 0,
                     }}
                   >
-                    {o}
-                  </div>
-                ))}
-              </div>
+                    ✕
+                  </button>
+                </div>
+              )}
             </div>
 
             <button
@@ -411,7 +483,7 @@ export default function NewRestaurant() {
             {/* Preview */}
             <div
               style={{
-                marginBottom: 16,
+                marginBottom: 20,
                 background: "rgba(192,98,47,.08)",
                 border: "1px solid rgba(192,98,47,.2)",
                 borderRadius: 16,
@@ -453,101 +525,60 @@ export default function NewRestaurant() {
               Date de contact (opțional)
             </div>
 
-            <div style={{ marginBottom: 14 }}>
-              <label
-                style={{
-                  fontSize: 11,
-                  letterSpacing: 1.5,
-                  textTransform: "uppercase",
-                  color: "#6b6050",
-                  marginBottom: 7,
-                  display: "block",
-                }}
-              >
-                Telefon
-              </label>
-              <input
-                type="tel"
-                placeholder="0721 234 567"
-                value={form.phone}
-                onChange={(e) => set("phone", e.target.value)}
-                style={{
-                  width: "100%",
-                  background: "#1e1a14",
-                  border: "1px solid #2a2218",
-                  borderRadius: 14,
-                  padding: "13px 16px",
-                  color: "#f0ebe3",
-                  fontFamily: "'Plus Jakarta Sans',sans-serif",
-                  fontSize: 14,
-                  outline: "none",
-                  boxSizing: "border-box",
-                }}
-              />
-            </div>
-            <div style={{ marginBottom: 14 }}>
-              <label
-                style={{
-                  fontSize: 11,
-                  letterSpacing: 1.5,
-                  textTransform: "uppercase",
-                  color: "#6b6050",
-                  marginBottom: 7,
-                  display: "block",
-                }}
-              >
-                Email restaurant
-              </label>
-              <input
-                type="email"
-                placeholder="contact@restaurant.ro"
-                value={form.email}
-                onChange={(e) => set("email", e.target.value)}
-                style={{
-                  width: "100%",
-                  background: "#1e1a14",
-                  border: "1px solid #2a2218",
-                  borderRadius: 14,
-                  padding: "13px 16px",
-                  color: "#f0ebe3",
-                  fontFamily: "'Plus Jakarta Sans',sans-serif",
-                  fontSize: 14,
-                  outline: "none",
-                  boxSizing: "border-box",
-                }}
-              />
-            </div>
-            <div style={{ marginBottom: 14 }}>
-              <label
-                style={{
-                  fontSize: 11,
-                  letterSpacing: 1.5,
-                  textTransform: "uppercase",
-                  color: "#6b6050",
-                  marginBottom: 7,
-                  display: "block",
-                }}
-              >
-                Website
-              </label>
-              <input
-                placeholder="www.restaurantul-meu.ro"
-                value={form.website}
-                onChange={(e) => set("website", e.target.value)}
-                style={{
-                  width: "100%",
-                  background: "#1e1a14",
-                  border: "1px solid #2a2218",
-                  borderRadius: 14,
-                  padding: "13px 16px",
-                  color: "#f0ebe3",
-                  fontFamily: "'Plus Jakarta Sans',sans-serif",
-                  fontSize: 14,
-                  outline: "none",
-                  boxSizing: "border-box",
-                }}
-              />
-            </div>
+            {[
+              {
+                key: "phone",
+                label: "Telefon",
+                type: "tel",
+                placeholder: "0721 234 567",
+              },
+              {
+                key: "email",
+                label: "Email restaurant",
+                type: "email",
+                placeholder: "contact@restaurant.ro",
+              },
+              {
+                key: "website",
+                label: "Website",
+                type: "text",
+                placeholder: "www.restaurantul-meu.ro",
+              },
+            ].map((f) => (
+              <div key={f.key} style={{ marginBottom: 14 }}>
+                <label
+                  style={{
+                    fontSize: 11,
+                    letterSpacing: 1.5,
+                    textTransform: "uppercase",
+                    color: "#6b6050",
+                    marginBottom: 7,
+                    display: "block",
+                  }}
+                >
+                  {f.label}
+                </label>
+                <input
+                  type={f.type}
+                  placeholder={f.placeholder}
+                  value={form[f.key]}
+                  onChange={(e) => set(f.key, e.target.value)}
+                  style={{
+                    width: "100%",
+                    background: "#1e1a14",
+                    border: "1px solid #2a2218",
+                    borderRadius: 14,
+                    padding: "13px 16px",
+                    color: "#f0ebe3",
+                    fontFamily: "'Plus Jakarta Sans',sans-serif",
+                    fontSize: 14,
+                    outline: "none",
+                    boxSizing: "border-box",
+                  }}
+                />
+              </div>
+            ))}
+
             <div style={{ marginBottom: 24 }}>
               <label
                 style={{
