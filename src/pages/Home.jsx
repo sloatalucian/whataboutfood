@@ -1,7 +1,8 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { useApp } from "../context/AppContext";
 import RestaurantCard from "../components/RestaurantCard";
 import { RESTAURANTS } from "../data/restaurants";
+import { supabase } from "../supabase";
 
 const ORASE = [
   "Toate orașele",
@@ -103,7 +104,6 @@ function SearchBar({ onSelect, selectedCity, onCityChange }) {
             color: selectedCity !== "Toate orașele" ? "#e07a47" : "#6b6050",
             fontSize: 12,
             fontWeight: 600,
-            transition: "all .2s",
           }}
         >
           <span>📍</span>
@@ -167,16 +167,14 @@ function SearchBar({ onSelect, selectedCity, onCityChange }) {
                 }}
               >
                 <span>{oras}</span>
-                {oras === selectedCity && (
-                  <span style={{ fontSize: 12 }}>✓</span>
-                )}
+                {oras === selectedCity && <span>✓</span>}
               </div>
             ))}
           </div>
         )}
       </div>
 
-      {/* Input */}
+      {/* Input căutare */}
       <div
         style={{
           display: "flex",
@@ -186,7 +184,6 @@ function SearchBar({ onSelect, selectedCity, onCityChange }) {
           border: `1px solid ${focused ? "#c0622f" : "#2a2218"}`,
           borderRadius: 16,
           padding: "13px 16px",
-          transition: "border-color .2s",
           boxShadow: focused ? "0 0 0 3px rgba(192,98,47,.12)" : "none",
         }}
       >
@@ -246,18 +243,8 @@ function SearchBar({ onSelect, selectedCity, onCityChange }) {
           {results.length === 0 ? (
             <div style={{ padding: "20px 16px", textAlign: "center" }}>
               <div style={{ fontSize: 28, marginBottom: 8 }}>🔍</div>
-              <div
-                style={{
-                  fontSize: 14,
-                  color: "#f0ebe3",
-                  fontWeight: 600,
-                  marginBottom: 4,
-                }}
-              >
+              <div style={{ fontSize: 14, color: "#f0ebe3", fontWeight: 600 }}>
                 Niciun rezultat pentru „{query}"
-              </div>
-              <div style={{ fontSize: 12, color: "#6b6050" }}>
-                Verifică ortografia sau încearcă alt termen
               </div>
             </div>
           ) : (
@@ -290,7 +277,6 @@ function SearchBar({ onSelect, selectedCity, onCityChange }) {
                     display: "flex",
                     alignItems: "center",
                     gap: 12,
-                    transition: "background .15s",
                   }}
                   onMouseEnter={(e) =>
                     (e.currentTarget.style.background = "rgba(255,255,255,.05)")
@@ -305,8 +291,7 @@ function SearchBar({ onSelect, selectedCity, onCityChange }) {
                       height: 42,
                       borderRadius: 12,
                       flexShrink: 0,
-                      background:
-                        r.cover || "linear-gradient(135deg,#2d1507,#1a0e05)",
+                      background: "#1e1a14",
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "center",
@@ -373,6 +358,229 @@ function SearchBar({ onSelect, selectedCity, onCityChange }) {
         </div>
       )}
       <style>{`@keyframes fadeDown{from{opacity:0;transform:translateY(-8px);}to{opacity:1;transform:translateY(0);}}`}</style>
+    </div>
+  );
+}
+
+// ─── MODAL ȘTERGERE RESTAURANT (2 confirmări) ─────────────────────────────────
+function DeleteRestaurantModal({ restaurant, onConfirm, onClose }) {
+  const [step, setStep] = useState(1);
+  const [typedName, setTypedName] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  const handleDelete = async () => {
+    setLoading(true);
+    await onConfirm(restaurant.id);
+    setLoading(false);
+  };
+
+  return (
+    <div
+      style={{
+        position: "fixed",
+        inset: 0,
+        zIndex: 500,
+        background: "rgba(0,0,0,.85)",
+        backdropFilter: "blur(10px)",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        padding: 20,
+      }}
+      onClick={onClose}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          background: "#161210",
+          border: "1px solid rgba(192,57,43,.3)",
+          borderRadius: 24,
+          padding: 28,
+          width: "100%",
+          maxWidth: 400,
+          animation: "fadeInUp .3s ease",
+        }}
+      >
+        {step === 1 ? (
+          <>
+            <div
+              style={{ fontSize: 48, textAlign: "center", marginBottom: 16 }}
+            >
+              ⚠️
+            </div>
+            <div
+              style={{
+                fontFamily: "'Fraunces',serif",
+                fontSize: 22,
+                fontWeight: 900,
+                textAlign: "center",
+                marginBottom: 10,
+              }}
+            >
+              Ești sigur?
+            </div>
+            <div
+              style={{
+                fontSize: 14,
+                color: "#6b6050",
+                textAlign: "center",
+                lineHeight: 1.6,
+                marginBottom: 24,
+              }}
+            >
+              Vrei să ștergi restaurantul
+              <br />
+              <b style={{ color: "#f0ebe3" }}>„{restaurant.name}"</b>?<br />
+              Această acțiune nu poate fi anulată.
+            </div>
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "1fr 1fr",
+                gap: 10,
+              }}
+            >
+              <button
+                onClick={onClose}
+                style={{
+                  padding: 13,
+                  borderRadius: 12,
+                  background: "none",
+                  border: "1px solid #2a2218",
+                  color: "#6b6050",
+                  fontSize: 14,
+                  cursor: "pointer",
+                  fontWeight: 600,
+                }}
+              >
+                Anulează
+              </button>
+              <button
+                onClick={() => setStep(2)}
+                style={{
+                  padding: 13,
+                  borderRadius: 12,
+                  background: "rgba(192,57,43,.2)",
+                  border: "1px solid rgba(192,57,43,.4)",
+                  color: "#e05050",
+                  fontSize: 14,
+                  cursor: "pointer",
+                  fontWeight: 700,
+                }}
+              >
+                Da, șterge
+              </button>
+            </div>
+          </>
+        ) : (
+          <>
+            <div
+              style={{ fontSize: 48, textAlign: "center", marginBottom: 16 }}
+            >
+              🚨
+            </div>
+            <div
+              style={{
+                fontFamily: "'Fraunces',serif",
+                fontSize: 20,
+                fontWeight: 900,
+                textAlign: "center",
+                marginBottom: 10,
+              }}
+            >
+              Ultima avertizare!
+            </div>
+            <div
+              style={{
+                fontSize: 13,
+                color: "#6b6050",
+                textAlign: "center",
+                lineHeight: 1.6,
+                marginBottom: 16,
+              }}
+            >
+              Toate datele vor fi șterse permanent:
+              <br />
+              mese, meniu, rezervări, comenzi, ospătari.
+            </div>
+            <div style={{ marginBottom: 20 }}>
+              <label
+                style={{
+                  fontSize: 11,
+                  letterSpacing: 1.5,
+                  textTransform: "uppercase",
+                  color: "#e05050",
+                  marginBottom: 8,
+                  display: "block",
+                }}
+              >
+                Scrie „{restaurant.name}" pentru a confirma
+              </label>
+              <input
+                value={typedName}
+                onChange={(e) => setTypedName(e.target.value)}
+                placeholder={restaurant.name}
+                style={{
+                  width: "100%",
+                  background: "#1e1a14",
+                  border: `1px solid ${typedName === restaurant.name ? "#e05050" : "#2a2218"}`,
+                  borderRadius: 12,
+                  padding: "12px 14px",
+                  color: "#f0ebe3",
+                  fontFamily: "'Plus Jakarta Sans',sans-serif",
+                  fontSize: 14,
+                  outline: "none",
+                  boxSizing: "border-box",
+                }}
+              />
+            </div>
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "1fr 1fr",
+                gap: 10,
+              }}
+            >
+              <button
+                onClick={onClose}
+                style={{
+                  padding: 13,
+                  borderRadius: 12,
+                  background: "none",
+                  border: "1px solid #2a2218",
+                  color: "#6b6050",
+                  fontSize: 14,
+                  cursor: "pointer",
+                  fontWeight: 600,
+                }}
+              >
+                Anulează
+              </button>
+              <button
+                onClick={handleDelete}
+                disabled={typedName !== restaurant.name || loading}
+                style={{
+                  padding: 13,
+                  borderRadius: 12,
+                  background:
+                    typedName === restaurant.name
+                      ? "rgba(192,57,43,.3)"
+                      : "rgba(255,255,255,.05)",
+                  border: `1px solid ${typedName === restaurant.name ? "rgba(192,57,43,.5)" : "#2a2218"}`,
+                  color: typedName === restaurant.name ? "#e05050" : "#3a3228",
+                  fontSize: 14,
+                  cursor:
+                    typedName === restaurant.name ? "pointer" : "not-allowed",
+                  fontWeight: 700,
+                }}
+              >
+                {loading ? "Se șterge..." : "🗑️ Șterge definitiv"}
+              </button>
+            </div>
+          </>
+        )}
+      </div>
+      <style>{`@keyframes fadeInUp{from{opacity:0;transform:translateY(16px);}to{opacity:1;transform:translateY(0);}}`}</style>
     </div>
   );
 }
@@ -502,7 +710,6 @@ function HomeClient() {
             </div>
           )}
         </div>
-
         {filteredRestaurants.length === 0 ? (
           <div
             style={{
@@ -530,7 +737,7 @@ function HomeClient() {
                 cursor: "pointer",
               }}
             >
-              Vezi toate orașele
+              Vezi toate
             </button>
           </div>
         ) : (
@@ -546,281 +753,442 @@ function HomeClient() {
 }
 
 // ─── HOME PROPRIETAR ──────────────────────────────────────────────────────────
-function HomeOwner() {
-  const { state, navigate } = useApp();
+function HomeOwner({ onLogout }) {
+  const { state, navigate, dispatch, showToast } = useApp();
   const { user } = state;
 
+  const [myRestaurants, setMyRestaurants] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [deleteModal, setDeleteModal] = useState(null); // restaurantul de șters
+
+  // Încarcă restaurantele proprietarului din Supabase
+  const loadRestaurants = useCallback(async () => {
+    if (!user?.id) {
+      setLoading(false);
+      return;
+    }
+    try {
+      const { data, error } = await supabase
+        .from("restaurants")
+        .select("*")
+        .eq("owner_id", user.id)
+        .order("created_at");
+      if (!error && data) setMyRestaurants(data);
+    } catch (err) {
+      console.log("Load restaurants error:", err);
+    }
+    setLoading(false);
+  }, [user?.id]);
+
+  useEffect(() => {
+    loadRestaurants();
+  }, [loadRestaurants]);
+
+  // Șterge restaurant din Supabase
+  const handleDeleteRestaurant = async (restaurantId) => {
+    try {
+      const { error } = await supabase
+        .from("restaurants")
+        .delete()
+        .eq("id", restaurantId);
+      if (error) throw error;
+      setMyRestaurants((prev) => prev.filter((r) => r.id !== restaurantId));
+      setDeleteModal(null);
+      showToast("🗑️ Restaurantul a fost șters definitiv.");
+    } catch (err) {
+      showToast("❌ Eroare la ștergere. Încearcă din nou.");
+      setDeleteModal(null);
+    }
+  };
+
   return (
-    <div className="page fade-in">
-      <div
-        style={{
-          padding: "52px 20px 32px",
-          background: "linear-gradient(160deg,#1a0e05 0%,#0d0a07 60%)",
-          position: "relative",
-        }}
-      >
-        <div
-          style={{
-            position: "absolute",
-            inset: 0,
-            pointerEvents: "none",
-            background:
-              "radial-gradient(ellipse 100% 60% at 50% 0%,rgba(192,98,47,.08),transparent 70%)",
-          }}
+    <>
+      {deleteModal && (
+        <DeleteRestaurantModal
+          restaurant={deleteModal}
+          onConfirm={handleDeleteRestaurant}
+          onClose={() => setDeleteModal(null)}
         />
+      )}
+
+      <div className="page fade-in">
+        {/* Hero */}
         <div
           style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 10,
-            marginBottom: 24,
+            padding: "52px 20px 28px",
+            background: "linear-gradient(160deg,#1a0e05 0%,#0d0a07 60%)",
+            position: "relative",
           }}
         >
           <div
             style={{
-              width: 38,
-              height: 38,
-              background: "linear-gradient(135deg,var(--terra),#8b3a18)",
-              borderRadius: 11,
+              position: "absolute",
+              inset: 0,
+              pointerEvents: "none",
+              background:
+                "radial-gradient(ellipse 100% 60% at 50% 0%,rgba(192,98,47,.08),transparent 70%)",
+            }}
+          />
+          <div
+            style={{
               display: "flex",
               alignItems: "center",
-              justifyContent: "center",
-              fontSize: 20,
+              justifyContent: "space-between",
+              marginBottom: 20,
             }}
           >
-            🍽️
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <div
+                style={{
+                  width: 38,
+                  height: 38,
+                  background: "linear-gradient(135deg,var(--terra),#8b3a18)",
+                  borderRadius: 11,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  fontSize: 20,
+                }}
+              >
+                🍽️
+              </div>
+              <div
+                style={{
+                  fontFamily: "'Fraunces',serif",
+                  fontSize: 22,
+                  fontWeight: 900,
+                }}
+              >
+                Whatabout<span style={{ color: "var(--terra)" }}>Food</span>
+              </div>
+            </div>
+            <button
+              onClick={onLogout}
+              style={{
+                padding: "6px 12px",
+                borderRadius: 10,
+                background: "rgba(192,57,43,.15)",
+                border: "1px solid rgba(192,57,43,.3)",
+                color: "#e05050",
+                fontSize: 11,
+                cursor: "pointer",
+                fontWeight: 600,
+              }}
+            >
+              Ieși
+            </button>
+          </div>
+          <div style={{ fontSize: 13, color: "var(--muted)", marginBottom: 4 }}>
+            Bun venit înapoi, 👑
           </div>
           <div
             style={{
               fontFamily: "'Fraunces',serif",
-              fontSize: 22,
+              fontSize: 26,
               fontWeight: 900,
+              marginBottom: 4,
             }}
           >
-            Whatabout<span style={{ color: "var(--terra)" }}>Food</span>
+            {user?.name}
+          </div>
+          <div style={{ fontSize: 13, color: "var(--muted)" }}>
+            Plan {user?.plan?.toUpperCase() || "FREE"}
           </div>
         </div>
-        <div style={{ fontSize: 13, color: "var(--muted)", marginBottom: 4 }}>
-          Bun venit înapoi, 👑
-        </div>
-        <div
-          style={{
-            fontFamily: "'Fraunces',serif",
-            fontSize: 28,
-            fontWeight: 900,
-            marginBottom: 4,
-          }}
-        >
-          {user?.name}
-        </div>
-        <div style={{ fontSize: 13, color: "var(--muted)" }}>
-          {user?.restName} • Plan {user?.plan?.toUpperCase()}
-        </div>
-      </div>
 
-      <div className="inner" style={{ paddingTop: 20 }}>
-        {/* Quick stats */}
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(3,1fr)",
-            gap: 10,
-            marginBottom: 24,
-          }}
-        >
-          {[
-            { icon: "🍽️", label: "Comenzi azi", value: "—", color: "#c0622f" },
-            {
-              icon: "📅",
-              label: "Rezervări azi",
-              value: "—",
-              color: "#c8a97e",
-            },
-            { icon: "💰", label: "Venituri azi", value: "—", color: "#6b9e6b" },
-          ].map((s) => (
-            <div
-              key={s.label}
-              style={{
-                background: "#161210",
-                border: "1px solid #2a2218",
-                borderRadius: 14,
-                padding: "14px 10px",
-                textAlign: "center",
-              }}
-            >
-              <div style={{ fontSize: 20, marginBottom: 4 }}>{s.icon}</div>
-              <div
-                style={{
-                  fontFamily: "'Fraunces',serif",
-                  fontSize: 20,
-                  fontWeight: 900,
-                  color: s.color,
-                }}
-              >
-                {s.value}
-              </div>
-              <div style={{ fontSize: 9, color: "#6b6050", marginTop: 2 }}>
-                {s.label}
-              </div>
-            </div>
-          ))}
-        </div>
-
-        {/* Acțiuni rapide */}
-        <div
-          style={{
-            fontSize: 10,
-            letterSpacing: 2,
-            textTransform: "uppercase",
-            color: "#6b6050",
-            marginBottom: 12,
-          }}
-        >
-          Acțiuni rapide
-        </div>
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "1fr 1fr",
-            gap: 10,
-            marginBottom: 24,
-          }}
-        >
-          {[
-            {
-              icon: "🏗️",
-              label: "Editor Planșeu",
-              desc: "Configurează mesele",
-              screen: "adminFloor",
-              color: "rgba(192,98,47,.2)",
-              border: "rgba(192,98,47,.3)",
-            },
-            {
-              icon: "📊",
-              label: "Statistici",
-              desc: "Venituri și rapoarte",
-              screen: "statistici",
-              color: "rgba(91,141,217,.2)",
-              border: "rgba(91,141,217,.3)",
-            },
-            {
-              icon: "🍽️",
-              label: "Editor Meniu",
-              desc: "Adaugă produse",
-              screen: "menuEditor",
-              color: "rgba(74,110,74,.2)",
-              border: "rgba(74,110,74,.3)",
-            },
-            {
-              icon: "🤵",
-              label: "Gestionare Ospătari",
-              desc: "Adaugă / modifică",
-              screen: "admin",
-              color: "rgba(200,169,126,.2)",
-              border: "rgba(200,169,126,.3)",
-            },
-          ].map((btn) => (
-            <div
-              key={btn.screen}
-              onClick={() => navigate(btn.screen)}
-              style={{
-                background: `linear-gradient(135deg,${btn.color},transparent)`,
-                border: `1px solid ${btn.border}`,
-                borderRadius: 16,
-                padding: 16,
-                cursor: "pointer",
-              }}
-            >
-              <div style={{ fontSize: 26, marginBottom: 8 }}>{btn.icon}</div>
-              <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 2 }}>
-                {btn.label}
-              </div>
-              <div style={{ fontSize: 10, color: "var(--muted)" }}>
-                {btn.desc}
-              </div>
-            </div>
-          ))}
-        </div>
-
-        {/* Restaurante proprii */}
-        <div
-          style={{
-            fontSize: 10,
-            letterSpacing: 2,
-            textTransform: "uppercase",
-            color: "#6b6050",
-            marginBottom: 12,
-          }}
-        >
-          Restaurantele mele
-        </div>
-        <div
-          onClick={() => navigate("admin")}
-          style={{
-            background: "#161210",
-            border: "1px solid #2a2218",
-            borderRadius: 16,
-            padding: "16px",
-            cursor: "pointer",
-            display: "flex",
-            alignItems: "center",
-            gap: 14,
-            marginBottom: 10,
-          }}
-        >
+        <div className="inner" style={{ paddingTop: 20 }}>
+          {/* Quick stats */}
           <div
             style={{
-              width: 48,
-              height: 48,
-              borderRadius: 13,
-              background: "linear-gradient(135deg,#2d1507,#1a0e05)",
+              display: "grid",
+              gridTemplateColumns: "repeat(3,1fr)",
+              gap: 10,
+              marginBottom: 24,
+            }}
+          >
+            {[
+              {
+                icon: "🍽️",
+                label: "Comenzi azi",
+                value: "—",
+                color: "#c0622f",
+              },
+              {
+                icon: "📅",
+                label: "Rezervări azi",
+                value: "—",
+                color: "#c8a97e",
+              },
+              {
+                icon: "💰",
+                label: "Venituri azi",
+                value: "—",
+                color: "#6b9e6b",
+              },
+            ].map((s) => (
+              <div
+                key={s.label}
+                style={{
+                  background: "#161210",
+                  border: "1px solid #2a2218",
+                  borderRadius: 14,
+                  padding: "14px 10px",
+                  textAlign: "center",
+                }}
+              >
+                <div style={{ fontSize: 20, marginBottom: 4 }}>{s.icon}</div>
+                <div
+                  style={{
+                    fontFamily: "'Fraunces',serif",
+                    fontSize: 20,
+                    fontWeight: 900,
+                    color: s.color,
+                  }}
+                >
+                  {s.value}
+                </div>
+                <div style={{ fontSize: 9, color: "#6b6050", marginTop: 2 }}>
+                  {s.label}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Acțiuni rapide */}
+          <div
+            style={{
+              fontSize: 10,
+              letterSpacing: 2,
+              textTransform: "uppercase",
+              color: "#6b6050",
+              marginBottom: 12,
+            }}
+          >
+            Acțiuni rapide
+          </div>
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "1fr 1fr",
+              gap: 10,
+              marginBottom: 24,
+            }}
+          >
+            {[
+              {
+                icon: "🏗️",
+                label: "Editor Planșeu",
+                desc: "Configurează mesele",
+                screen: "adminFloor",
+                color: "rgba(192,98,47,.2)",
+                border: "rgba(192,98,47,.3)",
+              },
+              {
+                icon: "📊",
+                label: "Statistici",
+                desc: "Venituri și rapoarte",
+                screen: "statistici",
+                color: "rgba(91,141,217,.2)",
+                border: "rgba(91,141,217,.3)",
+              },
+              {
+                icon: "🍽️",
+                label: "Editor Meniu",
+                desc: "Adaugă produse",
+                screen: "menuEditor",
+                color: "rgba(74,110,74,.2)",
+                border: "rgba(74,110,74,.3)",
+              },
+              {
+                icon: "🤵",
+                label: "Gestionare Ospătari",
+                desc: "Adaugă / modifică",
+                screen: "admin",
+                color: "rgba(200,169,126,.2)",
+                border: "rgba(200,169,126,.3)",
+              },
+            ].map((btn) => (
+              <div
+                key={btn.screen}
+                onClick={() => navigate(btn.screen)}
+                style={{
+                  background: `linear-gradient(135deg,${btn.color},transparent)`,
+                  border: `1px solid ${btn.border}`,
+                  borderRadius: 16,
+                  padding: 16,
+                  cursor: "pointer",
+                }}
+              >
+                <div style={{ fontSize: 26, marginBottom: 8 }}>{btn.icon}</div>
+                <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 2 }}>
+                  {btn.label}
+                </div>
+                <div style={{ fontSize: 10, color: "var(--muted)" }}>
+                  {btn.desc}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Restaurantele mele */}
+          <div
+            style={{
+              fontSize: 10,
+              letterSpacing: 2,
+              textTransform: "uppercase",
+              color: "#6b6050",
+              marginBottom: 12,
+            }}
+          >
+            Restaurantele mele
+          </div>
+
+          {loading ? (
+            <div
+              style={{
+                textAlign: "center",
+                padding: "20px 0",
+                color: "#6b6050",
+                fontSize: 13,
+              }}
+            >
+              Se încarcă...
+            </div>
+          ) : myRestaurants.length === 0 ? (
+            <div
+              style={{
+                textAlign: "center",
+                padding: "24px 0",
+                color: "#6b6050",
+              }}
+            >
+              <div style={{ fontSize: 32, marginBottom: 8 }}>🏪</div>
+              <div style={{ fontSize: 14, color: "#f0ebe3", marginBottom: 6 }}>
+                Niciun restaurant creat
+              </div>
+              <div style={{ fontSize: 12, marginBottom: 16 }}>
+                Adaugă primul tău restaurant pentru a începe.
+              </div>
+            </div>
+          ) : (
+            <div
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                gap: 10,
+                marginBottom: 12,
+              }}
+            >
+              {myRestaurants.map((r) => (
+                <div
+                  key={r.id}
+                  style={{
+                    background: "#161210",
+                    border: "1px solid #2a2218",
+                    borderRadius: 16,
+                    padding: "14px 16px",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 14,
+                  }}
+                >
+                  <div
+                    style={{
+                      width: 48,
+                      height: 48,
+                      borderRadius: 13,
+                      background: "linear-gradient(135deg,#2d1507,#1a0e05)",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      fontSize: 26,
+                    }}
+                  >
+                    {r.emoji || "🍽️"}
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontWeight: 700, fontSize: 15 }}>
+                      {r.name}
+                    </div>
+                    <div
+                      style={{ fontSize: 11, color: "#6b6050", marginTop: 2 }}
+                    >
+                      {r.city} • Plan {r.plan?.toUpperCase() || "FREE"} •{" "}
+                      {r.is_active ? "✅ Activ" : "⏸️ Inactiv"}
+                    </div>
+                  </div>
+                  <div style={{ display: "flex", gap: 6 }}>
+                    <button
+                      onClick={() => navigate("adminFloor")}
+                      style={{
+                        width: 32,
+                        height: 32,
+                        borderRadius: 8,
+                        background: "rgba(192,98,47,.15)",
+                        border: "1px solid rgba(192,98,47,.3)",
+                        color: "#e07a47",
+                        fontSize: 14,
+                        cursor: "pointer",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                      }}
+                    >
+                      ✏️
+                    </button>
+                    <button
+                      onClick={() => setDeleteModal(r)}
+                      style={{
+                        width: 32,
+                        height: 32,
+                        borderRadius: 8,
+                        background: "rgba(192,57,43,.1)",
+                        border: "1px solid rgba(192,57,43,.2)",
+                        color: "#e05050",
+                        fontSize: 14,
+                        cursor: "pointer",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                      }}
+                    >
+                      🗑️
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Adaugă restaurant */}
+          <div
+            onClick={() => navigate("newRestaurant")}
+            style={{
+              border: "1px dashed #2a2218",
+              borderRadius: 16,
+              padding: 16,
+              cursor: "pointer",
+              textAlign: "center",
+              color: "#6b6050",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              fontSize: 26,
+              gap: 8,
             }}
           >
-            🍝
+            <span style={{ fontSize: 20 }}>+</span>
+            <span style={{ fontSize: 13 }}>Adaugă restaurant nou</span>
           </div>
-          <div style={{ flex: 1 }}>
-            <div style={{ fontWeight: 700, fontSize: 15 }}>
-              {user?.restName || "Restaurantul meu"}
-            </div>
-            <div style={{ fontSize: 11, color: "#6b6050", marginTop: 2 }}>
-              Plan {user?.plan?.toUpperCase()} • Activ
-            </div>
-          </div>
-          <span style={{ fontSize: 18, color: "#6b6050" }}>›</span>
-        </div>
-
-        <div
-          onClick={() => navigate("newRestaurant")}
-          style={{
-            border: "1px dashed #2a2218",
-            borderRadius: 16,
-            padding: 16,
-            cursor: "pointer",
-            textAlign: "center",
-            color: "#6b6050",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            gap: 8,
-          }}
-        >
-          <span style={{ fontSize: 20 }}>+</span>
-          <span style={{ fontSize: 13 }}>Adaugă restaurant nou</span>
         </div>
       </div>
-    </div>
+    </>
   );
 }
 
 // ─── EXPORT ───────────────────────────────────────────────────────────────────
-export default function Home() {
+export default function Home({ onLogout }) {
   const { state } = useApp();
   const { user } = state;
-
-  if (user?.role === "owner") return <HomeOwner />;
+  if (user?.role === "owner") return <HomeOwner onLogout={onLogout} />;
   return <HomeClient />;
 }

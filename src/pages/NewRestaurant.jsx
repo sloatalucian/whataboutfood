@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useApp } from "../context/AppContext";
+import { supabase } from "../supabase";
 
 const TIPURI = [
   "Ristorante Italian",
@@ -48,9 +49,11 @@ const EMOJIS_REST = [
 ];
 
 export default function NewRestaurant() {
-  const { navigate, showToast, dispatch } = useApp();
+  const { navigate, showToast, state } = useApp();
+  const { user } = state;
 
-  const [step, setStep] = useState(1); // 1 = date de bază, 2 = configurare
+  const [step, setStep] = useState(1);
+  const [loading, setLoading] = useState(false);
   const [form, setForm] = useState({
     name: "",
     type: "",
@@ -62,7 +65,6 @@ export default function NewRestaurant() {
     website: "",
     description: "",
   });
-  const [loading, setLoading] = useState(false);
 
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
 
@@ -87,13 +89,40 @@ export default function NewRestaurant() {
   };
 
   const handleCreate = async () => {
+    if (!user?.id) {
+      showToast("❌ Trebuie să fii logat!");
+      return;
+    }
     setLoading(true);
-    await new Promise((r) => setTimeout(r, 1000));
-    // În producție: salvăm în Supabase
-    showToast(`🎉 Restaurantul "${form.name}" a fost creat!`);
+    try {
+      const { data, error } = await supabase
+        .from("restaurants")
+        .insert({
+          owner_id: user.id,
+          name: form.name,
+          type: form.type,
+          emoji: form.emoji,
+          address: form.address,
+          city: form.city,
+          phone: form.phone || null,
+          email: form.email || null,
+          website: form.website || null,
+          description: form.description || null,
+          plan: user.plan || "free",
+          is_active: true,
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      showToast(`🎉 Restaurantul „${form.name}" a fost creat!`);
+      navigate("adminFloor");
+    } catch (err) {
+      console.log("Create restaurant error:", err);
+      showToast("❌ Eroare la creare. Încearcă din nou.");
+    }
     setLoading(false);
-    // Mergi la Editor Planșeu
-    navigate("adminFloor");
   };
 
   return (
@@ -147,8 +176,6 @@ export default function NewRestaurant() {
             </div>
           </div>
         </div>
-
-        {/* Progress bar */}
         <div
           style={{
             height: 4,
@@ -160,7 +187,7 @@ export default function NewRestaurant() {
           <div
             style={{
               height: "100%",
-              width: `${step === 1 ? 50 : 100}%`,
+              width: step === 1 ? "50%" : "100%",
               background: "linear-gradient(90deg,#c0622f,#e07a47)",
               borderRadius: 20,
               transition: "width .3s",
@@ -171,7 +198,6 @@ export default function NewRestaurant() {
 
       <div style={{ padding: 20 }}>
         {step === 1 ? (
-          /* ── PASUL 1 — Date de bază ── */
           <>
             <div
               style={{
@@ -182,10 +208,10 @@ export default function NewRestaurant() {
                 marginBottom: 16,
               }}
             >
-              Informații restaurant
+              Informații de bază
             </div>
 
-            {/* Emoji selector */}
+            {/* Emoji */}
             <div style={{ marginBottom: 20 }}>
               <label
                 style={{
@@ -216,7 +242,6 @@ export default function NewRestaurant() {
                       background:
                         form.emoji === e ? "rgba(192,98,47,.3)" : "#1e1a14",
                       border: `2px solid ${form.emoji === e ? "#c0622f" : "#2a2218"}`,
-                      transition: "all .15s",
                     }}
                   >
                     {e}
@@ -240,7 +265,7 @@ export default function NewRestaurant() {
                 Numele restaurantului *
               </label>
               <input
-                placeholder="Ex: Mama Mia, La Fontana, Sushi Zen..."
+                placeholder="Ex: Mama Mia, La Fontana..."
                 value={form.name}
                 onChange={(e) => set("name", e.target.value)}
                 style={{
@@ -258,7 +283,7 @@ export default function NewRestaurant() {
               />
             </div>
 
-            {/* Tip bucătărie */}
+            {/* Tip */}
             <div style={{ marginBottom: 16 }}>
               <label
                 style={{
@@ -328,7 +353,7 @@ export default function NewRestaurant() {
             </div>
 
             {/* Oraș */}
-            <div style={{ marginBottom: 20 }}>
+            <div style={{ marginBottom: 24 }}>
               <label
                 style={{
                   fontSize: 11,
@@ -382,8 +407,8 @@ export default function NewRestaurant() {
             </button>
           </>
         ) : (
-          /* ── PASUL 2 — Date de contact ── */
           <>
+            {/* Preview */}
             <div
               style={{
                 marginBottom: 16,
@@ -460,7 +485,6 @@ export default function NewRestaurant() {
                 }}
               />
             </div>
-
             <div style={{ marginBottom: 14 }}>
               <label
                 style={{
@@ -493,7 +517,6 @@ export default function NewRestaurant() {
                 }}
               />
             </div>
-
             <div style={{ marginBottom: 14 }}>
               <label
                 style={{
@@ -505,7 +528,7 @@ export default function NewRestaurant() {
                   display: "block",
                 }}
               >
-                Website (opțional)
+                Website
               </label>
               <input
                 placeholder="www.restaurantul-meu.ro"
@@ -525,7 +548,6 @@ export default function NewRestaurant() {
                 }}
               />
             </div>
-
             <div style={{ marginBottom: 24 }}>
               <label
                 style={{
@@ -537,7 +559,7 @@ export default function NewRestaurant() {
                   display: "block",
                 }}
               >
-                Descriere scurtă (opțional)
+                Descriere scurtă
               </label>
               <textarea
                 placeholder="Ex: Restaurant cu specific italian, în inima orașului..."
@@ -581,18 +603,11 @@ export default function NewRestaurant() {
             >
               {loading ? "Se creează..." : "🎉 Creează restaurantul"}
             </button>
-
             <div
-              style={{
-                fontSize: 11,
-                color: "#6b6050",
-                textAlign: "center",
-                lineHeight: 1.6,
-              }}
+              style={{ fontSize: 11, color: "#6b6050", textAlign: "center" }}
             >
-              După creare vei fi dus la{" "}
-              <b style={{ color: "#c8a97e" }}>Editor Planșeu</b> unde
-              configurezi mesele restaurantului.
+              Vei fi dus la <b style={{ color: "#c8a97e" }}>Editor Planșeu</b>{" "}
+              după creare.
             </div>
           </>
         )}

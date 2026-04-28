@@ -70,37 +70,6 @@ export function Rezervare() {
               <br />
               👥 {resForm.persons} persoane
             </div>
-            <div
-              style={{
-                background: "rgba(200,169,126,.1)",
-                border: "1px solid rgba(200,169,126,.25)",
-                borderRadius: 14,
-                padding: "14px 16px",
-                marginBottom: 20,
-                textAlign: "left",
-              }}
-            >
-              <div
-                style={{
-                  fontSize: 13,
-                  fontWeight: 700,
-                  color: "#c8a97e",
-                  marginBottom: 6,
-                }}
-              >
-                🧑‍🍳 În așteptarea confirmării ospătarului
-              </div>
-              <div
-                style={{
-                  fontSize: 12,
-                  color: "rgba(240,235,227,.6)",
-                  lineHeight: 1.6,
-                }}
-              >
-                Rezervarea ta a fost primită. Un ospătar va confirma
-                disponibilitatea în scurt timp.
-              </div>
-            </div>
             <button
               className="btn-primary"
               onClick={() => dispatch({ type: "RES_RESET" })}
@@ -162,7 +131,7 @@ export function Rezervare() {
           />
         </div>
         <div className="form-group">
-          <label className="form-label">Număr persoane (max. 20)</label>
+          <label className="form-label">Număr persoane</label>
           <div style={{ display: "flex", gap: 8 }}>
             <button
               onClick={() => set({ persons: Math.max(1, resForm.persons - 1) })}
@@ -219,11 +188,6 @@ export function Rezervare() {
               +
             </button>
           </div>
-          {resForm.persons > 8 && (
-            <div style={{ fontSize: 12, color: "#c8a97e", marginTop: 6 }}>
-              💡 Pentru grupuri mari, contactați restaurantul direct.
-            </div>
-          )}
         </div>
         <div className="form-group">
           <label className="form-label">Interval orar</label>
@@ -280,7 +244,6 @@ export function Rezervare() {
                     color: resForm.floorIdx === i ? "#fff" : "var(--muted)",
                     fontSize: 13,
                     cursor: "pointer",
-                    fontWeight: resForm.floorIdx === i ? 600 : 400,
                   }}
                 >
                   {fl.name}
@@ -365,7 +328,7 @@ export function Meniu() {
         restId: selectedRest.id,
         items: [...cart],
         observations,
-        status: "cooking",
+        status: "pending",
         time: new Date().toLocaleTimeString("ro-RO", {
           hour: "2-digit",
           minute: "2-digit",
@@ -393,9 +356,7 @@ export function Meniu() {
             Grazie mille!
           </div>
           <div style={{ fontSize: 14, color: "var(--muted)", lineHeight: 1.6 }}>
-            Plata confirmată.
-            <br />
-            Vă așteptăm din nou! 🍝
+            Plata confirmată. Vă așteptăm din nou! 🍝
           </div>
           <button
             className="btn-primary"
@@ -509,18 +470,8 @@ export function Meniu() {
             style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}
           >
             {[
-              {
-                method: "cash",
-                icon: "💵",
-                label: "Cash",
-                border: "rgba(74,110,74,.5)",
-              },
-              {
-                method: "card",
-                icon: "💳",
-                label: "Card",
-                border: "rgba(200,169,126,.5)",
-              },
+              { method: "cash", icon: "💵", label: "Cash" },
+              { method: "card", icon: "💳", label: "Card" },
             ].map((p) => (
               <button
                 key={p.method}
@@ -533,7 +484,7 @@ export function Meniu() {
                 style={{
                   padding: "20px 14px",
                   borderRadius: 18,
-                  border: `2px solid ${p.border}`,
+                  border: "2px solid var(--border)",
                   background: "var(--card)",
                   color: "var(--cream)",
                   fontFamily: "'Fraunces',serif",
@@ -627,51 +578,7 @@ export function Meniu() {
         >
           {selectedRest.emoji} {selectedRest.name}
         </div>
-        <div
-          style={{ fontSize: 12, color: "rgba(255,255,255,.5)", marginTop: 2 }}
-        >
-          {selectedRest.type}
-        </div>
       </div>
-      {!hasTable && (
-        <div
-          style={{
-            margin: "12px 20px 0",
-            background: "rgba(192,98,47,.12)",
-            border: "1px solid rgba(192,98,47,.3)",
-            borderRadius: 14,
-            padding: "12px 16px",
-            display: "flex",
-            alignItems: "center",
-            gap: 12,
-          }}
-        >
-          <span style={{ fontSize: 22 }}>⚠️</span>
-          <div style={{ flex: 1 }}>
-            <div style={{ fontSize: 13, fontWeight: 700, color: "#e07a47" }}>
-              Selectează masa pentru a comanda
-            </div>
-            <div style={{ fontSize: 11, color: "#6b6050", marginTop: 2 }}>
-              Poți explora meniul, dar comanda necesită o masă selectată.
-            </div>
-          </div>
-          <button
-            onClick={() => navigate("selectTable")}
-            style={{
-              padding: "8px 14px",
-              background: "var(--terra)",
-              border: "none",
-              borderRadius: 20,
-              color: "#fff",
-              fontSize: 12,
-              fontWeight: 700,
-              cursor: "pointer",
-            }}
-          >
-            Selectează
-          </button>
-        </div>
-      )}
       <div
         className="inner"
         style={{ paddingBottom: cart.length > 0 ? 160 : 90 }}
@@ -760,31 +667,15 @@ export function Meniu() {
                     justifyContent: "space-between",
                   }}
                 >
-                  <div>
-                    <div
-                      style={{
-                        fontFamily: "'Fraunces',serif",
-                        fontSize: 18,
-                        fontWeight: 700,
-                        color: "var(--warm)",
-                      }}
-                    >
-                      {item.price} lei
-                    </div>
-                    {item.veg && (
-                      <div
-                        style={{
-                          fontSize: 10,
-                          color: "var(--sage2)",
-                          background: "rgba(74,110,74,.15)",
-                          padding: "2px 7px",
-                          borderRadius: 10,
-                          display: "inline-block",
-                        }}
-                      >
-                        🌿 Veg
-                      </div>
-                    )}
+                  <div
+                    style={{
+                      fontFamily: "'Fraunces',serif",
+                      fontSize: 18,
+                      fontWeight: 700,
+                      color: "var(--warm)",
+                    }}
+                  >
+                    {item.price} lei
                   </div>
                   <div
                     style={{ display: "flex", alignItems: "center", gap: 7 }}
@@ -887,28 +778,23 @@ export function Meniu() {
   );
 }
 
-export function Waiter() {
-  const { navigate } = useApp();
-  return (
-    <div className="page fade-in">
-      <div style={{ textAlign: "center", padding: "60px 24px" }}>
-        <div style={{ fontSize: 48, marginBottom: 12 }}>🤵</div>
-        <button className="btn-primary" onClick={() => navigate("home")}>
-          Mergi la Home
-        </button>
-      </div>
-    </div>
-  );
-}
-
-// ─── ADMIN — EDITOR PLANȘEU ───────────────────────────────────────────────────
+// ─── ADMIN — EDITOR PLANȘEU cu ZOOM ──────────────────────────────────────────
 export function Admin() {
   const { state, dispatch, navigate, showToast, isLocked } = useApp();
   const { user, adminFloors, adminFloorIdx, selectedNode } = state;
   const canvasRef = useRef(null);
   const dragRef = useRef(null);
 
-  // ── Elemente fixe disponibile ──
+  // ── ZOOM STATE ──
+  const [zoom, setZoom] = useState(100); // procente: 50-200
+  const ZOOM_STEP = 10;
+  const ZOOM_MIN = 50;
+  const ZOOM_MAX = 200;
+  const zoomIn = () => setZoom((z) => Math.min(ZOOM_MAX, z + ZOOM_STEP));
+  const zoomOut = () => setZoom((z) => Math.max(ZOOM_MIN, z - ZOOM_STEP));
+  const zoomScale = zoom / 100;
+
+  // ── Elemente fixe ──
   const FIXED_ELEMENTS = [
     {
       type: "entrance",
@@ -975,32 +861,19 @@ export function Admin() {
       (n) => n.id === nodeId,
     );
     if (!node) return;
+    // Ajustăm offsetul cu zoom
     dragRef.current = {
       nodeId,
-      ox: cx - rect.left - node.x,
-      oy: cy - rect.top - node.y,
+      ox: (cx - rect.left) / zoomScale - node.x,
+      oy: (cy - rect.top) / zoomScale - node.y,
     };
     const move = (ev) => {
       if (!dragRef.current || !canvasRef.current) return;
       const cr = canvasRef.current.getBoundingClientRect();
-      const nx = Math.max(
-        0,
-        Math.min(
-          cr.width - 100,
-          (ev.touches ? ev.touches[0].clientX : ev.clientX) -
-            cr.left -
-            dragRef.current.ox,
-        ),
-      );
-      const ny = Math.max(
-        0,
-        Math.min(
-          cr.height - 40,
-          (ev.touches ? ev.touches[0].clientY : ev.clientY) -
-            cr.top -
-            dragRef.current.oy,
-        ),
-      );
+      const mx = ev.touches ? ev.touches[0].clientX : ev.clientX;
+      const my = ev.touches ? ev.touches[0].clientY : ev.clientY;
+      const nx = Math.max(0, (mx - cr.left) / zoomScale - dragRef.current.ox);
+      const ny = Math.max(0, (my - cr.top) / zoomScale - dragRef.current.oy);
       dispatch({
         type: "ADMIN_MOVE_NODE",
         payload: { nodeId: dragRef.current.nodeId, x: nx, y: ny },
@@ -1028,8 +901,8 @@ export function Admin() {
       w: el.w,
       h: el.h,
       color: el.color,
-      x: 20,
-      y: 20,
+      x: 40,
+      y: 40,
     };
     dispatch({ type: "ADMIN_ADD_ELEMENT", payload: newEl });
   };
@@ -1048,19 +921,11 @@ export function Admin() {
   };
 
   const addFloor = () => {
-    if (isLocked("multifloor") && adminFloors.length >= 1) {
-      showToast("⬆️ Upgrade la Pro!");
-      return;
-    }
     dispatch({ type: "ADMIN_ADD_FLOOR" });
   };
   const addTerrace = () => {
-    if (isLocked("multifloor") && adminFloors.length >= 1) {
-      showToast("⬆️ Upgrade la Pro!");
-      return;
-    }
-    const newId = Math.max(...adminFloors.map((f) => f.id)) + 1;
-    const n = adminFloors.filter((f) => f.name.includes("Terasă")).length + 1;
+    const newId = Math.max(...adminFloors.map((f) => f.id), 0) + 1;
+    const n = adminFloors.filter((f) => f.type === "terrace").length + 1;
     dispatch({
       type: "ADMIN_SET_FLOORS",
       payload: [
@@ -1076,7 +941,6 @@ export function Admin() {
     });
     dispatch({ type: "ADMIN_SET_FLOOR_IDX", payload: adminFloors.length });
   };
-  const floorIcon = (fl) => (fl?.type === "terrace" ? "☀️" : "🏢");
 
   const currentFloor = adminFloors[adminFloorIdx];
   const allNodes = [
@@ -1084,13 +948,14 @@ export function Admin() {
     ...(currentFloor?.elements || []),
   ];
   const selectedItem = allNodes.find((n) => n.id === selectedNode);
+  const floorIcon = (fl) => (fl?.type === "terrace" ? "☀️" : "🏢");
 
   return (
     <div className="page fade-in">
       {/* Header */}
       <div
         style={{
-          padding: "44px 20px 24px",
+          padding: "44px 20px 20px",
           background: "linear-gradient(135deg,#100a05,#0d0a07)",
           borderBottom: "1px solid var(--border)",
         }}
@@ -1121,19 +986,21 @@ export function Admin() {
           >
             ←
           </button>
-        </div>
-        <div
-          style={{
-            fontFamily: "'Fraunces',serif",
-            fontSize: 26,
-            fontWeight: 900,
-          }}
-        >
-          🏗️ Editor Planșeu
-        </div>
-        <div style={{ fontSize: 13, color: "var(--muted)", marginTop: 4 }}>
-          {user?.restName || "Restaurantul meu"} • Plan{" "}
-          {PLANS[user?.plan || "free"]?.label}
+          <div>
+            <div
+              style={{
+                fontFamily: "'Fraunces',serif",
+                fontSize: 24,
+                fontWeight: 900,
+              }}
+            >
+              🏗️ Editor Planșeu
+            </div>
+            <div style={{ fontSize: 13, color: "var(--muted)", marginTop: 2 }}>
+              {user?.restName || "Restaurantul meu"} • Plan{" "}
+              {PLANS[user?.plan || "free"]?.label}
+            </div>
+          </div>
         </div>
       </div>
 
@@ -1170,8 +1037,8 @@ export function Admin() {
                       : "var(--card2)",
                   border: `1px solid ${adminFloorIdx === i ? (fl.type === "terrace" ? "#4a6e4a" : "var(--terra)") : "var(--border)"}`,
                   color: adminFloorIdx === i ? "#fff" : "var(--muted)",
-                  fontWeight: adminFloorIdx === i ? 600 : 400,
                   fontSize: 13,
+                  fontWeight: adminFloorIdx === i ? 600 : 400,
                 }}
               >
                 {floorIcon(fl)} {fl.name}
@@ -1206,9 +1073,6 @@ export function Admin() {
               color: "var(--muted)",
               fontSize: 12,
               cursor: "pointer",
-              display: "flex",
-              alignItems: "center",
-              gap: 5,
             }}
           >
             🏢 + Etaj
@@ -1223,9 +1087,6 @@ export function Admin() {
               color: "var(--sage2)",
               fontSize: 12,
               cursor: "pointer",
-              display: "flex",
-              alignItems: "center",
-              gap: 5,
             }}
           >
             ☀️ + Terasă
@@ -1268,7 +1129,7 @@ export function Admin() {
               + {b.label}
             </button>
           ))}
-          {selectedNode && selectedItem && (
+          {selectedNode && (
             <button
               onClick={() =>
                 dispatch({ type: "ADMIN_DELETE_NODE", payload: selectedNode })
@@ -1305,11 +1166,11 @@ export function Admin() {
               style={{
                 padding: "7px 12px",
                 borderRadius: 12,
-                background: `rgba(${el.color === "#c8a97e" ? "200,169,126" : el.color === "#c0622f" ? "192,98,47" : el.color === "#e07a47" ? "224,122,71" : el.color === "#5b8dd9" ? "91,141,217" : el.color === "#4a6e4a" ? "74,110,74" : "107,96,80"},.15)`,
-                border: `1px solid ${el.color}44`,
-                color: el.color,
                 fontSize: 11,
                 cursor: "pointer",
+                background: `${el.color}22`,
+                border: `1px solid ${el.color}55`,
+                color: el.color,
                 display: "flex",
                 alignItems: "center",
                 gap: 5,
@@ -1321,100 +1182,226 @@ export function Admin() {
           ))}
         </div>
 
-        {/* Canvas */}
-        <div
-          className="floor-map"
-          style={{ height: 420, marginBottom: 12 }}
-          ref={canvasRef}
-        >
-          <div className="fmap-grid" />
-          <div className="fmap-label">
-            {floorIcon(currentFloor)} {currentFloor?.name} —{" "}
-            {currentFloor?.tables?.length || 0} mese,{" "}
-            {currentFloor?.elements?.length || 0} elemente
+        {/* Canvas cu zoom */}
+        <div style={{ position: "relative", marginBottom: 12 }}>
+          {/* Butoane zoom */}
+          <div
+            style={{
+              position: "absolute",
+              top: 10,
+              right: 10,
+              zIndex: 10,
+              display: "flex",
+              flexDirection: "column",
+              gap: 4,
+            }}
+          >
+            <button
+              onClick={zoomIn}
+              disabled={zoom >= ZOOM_MAX}
+              style={{
+                width: 34,
+                height: 34,
+                borderRadius: 10,
+                background: "rgba(22,18,16,.9)",
+                border: "1px solid #2a2218",
+                color: zoom >= ZOOM_MAX ? "#3a3228" : "#f0ebe3",
+                fontSize: 18,
+                cursor: zoom >= ZOOM_MAX ? "not-allowed" : "pointer",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                fontWeight: 700,
+              }}
+            >
+              +
+            </button>
+            <div
+              style={{
+                width: 34,
+                height: 24,
+                borderRadius: 8,
+                background: "rgba(22,18,16,.9)",
+                border: "1px solid #2a2218",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                fontSize: 9,
+                color: "#c8a97e",
+                fontWeight: 700,
+                letterSpacing: 0.5,
+              }}
+            >
+              {zoom}%
+            </div>
+            <button
+              onClick={zoomOut}
+              disabled={zoom <= ZOOM_MIN}
+              style={{
+                width: 34,
+                height: 34,
+                borderRadius: 10,
+                background: "rgba(22,18,16,.9)",
+                border: "1px solid #2a2218",
+                color: zoom <= ZOOM_MIN ? "#3a3228" : "#f0ebe3",
+                fontSize: 18,
+                cursor: zoom <= ZOOM_MIN ? "not-allowed" : "pointer",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                fontWeight: 700,
+              }}
+            >
+              −
+            </button>
           </div>
 
-          {/* Elemente fixe */}
-          {(currentFloor?.elements || []).map((el) => (
+          {/* Canvas wrapper scrollabil */}
+          <div
+            style={{
+              width: "100%",
+              height: 440,
+              background: "#0d0a07",
+              borderRadius: 16,
+              border: "1px solid var(--border)",
+              overflow: "auto",
+              position: "relative",
+            }}
+          >
+            {/* Canvas intern scalat */}
             <div
-              key={el.id}
+              ref={canvasRef}
               style={{
-                position: "absolute",
-                left: el.x,
-                top: el.y,
-                width: el.w,
-                height: el.h,
-                background: `${el.color}22`,
-                border: `2px solid ${el.color}88`,
-                borderRadius: 10,
-                cursor: "pointer",
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "center",
-                justifyContent: "center",
-                gap: 2,
-                outline:
-                  selectedNode === el.id ? `3px solid ${el.color}` : "none",
-                userSelect: "none",
+                width: 900,
+                height: 700,
+                position: "relative",
+                transform: `scale(${zoomScale})`,
+                transformOrigin: "top left",
+                backgroundImage:
+                  "radial-gradient(circle, #2a2218 1px, transparent 1px)",
+                backgroundSize: "30px 30px",
+                cursor: "default",
+                flexShrink: 0,
               }}
-              onMouseDown={(e) => onNodeDown(e, el.id)}
-              onTouchStart={(e) => onNodeDown(e, el.id)}
               onClick={() =>
-                dispatch({ type: "ADMIN_SET_NODE", payload: el.id })
+                dispatch({ type: "ADMIN_SET_NODE", payload: null })
               }
             >
-              <span style={{ fontSize: 18 }}>{el.icon}</span>
-              <span
+              {/* Label etaj */}
+              <div
                 style={{
-                  fontSize: 9,
-                  color: el.color,
-                  fontWeight: 700,
-                  letterSpacing: 0.5,
+                  position: "absolute",
+                  top: 10,
+                  left: 12,
+                  fontSize: 11,
+                  color: "#3a3228",
+                  fontWeight: 600,
+                  letterSpacing: 1,
+                  textTransform: "uppercase",
+                  pointerEvents: "none",
                 }}
               >
-                {el.label}
-              </span>
-            </div>
-          ))}
+                {floorIcon(currentFloor)} {currentFloor?.name} —{" "}
+                {currentFloor?.tables?.length || 0} mese,{" "}
+                {currentFloor?.elements?.length || 0} elemente
+              </div>
 
-          {/* Mese */}
-          {(currentFloor?.tables || []).map((t) => (
-            <div
-              key={t.id}
-              className={`tnode ${tableClass(t.seats)} draggable ${selectedNode === t.id ? "sel-node" : ""}`}
-              style={{ left: t.x, top: t.y }}
-              onMouseDown={(e) => onNodeDown(e, t.id)}
-              onTouchStart={(e) => onNodeDown(e, t.id)}
-              onClick={() =>
-                dispatch({ type: "ADMIN_SET_NODE", payload: t.id })
-              }
-            >
-              🪑<span>{t.label}</span>
-              <span className="tnode-seats">{t.seats}p</span>
-            </div>
-          ))}
+              {/* Elemente fixe */}
+              {(currentFloor?.elements || []).map((el) => (
+                <div
+                  key={el.id}
+                  style={{
+                    position: "absolute",
+                    left: el.x,
+                    top: el.y,
+                    width: el.w,
+                    height: el.h,
+                    background: `${el.color}22`,
+                    border: `2px solid ${el.color}88`,
+                    borderRadius: 10,
+                    cursor: "grab",
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: 2,
+                    outline:
+                      selectedNode === el.id ? `3px solid ${el.color}` : "none",
+                    userSelect: "none",
+                    touchAction: "none",
+                  }}
+                  onMouseDown={(e) => onNodeDown(e, el.id)}
+                  onTouchStart={(e) => onNodeDown(e, el.id)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    dispatch({ type: "ADMIN_SET_NODE", payload: el.id });
+                  }}
+                >
+                  <span style={{ fontSize: 18, pointerEvents: "none" }}>
+                    {el.icon}
+                  </span>
+                  <span
+                    style={{
+                      fontSize: 9,
+                      color: el.color,
+                      fontWeight: 700,
+                      letterSpacing: 0.5,
+                      pointerEvents: "none",
+                    }}
+                  >
+                    {el.label}
+                  </span>
+                </div>
+              ))}
 
-          {allNodes.length === 0 && (
-            <div
-              style={{
-                position: "absolute",
-                inset: 0,
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "center",
-                justifyContent: "center",
-                color: "var(--muted)",
-                gap: 8,
-              }}
-            >
-              <span style={{ fontSize: 36 }}>
-                {currentFloor?.type === "terrace" ? "☀️" : "🏗️"}
-              </span>
-              <span style={{ fontSize: 13 }}>
-                Adaugă mese și elemente din butoanele de sus
-              </span>
+              {/* Mese */}
+              {(currentFloor?.tables || []).map((t) => (
+                <div
+                  key={t.id}
+                  className={`tnode ${tableClass(t.seats)} draggable ${selectedNode === t.id ? "sel-node" : ""}`}
+                  style={{
+                    left: t.x,
+                    top: t.y,
+                    cursor: "grab",
+                    touchAction: "none",
+                    userSelect: "none",
+                  }}
+                  onMouseDown={(e) => onNodeDown(e, t.id)}
+                  onTouchStart={(e) => onNodeDown(e, t.id)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    dispatch({ type: "ADMIN_SET_NODE", payload: t.id });
+                  }}
+                >
+                  🪑<span>{t.label}</span>
+                  <span className="tnode-seats">{t.seats}p</span>
+                </div>
+              ))}
+
+              {allNodes.length === 0 && (
+                <div
+                  style={{
+                    position: "absolute",
+                    inset: 0,
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    color: "var(--muted)",
+                    gap: 8,
+                    pointerEvents: "none",
+                  }}
+                >
+                  <span style={{ fontSize: 40 }}>
+                    {currentFloor?.type === "terrace" ? "☀️" : "🏗️"}
+                  </span>
+                  <span style={{ fontSize: 13 }}>
+                    Adaugă mese și elemente din butoanele de sus
+                  </span>
+                </div>
+              )}
             </div>
-          )}
+          </div>
         </div>
 
         {/* Info element selectat */}
@@ -1431,11 +1418,10 @@ export function Admin() {
             }}
           >
             Selectat:{" "}
-            <b style={{ color: "var(--cream)" }}>
-              {selectedItem.label || selectedItem.icon}
-            </b>
+            <b style={{ color: "var(--cream)" }}>{selectedItem.label}</b>
             {selectedItem.seats && ` • ${selectedItem.seats} persoane`}
             {` • x=${Math.round(selectedItem.x)}, y=${Math.round(selectedItem.y)}`}
+            {` • zoom ${zoom}%`}
           </div>
         )}
 
@@ -1454,13 +1440,7 @@ export function Admin() {
 export function Auth() {
   const { dispatch, navigate, showToast } = useApp();
   const [mode, setMode] = useState("login");
-  const [plan, setPlan] = useState("pro");
-  const [form, setForm] = useState({
-    name: "",
-    email: "",
-    password: "",
-    restName: "",
-  });
+  const [form, setForm] = useState({ name: "", email: "", password: "" });
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
 
   const handleSubmit = () => {
@@ -1469,38 +1449,14 @@ export function Auth() {
       payload: {
         name: mode === "login" ? "Admin Demo" : form.name,
         email: form.email,
-        plan: mode === "login" ? "pro" : plan,
-        restName: mode === "login" ? "Mama Mia" : form.restName,
+        plan: "pro",
+        restName: "Mama Mia",
         role: "owner",
       },
     });
     navigate("home");
     showToast("👋 Bine ai venit!");
   };
-
-  const planOptions = [
-    {
-      key: "free",
-      icon: "🆓",
-      name: "Gratuit",
-      desc: "Funcționalități de bază",
-      price: "0 lei/lună",
-    },
-    {
-      key: "pro",
-      icon: "⭐",
-      name: "Pro",
-      desc: "Rapoarte avansate per ospătar/produs",
-      price: "250 lei/lună",
-    },
-    {
-      key: "business",
-      icon: "👑",
-      name: "Business",
-      desc: "Multi-locații + rapoarte comparative",
-      price: "800 lei/lună",
-    },
-  ];
 
   return (
     <div className="page fade-in">
@@ -1531,13 +1487,9 @@ export function Auth() {
             fontFamily: "'Fraunces',serif",
             fontSize: 28,
             fontWeight: 900,
-            marginBottom: 6,
           }}
         >
           WhataboutFood
-        </div>
-        <div style={{ fontSize: 14, color: "var(--muted)" }}>
-          Platforma pentru restaurante moderne
         </div>
       </div>
       <div className="inner">
@@ -1569,141 +1521,40 @@ export function Auth() {
             </div>
           ))}
         </div>
-        {mode === "login" ? (
-          <>
-            <div className="form-group">
-              <label className="form-label">Email</label>
-              <input
-                className="form-input"
-                type="email"
-                placeholder="email@restaurant.ro"
-                value={form.email}
-                onChange={(e) => set("email", e.target.value)}
-              />
-            </div>
-            <div className="form-group">
-              <label className="form-label">Parolă</label>
-              <input
-                className="form-input"
-                type="password"
-                placeholder="••••••••"
-                value={form.password}
-                onChange={(e) => set("password", e.target.value)}
-              />
-            </div>
-            <button
-              className="btn-primary"
-              style={{ marginBottom: 12 }}
-              onClick={handleSubmit}
-            >
-              Intră în cont
-            </button>
-          </>
-        ) : (
-          <>
-            <div className="form-group">
-              <label className="form-label">Numele tău</label>
-              <input
-                className="form-input"
-                placeholder="Ion Popescu"
-                value={form.name}
-                onChange={(e) => set("name", e.target.value)}
-              />
-            </div>
-            <div className="form-group">
-              <label className="form-label">Email</label>
-              <input
-                className="form-input"
-                type="email"
-                placeholder="email@restaurant.ro"
-                value={form.email}
-                onChange={(e) => set("email", e.target.value)}
-              />
-            </div>
-            <div className="form-group">
-              <label className="form-label">Parolă</label>
-              <input
-                className="form-input"
-                type="password"
-                placeholder="Min. 6 caractere"
-                value={form.password}
-                onChange={(e) => set("password", e.target.value)}
-              />
-            </div>
-            <label className="form-label" style={{ marginBottom: 10 }}>
-              Alege planul
-            </label>
-            <div
-              style={{
-                display: "flex",
-                flexDirection: "column",
-                gap: 10,
-                marginBottom: 20,
-              }}
-            >
-              {planOptions.map((p) => (
-                <div
-                  key={p.key}
-                  onClick={() => setPlan(p.key)}
-                  style={{
-                    display: "flex",
-                    alignItems: "flex-start",
-                    gap: 14,
-                    padding: 16,
-                    background:
-                      plan === p.key ? "rgba(192,98,47,.08)" : "var(--card2)",
-                    border: `2px solid ${plan === p.key ? "var(--terra)" : "var(--border)"}`,
-                    borderRadius: 16,
-                    cursor: "pointer",
-                  }}
-                >
-                  <div style={{ fontSize: 22 }}>{p.icon}</div>
-                  <div style={{ flex: 1 }}>
-                    <div
-                      style={{ fontWeight: 700, fontSize: 15, marginBottom: 2 }}
-                    >
-                      {p.name}
-                    </div>
-                    <div style={{ fontSize: 12, color: "var(--muted)" }}>
-                      {p.desc}
-                    </div>
-                    <div
-                      style={{
-                        fontFamily: "'Fraunces',serif",
-                        fontSize: 16,
-                        fontWeight: 900,
-                        color: "var(--warm)",
-                        marginTop: 4,
-                      }}
-                    >
-                      {p.price}
-                    </div>
-                  </div>
-                  <div
-                    style={{
-                      width: 20,
-                      height: 20,
-                      borderRadius: "50%",
-                      border: `2px solid ${plan === p.key ? "var(--terra)" : "var(--border)"}`,
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      fontSize: 11,
-                      background:
-                        plan === p.key ? "var(--terra)" : "transparent",
-                      color: "#fff",
-                    }}
-                  >
-                    {plan === p.key ? "✓" : ""}
-                  </div>
-                </div>
-              ))}
-            </div>
-            <button className="btn-primary" onClick={handleSubmit}>
-              Creează contul gratuit
-            </button>
-          </>
+        {mode === "register" && (
+          <div className="form-group">
+            <label className="form-label">Numele tău</label>
+            <input
+              className="form-input"
+              placeholder="Ion Popescu"
+              value={form.name}
+              onChange={(e) => set("name", e.target.value)}
+            />
+          </div>
         )}
+        <div className="form-group">
+          <label className="form-label">Email</label>
+          <input
+            className="form-input"
+            type="email"
+            placeholder="email@restaurant.ro"
+            value={form.email}
+            onChange={(e) => set("email", e.target.value)}
+          />
+        </div>
+        <div className="form-group">
+          <label className="form-label">Parolă</label>
+          <input
+            className="form-input"
+            type="password"
+            placeholder="••••••••"
+            value={form.password}
+            onChange={(e) => set("password", e.target.value)}
+          />
+        </div>
+        <button className="btn-primary" onClick={handleSubmit}>
+          {mode === "login" ? "Intră în cont" : "Creează cont"}
+        </button>
         <button
           style={{
             background: "none",
@@ -1717,7 +1568,7 @@ export function Auth() {
           }}
           onClick={() => navigate("home")}
         >
-          ← Înapoi fără cont
+          ← Înapoi
         </button>
       </div>
     </div>
