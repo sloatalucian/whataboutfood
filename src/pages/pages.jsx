@@ -307,6 +307,7 @@ export function Meniu() {
   const [menuLoading, setMenuLoading] = useState(true);
 
   useEffect(() => {
+    console.log("selectedRest in Meniu:", selectedRest);
     if (!selectedRest?.id) return;
     const loadMenu = async () => {
       setMenuLoading(true);
