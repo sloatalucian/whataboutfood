@@ -27,7 +27,7 @@ export default function BottomNav({ onWaiterClick, waiterLoggedIn }) {
           borderTop: "1px solid var(--border)",
           backdropFilter: "blur(20px)",
           display: "flex",
-          padding: "6px 0 16px",
+          padding: "6px 0 calc(16px + env(safe-area-inset-bottom, 0px))",
         }}
       >
         {ownerItems.map((item) => (
@@ -89,7 +89,7 @@ export default function BottomNav({ onWaiterClick, waiterLoggedIn }) {
         borderTop: "1px solid var(--border)",
         backdropFilter: "blur(20px)",
         display: "flex",
-        padding: "6px 0 16px",
+        padding: "6px 0 calc(16px + env(safe-area-inset-bottom, 0px))",
       }}
     >
       {clientItems.map((item) => (
