@@ -1,20 +1,46 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { supabase } from "../supabase";
 import { useTable, TABLE_STATUS } from "../context/TableContext";
 import { useApp } from "../context/AppContext";
 
 // ═══════════════════════════════════════════════════════════════════════════
-// SELECTARE MASĂ — pagina clientului
+// SELECTARE MASĂ — planșeu vizual cu zoom automat
 // ═══════════════════════════════════════════════════════════════════════════
 export function SelectTable({ restaurant, onSelected, onBack }) {
   const { getStatus, occupyTable } = useTable();
   const [selectedFloor, setSelectedFloor] = useState(0);
   const [confirming, setConfirming] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [zoom, setZoom] = useState(70); // zoom automat mic la start
+  const containerRef = useRef(null);
+
+  const ZOOM_MIN = 40;
+  const ZOOM_MAX = 150;
+  const ZOOM_STEP = 10;
+
+  // Zoom automat la deschidere — calculează cât trebuie să fie zoom-ul
+  // ca tot planșeul să încapă pe ecran
+  useEffect(() => {
+    const calcAutoZoom = () => {
+      if (!containerRef.current) return;
+      const containerW = containerRef.current.offsetWidth;
+      const containerH = 420; // înălțimea fixă a canvasului
+      const canvasW = 900;
+      const canvasH = 700;
+      const zoomW = Math.floor((containerW / canvasW) * 100);
+      const zoomH = Math.floor((containerH / canvasH) * 100);
+      const autoZoom = Math.max(ZOOM_MIN, Math.min(zoomW, zoomH, 90));
+      setZoom(autoZoom);
+    };
+    // Mic delay ca DOM-ul să fie randat
+    const timer = setTimeout(calcAutoZoom, 100);
+    return () => clearTimeout(timer);
+  }, []);
 
   const floors = restaurant?.floors || [];
   const floor = floors[selectedFloor];
   const tables = floor?.tables || [];
+  const elements = floor?.elements || [];
 
   const handleSelect = (table) => {
     const status = getStatus(table.id);
@@ -28,10 +54,53 @@ export function SelectTable({ restaurant, onSelected, onBack }) {
     try {
       const session = await occupyTable(confirming.id, confirming.label);
       if (onSelected) onSelected({ table: confirming, session });
-    } catch (err) {
+    } catch {
       if (onSelected) onSelected({ table: confirming, session: null });
     }
     setLoading(false);
+  };
+
+  const getElementStyle = (el) => ({
+    position: "absolute",
+    left: el.x,
+    top: el.y,
+    width: el.w,
+    height: el.h,
+    background: `${el.color}22`,
+    border: `2px solid ${el.color}66`,
+    borderRadius: 8,
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 2,
+    pointerEvents: "none", // elementele fixe nu sunt clickabile
+  });
+
+  const getTableStyle = (table) => {
+    const status = getStatus(table.id);
+    const cfg = TABLE_STATUS[status] || TABLE_STATUS.free;
+    const isFree = status === "free";
+    const isSel = confirming?.id === table.id;
+    return {
+      position: "absolute",
+      left: table.x,
+      top: table.y,
+      width: table.seats <= 2 ? 52 : table.seats <= 4 ? 64 : 80,
+      height: table.seats <= 2 ? 52 : table.seats <= 4 ? 64 : 52,
+      background: cfg.bg,
+      border: `2px solid ${isSel ? "#fff" : cfg.border}`,
+      borderRadius: 10,
+      display: "flex",
+      flexDirection: "column",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 1,
+      cursor: isFree ? "pointer" : "not-allowed",
+      outline: isSel ? `3px solid #fff` : "none",
+      transition: "transform .15s",
+      transform: isSel ? "scale(1.1)" : "scale(1)",
+    };
   };
 
   return (
@@ -44,9 +113,10 @@ export function SelectTable({ restaurant, onSelected, onBack }) {
         paddingBottom: 80,
       }}
     >
+      {/* Hero */}
       <div
         style={{
-          padding: "44px 20px 24px",
+          padding: "44px 20px 20px",
           background:
             restaurant?.cover || "linear-gradient(135deg,#2d1507,#1a0e05)",
         }}
@@ -56,7 +126,7 @@ export function SelectTable({ restaurant, onSelected, onBack }) {
             display: "flex",
             alignItems: "center",
             justifyContent: "space-between",
-            marginBottom: 16,
+            marginBottom: 14,
           }}
         >
           <button
@@ -77,50 +147,70 @@ export function SelectTable({ restaurant, onSelected, onBack }) {
           >
             ←
           </button>
+          <div
+            style={{
+              fontSize: 11,
+              color: "rgba(255,255,255,.6)",
+              letterSpacing: 1,
+              textTransform: "uppercase",
+            }}
+          >
+            Selectează masa
+          </div>
+          <div style={{ width: 38 }} />
         </div>
-        <div style={{ fontSize: 48, marginBottom: 10 }}>
-          {restaurant?.emoji}
-        </div>
+        <div style={{ fontSize: 36, marginBottom: 8 }}>{restaurant?.emoji}</div>
         <div
           style={{
             fontFamily: "'Fraunces',serif",
-            fontSize: 26,
+            fontSize: 24,
             fontWeight: 900,
-            marginBottom: 4,
           }}
         >
           {restaurant?.name}
         </div>
-        <div style={{ fontSize: 13, color: "rgba(255,255,255,.6)" }}>
-          Selectează masa la care stai
+        <div
+          style={{ fontSize: 12, color: "rgba(255,255,255,.5)", marginTop: 2 }}
+        >
+          {restaurant?.type}
         </div>
       </div>
 
-      <div style={{ padding: 20 }}>
+      <div style={{ padding: "16px 16px 0" }}>
         {/* Legendă */}
         <div
           style={{
             display: "flex",
-            gap: 8,
+            gap: 10,
             flexWrap: "wrap",
-            marginBottom: 20,
+            marginBottom: 14,
           }}
         >
-          {Object.entries(TABLE_STATUS).map(([key, val]) => (
+          {[
+            { color: "#4a6e4a", label: "Liberă" },
+            { color: "#c0622f", label: "Ocupată" },
+            { color: "#c8a97e", label: "Rezervată" },
+            { color: "#5b8dd9", label: "Achitată" },
+          ].map((l) => (
             <div
-              key={key}
+              key={l.label}
               style={{
                 display: "flex",
                 alignItems: "center",
                 gap: 5,
                 fontSize: 11,
                 color: "rgba(240,235,227,.6)",
-                background: "rgba(255,255,255,.05)",
-                padding: "4px 10px",
-                borderRadius: 20,
               }}
             >
-              <span>{val.icon}</span> {val.label}
+              <div
+                style={{
+                  width: 8,
+                  height: 8,
+                  borderRadius: "50%",
+                  background: l.color,
+                }}
+              />
+              {l.label}
             </div>
           ))}
         </div>
@@ -131,7 +221,7 @@ export function SelectTable({ restaurant, onSelected, onBack }) {
             style={{
               display: "flex",
               gap: 8,
-              marginBottom: 16,
+              marginBottom: 12,
               flexWrap: "wrap",
             }}
           >
@@ -143,106 +233,218 @@ export function SelectTable({ restaurant, onSelected, onBack }) {
                   setConfirming(null);
                 }}
                 style={{
-                  padding: "8px 16px",
+                  padding: "6px 14px",
                   borderRadius: 20,
-                  fontSize: 13,
+                  fontSize: 12,
                   cursor: "pointer",
                   background: selectedFloor === i ? "#c0622f" : "#1e1a14",
                   border: `1px solid ${selectedFloor === i ? "#c0622f" : "#2a2218"}`,
                   color: selectedFloor === i ? "#fff" : "#6b6050",
-                  fontWeight: selectedFloor === i ? 700 : 400,
                 }}
               >
-                {fl.name}
+                {fl.type === "terrace" ? "☀️" : "🏢"} {fl.name}
               </button>
             ))}
           </div>
         )}
 
-        <div
-          style={{
-            fontSize: 10,
-            letterSpacing: 2,
-            textTransform: "uppercase",
-            color: "#6b6050",
-            marginBottom: 12,
-          }}
-        >
-          {floor?.name} — {tables.length} mese
-        </div>
+        {/* Canvas planșeu cu zoom */}
+        <div style={{ position: "relative", marginBottom: 16 }}>
+          {/* Butoane zoom */}
+          <div
+            style={{
+              position: "absolute",
+              top: 8,
+              right: 8,
+              zIndex: 10,
+              display: "flex",
+              flexDirection: "column",
+              gap: 4,
+            }}
+          >
+            <button
+              onClick={() => setZoom((z) => Math.min(ZOOM_MAX, z + ZOOM_STEP))}
+              disabled={zoom >= ZOOM_MAX}
+              style={{
+                width: 32,
+                height: 32,
+                borderRadius: 9,
+                background: "rgba(13,10,7,.9)",
+                border: "1px solid #2a2218",
+                color: zoom >= ZOOM_MAX ? "#3a3228" : "#f0ebe3",
+                fontSize: 16,
+                cursor: zoom >= ZOOM_MAX ? "not-allowed" : "pointer",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                fontWeight: 700,
+              }}
+            >
+              +
+            </button>
+            <div
+              style={{
+                width: 32,
+                height: 22,
+                borderRadius: 7,
+                background: "rgba(13,10,7,.9)",
+                border: "1px solid #2a2218",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                fontSize: 9,
+                color: "#c8a97e",
+                fontWeight: 700,
+              }}
+            >
+              {zoom}%
+            </div>
+            <button
+              onClick={() => setZoom((z) => Math.max(ZOOM_MIN, z - ZOOM_STEP))}
+              disabled={zoom <= ZOOM_MIN}
+              style={{
+                width: 32,
+                height: 32,
+                borderRadius: 9,
+                background: "rgba(13,10,7,.9)",
+                border: "1px solid #2a2218",
+                color: zoom <= ZOOM_MIN ? "#3a3228" : "#f0ebe3",
+                fontSize: 16,
+                cursor: zoom <= ZOOM_MIN ? "not-allowed" : "pointer",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                fontWeight: 700,
+              }}
+            >
+              −
+            </button>
+          </div>
 
-        {/* Grid mese */}
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(3,1fr)",
-            gap: 10,
-            marginBottom: 24,
-          }}
-        >
-          {tables.map((table) => {
-            const status = getStatus(table.id);
-            const cfg = TABLE_STATUS[status];
-            const isFree = status === "free";
-            return (
+          {/* Canvas scrollabil */}
+          <div
+            ref={containerRef}
+            style={{
+              width: "100%",
+              height: 420,
+              background: "#0d0a07",
+              borderRadius: 16,
+              border: "1px solid #2a2218",
+              overflow: "auto",
+            }}
+          >
+            <div
+              style={{
+                width: 900,
+                height: 700,
+                position: "relative",
+                transform: `scale(${zoom / 100})`,
+                transformOrigin: "top left",
+                backgroundImage:
+                  "radial-gradient(circle, #2a2218 1px, transparent 1px)",
+                backgroundSize: "30px 30px",
+              }}
+            >
+              {/* Label etaj */}
               <div
-                key={table.id}
-                onClick={() => isFree && handleSelect(table)}
                 style={{
-                  background: cfg.bg,
-                  border: `2px solid ${cfg.border}`,
-                  borderRadius: 14,
-                  padding: "14px 8px",
-                  textAlign: "center",
-                  cursor: isFree ? "pointer" : "not-allowed",
-                  opacity: status === "paid" ? 0.6 : 1,
-                  transition: "all .15s",
-                  transform:
-                    confirming?.id === table.id ? "scale(1.05)" : "scale(1)",
-                  boxShadow:
-                    confirming?.id === table.id
-                      ? `0 0 0 3px ${cfg.border}`
-                      : "none",
+                  position: "absolute",
+                  top: 10,
+                  left: 12,
+                  fontSize: 11,
+                  color: "#3a3228",
+                  fontWeight: 600,
+                  letterSpacing: 1,
+                  textTransform: "uppercase",
+                  pointerEvents: "none",
                 }}
               >
-                <div style={{ fontSize: 22, marginBottom: 4 }}>🪑</div>
-                <div
-                  style={{
-                    fontFamily: "'Fraunces',serif",
-                    fontSize: 16,
-                    fontWeight: 700,
-                    color: cfg.color,
-                  }}
-                >
-                  {table.label}
-                </div>
-                <div
-                  style={{
-                    fontSize: 10,
-                    color: cfg.color,
-                    opacity: 0.8,
-                    marginTop: 2,
-                  }}
-                >
-                  {table.seats}p
-                </div>
-                <div
-                  style={{
-                    fontSize: 9,
-                    color: cfg.color,
-                    opacity: 0.6,
-                    marginTop: 4,
-                    fontWeight: 600,
-                  }}
-                >
-                  {cfg.icon} {cfg.label}
-                </div>
+                {floor?.type === "terrace" ? "☀️" : "🏢"} {floor?.name}
               </div>
-            );
-          })}
+
+              {/* Elemente fixe (Bar, Bucătărie etc.) — doar decorative */}
+              {elements.map((el) => (
+                <div key={el.id} style={getElementStyle(el)}>
+                  <span style={{ fontSize: 16, pointerEvents: "none" }}>
+                    {el.icon}
+                  </span>
+                  <span
+                    style={{
+                      fontSize: 8,
+                      color: el.color,
+                      fontWeight: 700,
+                      pointerEvents: "none",
+                    }}
+                  >
+                    {el.label}
+                  </span>
+                </div>
+              ))}
+
+              {/* Mese — clickabile */}
+              {tables.map((table) => {
+                const status = getStatus(table.id);
+                const cfg = TABLE_STATUS[status] || TABLE_STATUS.free;
+                const isFree = status === "free";
+                return (
+                  <div
+                    key={table.id}
+                    style={getTableStyle(table)}
+                    onClick={() => isFree && handleSelect(table)}
+                  >
+                    <span style={{ fontSize: 14, pointerEvents: "none" }}>
+                      🪑
+                    </span>
+                    <span
+                      style={{
+                        fontFamily: "'Fraunces',serif",
+                        fontSize: 12,
+                        fontWeight: 700,
+                        color: cfg.color,
+                        pointerEvents: "none",
+                      }}
+                    >
+                      {table.label}
+                    </span>
+                    <span
+                      style={{
+                        fontSize: 9,
+                        color: cfg.color,
+                        opacity: 0.7,
+                        pointerEvents: "none",
+                      }}
+                    >
+                      {table.seats}p
+                    </span>
+                  </div>
+                );
+              })}
+
+              {tables.length === 0 && elements.length === 0 && (
+                <div
+                  style={{
+                    position: "absolute",
+                    inset: 0,
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    color: "#6b6050",
+                    gap: 8,
+                    pointerEvents: "none",
+                  }}
+                >
+                  <span style={{ fontSize: 36 }}>🏗️</span>
+                  <span style={{ fontSize: 13 }}>
+                    Planșeul nu a fost configurat încă
+                  </span>
+                </div>
+              )}
+            </div>
+          </div>
         </div>
 
-        {/* Confirmare */}
+        {/* Modal confirmare masă */}
         {confirming && (
           <div
             style={{
@@ -315,7 +517,7 @@ export function SelectTable({ restaurant, onSelected, onBack }) {
                   opacity: loading ? 0.6 : 1,
                 }}
               >
-                {loading ? "Se procesează..." : "✅ Confirmă masa"}
+                {loading ? "Se procesează..." : "✅ Confirmă"}
               </button>
             </div>
           </div>
@@ -341,11 +543,7 @@ export function WaiterTablet({
     useTable();
   const { dispatch, showToast } = useApp();
   const [tab, setTab] = useState("orders");
-  const [reservations, setRes] = useState([]);
-  const [loadingRes, setLoadingRes] = useState(true);
-
-  // Demo rezervări
-  const DEMO_RESERVATIONS = [
+  const [displayReservations, setDisplayReservations] = useState([
     {
       id: "r1",
       table_label: "T2",
@@ -373,42 +571,11 @@ export function WaiterTablet({
       time: "20:30",
       confirmed: false,
     },
-  ];
-
-  const [displayReservations, setDisplayReservations] =
-    useState(DEMO_RESERVATIONS);
+  ]);
   const [activeMapFloor, setActiveMapFloor] = useState(0);
 
-  useEffect(() => {
-    loadReservations();
-    const interval = setInterval(loadReservations, 60000);
-    return () => clearInterval(interval);
-  }, [restaurant?.id]);
-
-  const loadReservations = async () => {
-    if (!restaurant?.id) {
-      setLoadingRes(false);
-      return;
-    }
-    try {
-      const today = new Date().toISOString().split("T")[0];
-      const { data } = await supabase
-        .from("reservations")
-        .select("*")
-        .eq("restaurant_id", restaurant.id)
-        .gte("date", today)
-        .order("date")
-        .order("time");
-      if (data && data.length > 0) setDisplayReservations(data);
-    } catch {}
-    setLoadingRes(false);
-  };
-
-  // ── Acceptă comanda — atribuie ospătarului și notifică clientul ──
   const acceptOrder = (orderId) => {
     onOrderUpdate(orderId, "cooking", { waiterId, waiterName });
-
-    // Trimite notificare clientului
     dispatch({
       type: "ADD_NOTIFICATION",
       payload: {
@@ -420,14 +587,11 @@ export function WaiterTablet({
         createdAt: new Date().toISOString(),
       },
     });
-
     showToast("✅ Comandă acceptată!");
   };
 
-  // ── Marchează gata — notifică clientul ──
   const markReady = (orderId) => {
     onOrderUpdate(orderId, "ready", {});
-
     dispatch({
       type: "ADD_NOTIFICATION",
       payload: {
@@ -439,23 +603,15 @@ export function WaiterTablet({
         createdAt: new Date().toISOString(),
       },
     });
-
     showToast("🍽️ Comandă gata de servit!");
   };
 
-  const confirmReservation = async (resId) => {
-    try {
-      await supabase
-        .from("reservations")
-        .update({ confirmed: true, confirmed_at: new Date().toISOString() })
-        .eq("id", resId);
-    } catch {}
+  const confirmReservation = (resId) => {
     setDisplayReservations((prev) =>
       prev.map((r) => (r.id === resId ? { ...r, confirmed: true } : r)),
     );
     showToast("✅ Rezervare confirmată!");
   };
-
   const refuseReservation = (resId) => {
     setDisplayReservations((prev) => prev.filter((r) => r.id !== resId));
     showToast("❌ Rezervare refuzată");
@@ -485,37 +641,16 @@ export function WaiterTablet({
               { id: 8, label: "T8", seats: 2 },
             ],
           },
-          {
-            id: 2,
-            name: "Etaj 1 — Terasă",
-            tables: [
-              { id: 9, label: "E1", seats: 4 },
-              { id: 10, label: "E2", seats: 4 },
-              { id: 11, label: "E3", seats: 8 },
-              { id: 12, label: "E4", seats: 4 },
-            ],
-          },
         ];
-  const mapFloors = DEMO_FLOORS;
-  const allTables = mapFloors.flatMap((f) => f.tables || []);
+
+  const allTables = DEMO_FLOORS.flatMap((f) => f.tables || []);
   const freeCount = allTables.filter(
     (t) => !tableStates[t.id] || tableStates[t.id] === "free",
   ).length;
   const occCount = allTables.filter(
     (t) => tableStates[t.id] === "occupied",
   ).length;
-
   const now = new Date();
-  const timeStr = now.toLocaleTimeString("ro-RO", {
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-  const dateStr = now.toLocaleDateString("ro-RO", {
-    weekday: "long",
-    day: "numeric",
-    month: "long",
-  });
-  const today = now.toISOString().split("T")[0];
 
   return (
     <div
@@ -531,7 +666,7 @@ export function WaiterTablet({
       {/* Header */}
       <div
         style={{
-          padding: "40px 20px 20px",
+          padding: "40px 20px 16px",
           background: "linear-gradient(135deg,#1a1200,#0d0a07)",
           borderBottom: "1px solid #2a2218",
           flexShrink: 0,
@@ -548,14 +683,18 @@ export function WaiterTablet({
             <div
               style={{
                 fontFamily: "'Fraunces',serif",
-                fontSize: 22,
+                fontSize: 20,
                 fontWeight: 900,
               }}
             >
               🤵 {waiterName || "Ospătar"}
             </div>
             <div style={{ fontSize: 11, color: "#6b6050", marginTop: 2 }}>
-              {restaurant?.name || "Restaurant"} • {dateStr} • {timeStr}
+              {restaurant?.name || "Restaurant"} •{" "}
+              {now.toLocaleTimeString("ro-RO", {
+                hour: "2-digit",
+                minute: "2-digit",
+              })}
             </div>
           </div>
           <div style={{ display: "flex", gap: 8 }}>
@@ -592,28 +731,23 @@ export function WaiterTablet({
             )}
           </div>
         </div>
-        {/* Stats */}
         <div
           style={{
             display: "grid",
             gridTemplateColumns: "repeat(4,1fr)",
             gap: 8,
-            marginTop: 14,
+            marginTop: 12,
           }}
         >
           {[
-            { label: "Mese libere", value: freeCount, color: "#4a6e4a" },
-            { label: "Mese ocupate", value: occCount, color: "#c0622f" },
+            { label: "Libere", value: freeCount, color: "#4a6e4a" },
+            { label: "Ocupate", value: occCount, color: "#c0622f" },
             {
               label: "Comenzi noi",
               value: pendingOrders.length,
               color: "#e07a47",
             },
-            {
-              label: "De confirmat",
-              value: pendingRes.length,
-              color: "#c8a97e",
-            },
+            { label: "Rezervări", value: pendingRes.length, color: "#c8a97e" },
           ].map((s) => (
             <div
               key={s.label}
@@ -727,7 +861,6 @@ export function WaiterTablet({
         {/* ── COMENZI ── */}
         {tab === "orders" && (
           <div>
-            {/* Comenzi noi — necesită acceptare */}
             {pendingOrders.length > 0 && (
               <div style={{ marginBottom: 20 }}>
                 <div
@@ -739,7 +872,7 @@ export function WaiterTablet({
                     marginBottom: 10,
                   }}
                 >
-                  🆕 Comenzi noi — necesită acceptare
+                  🆕 Comenzi noi
                 </div>
                 {pendingOrders.map((o) => (
                   <div
@@ -756,7 +889,6 @@ export function WaiterTablet({
                       style={{
                         display: "flex",
                         justifyContent: "space-between",
-                        alignItems: "flex-start",
                         marginBottom: 10,
                       }}
                     >
@@ -770,13 +902,7 @@ export function WaiterTablet({
                         >
                           🪑 Masa {o.tableLabel || o.table}
                         </div>
-                        <div
-                          style={{
-                            fontSize: 11,
-                            color: "#6b6050",
-                            marginTop: 2,
-                          }}
-                        >
+                        <div style={{ fontSize: 11, color: "#6b6050" }}>
                           Ora {o.time}
                         </div>
                       </div>
@@ -793,32 +919,24 @@ export function WaiterTablet({
                         🆕 Nouă
                       </div>
                     </div>
-                    <div
-                      style={{
-                        display: "flex",
-                        flexDirection: "column",
-                        gap: 4,
-                        marginBottom: o.observations ? 8 : 12,
-                      }}
-                    >
-                      {(o.items || []).map((item, i) => (
-                        <div
-                          key={i}
-                          style={{
-                            display: "flex",
-                            justifyContent: "space-between",
-                            fontSize: 13,
-                          }}
-                        >
-                          <span style={{ color: "rgba(240,235,227,.7)" }}>
-                            {item.emoji} {item.name}
-                          </span>
-                          <span style={{ color: "#c8a97e", fontWeight: 700 }}>
-                            ×{item.qty}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
+                    {(o.items || []).map((item, i) => (
+                      <div
+                        key={i}
+                        style={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                          fontSize: 13,
+                          marginBottom: 4,
+                        }}
+                      >
+                        <span style={{ color: "rgba(240,235,227,.7)" }}>
+                          {item.emoji} {item.name}
+                        </span>
+                        <span style={{ color: "#c8a97e", fontWeight: 700 }}>
+                          ×{item.qty}
+                        </span>
+                      </div>
+                    ))}
                     {o.observations && (
                       <div
                         style={{
@@ -826,19 +944,19 @@ export function WaiterTablet({
                           border: "1px solid rgba(200,169,126,.2)",
                           borderRadius: 10,
                           padding: "8px 12px",
-                          marginBottom: 12,
+                          margin: "8px 0",
                           fontSize: 12,
                           color: "#c8a97e",
                         }}
                       >
-                        💬 <b>Observații:</b> {o.observations}
+                        💬 {o.observations}
                       </div>
                     )}
-                    {/* Buton ACCEPTĂ */}
                     <button
                       onClick={() => acceptOrder(o.id)}
                       style={{
                         width: "100%",
+                        marginTop: 8,
                         padding: 12,
                         borderRadius: 12,
                         background: "linear-gradient(135deg,#4a6e4a,#2d4a2d)",
@@ -857,7 +975,6 @@ export function WaiterTablet({
               </div>
             )}
 
-            {/* Comenzi în pregătire */}
             {cookingOrders.length > 0 && (
               <div style={{ marginBottom: 16 }}>
                 <div
@@ -869,7 +986,7 @@ export function WaiterTablet({
                     marginBottom: 10,
                   }}
                 >
-                  ⏳ În pregătire — {cookingOrders.length}
+                  ⏳ În pregătire
                 </div>
                 {cookingOrders.map((o) => (
                   <WaiterOrderCard
@@ -882,7 +999,6 @@ export function WaiterTablet({
               </div>
             )}
 
-            {/* Comenzi gata */}
             {readyOrders.length > 0 && (
               <div style={{ marginBottom: 16 }}>
                 <div
@@ -894,7 +1010,7 @@ export function WaiterTablet({
                     marginBottom: 10,
                   }}
                 >
-                  ✅ Gata de servit — {readyOrders.length}
+                  ✅ Gata de servit
                 </div>
                 {readyOrders.map((o) => (
                   <WaiterOrderCard
@@ -919,9 +1035,6 @@ export function WaiterTablet({
                 >
                   <div style={{ fontSize: 40, marginBottom: 10 }}>🍽️</div>
                   <div style={{ fontSize: 15 }}>Nicio comandă activă</div>
-                  <div style={{ fontSize: 12, marginTop: 6 }}>
-                    Comenzile clienților apar automat aici
-                  </div>
                 </div>
               )}
           </div>
@@ -930,35 +1043,7 @@ export function WaiterTablet({
         {/* ── HARTA MESE ── */}
         {tab === "map" && (
           <div>
-            <div
-              style={{
-                display: "flex",
-                gap: 8,
-                flexWrap: "wrap",
-                marginBottom: 14,
-              }}
-            >
-              {[
-                { label: "🟢 Liberă" },
-                { label: "🟡 Rezervată" },
-                { label: "🔴 Ocupată" },
-                { label: "🔵 Achitată" },
-              ].map((l) => (
-                <div
-                  key={l.label}
-                  style={{
-                    fontSize: 10,
-                    color: "rgba(240,235,227,.5)",
-                    background: "rgba(255,255,255,.04)",
-                    padding: "3px 8px",
-                    borderRadius: 20,
-                  }}
-                >
-                  {l.label}
-                </div>
-              ))}
-            </div>
-            {mapFloors.length > 1 && (
+            {DEMO_FLOORS.length > 1 && (
               <div
                 style={{
                   display: "flex",
@@ -967,7 +1052,7 @@ export function WaiterTablet({
                   flexWrap: "wrap",
                 }}
               >
-                {mapFloors.map((fl, i) => (
+                {DEMO_FLOORS.map((fl, i) => (
                   <button
                     key={fl.id}
                     onClick={() => setActiveMapFloor(i)}
@@ -988,24 +1073,12 @@ export function WaiterTablet({
             )}
             <div
               style={{
-                fontSize: 10,
-                letterSpacing: 2,
-                textTransform: "uppercase",
-                color: "#6b6050",
-                marginBottom: 10,
-              }}
-            >
-              {mapFloors[activeMapFloor]?.name} —{" "}
-              {mapFloors[activeMapFloor]?.tables?.length} mese
-            </div>
-            <div
-              style={{
                 display: "grid",
                 gridTemplateColumns: "repeat(3,1fr)",
                 gap: 8,
               }}
             >
-              {(mapFloors[activeMapFloor]?.tables || []).map((table) => {
+              {(DEMO_FLOORS[activeMapFloor]?.tables || []).map((table) => {
                 const status = tableStates[table.id] || "free";
                 const colors = {
                   free: "#4a6e4a",
@@ -1019,7 +1092,6 @@ export function WaiterTablet({
                   occupied: "rgba(192,98,47,.15)",
                   paid: "rgba(91,141,217,.15)",
                 };
-                const session = activeSessions?.[table.id];
                 return (
                   <div
                     key={table.id}
@@ -1051,17 +1123,6 @@ export function WaiterTablet({
                     >
                       {table.seats}p
                     </div>
-                    {session?.started_at && (
-                      <div
-                        style={{ fontSize: 8, color: "#c8a97e", marginTop: 3 }}
-                      >
-                        din{" "}
-                        {new Date(session.started_at).toLocaleTimeString(
-                          "ro-RO",
-                          { hour: "2-digit", minute: "2-digit" },
-                        )}
-                      </div>
-                    )}
                     {status === "occupied" && (
                       <button
                         onClick={() => markPaid(table.id)}
@@ -1119,7 +1180,7 @@ export function WaiterTablet({
                     marginBottom: 10,
                   }}
                 >
-                  ⏳ Necesită confirmare — {pendingRes.length}
+                  ⏳ Necesită confirmare
                 </div>
                 {pendingRes.map((r) => (
                   <div
@@ -1157,7 +1218,7 @@ export function WaiterTablet({
                           color: "#c8a97e",
                         }}
                       >
-                        {r.table_label || "T?"}
+                        {r.table_label}
                       </div>
                       <div style={{ flex: 1 }}>
                         <div
@@ -1167,10 +1228,10 @@ export function WaiterTablet({
                             marginBottom: 2,
                           }}
                         >
-                          {r.customer_name || "Client"}
+                          {r.customer_name}
                         </div>
                         <div style={{ fontSize: 11, color: "#6b6050" }}>
-                          📅 {r.date} • 🕐 {r.time} • 👥 {r.persons} persoane
+                          📅 {r.date} • 🕐 {r.time} • 👥 {r.persons} pers.
                         </div>
                       </div>
                     </div>
@@ -1227,7 +1288,7 @@ export function WaiterTablet({
                     marginBottom: 10,
                   }}
                 >
-                  ✅ Confirmate — {confirmedRes.length}
+                  ✅ Confirmate
                 </div>
                 {confirmedRes.map((r) => (
                   <div
@@ -1260,11 +1321,11 @@ export function WaiterTablet({
                         color: "#6b9e6b",
                       }}
                     >
-                      {r.table_label || "T?"}
+                      {r.table_label}
                     </div>
                     <div style={{ flex: 1 }}>
                       <div style={{ fontWeight: 600, fontSize: 14 }}>
-                        {r.customer_name || "Client"}
+                        {r.customer_name}
                       </div>
                       <div
                         style={{ fontSize: 11, color: "#6b6050", marginTop: 2 }}
@@ -1282,7 +1343,7 @@ export function WaiterTablet({
                         color: "#6b9e6b",
                       }}
                     >
-                      ✅ Confirmat
+                      ✅
                     </div>
                   </div>
                 ))}
@@ -1304,7 +1365,7 @@ export function WaiterTablet({
         )}
       </div>
 
-      {/* Footer nav ospătar */}
+      {/* Footer nav */}
       <div
         style={{
           position: "sticky",
@@ -1431,8 +1492,8 @@ function WaiterOrderCard({ order, onMarkReady, onClose }) {
           >
             🪑 Masa {order.tableLabel || order.table}
           </div>
-          <div style={{ fontSize: 11, color: "#6b6050", marginTop: 2 }}>
-            Ora {order.time}
+          <div style={{ fontSize: 11, color: "#6b6050" }}>
+            {order.time}
             {order.waiterName && (
               <span style={{ marginLeft: 8, color: "#c8a97e" }}>
                 • {order.waiterName}
@@ -1458,32 +1519,22 @@ function WaiterOrderCard({ order, onMarkReady, onClose }) {
           {order.status === "cooking" ? "⏳ Pregătire" : "✅ Gata"}
         </div>
       </div>
-      <div
-        style={{
-          display: "flex",
-          flexDirection: "column",
-          gap: 5,
-          marginBottom: order.observations ? 8 : 12,
-        }}
-      >
-        {(order.items || []).map((item, i) => (
-          <div
-            key={i}
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              fontSize: 13,
-            }}
-          >
-            <span style={{ color: "rgba(240,235,227,.7)" }}>
-              {item.emoji} {item.name}
-            </span>
-            <span style={{ color: "#c8a97e", fontWeight: 700 }}>
-              ×{item.qty}
-            </span>
-          </div>
-        ))}
-      </div>
+      {(order.items || []).map((item, i) => (
+        <div
+          key={i}
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            fontSize: 13,
+            marginBottom: 4,
+          }}
+        >
+          <span style={{ color: "rgba(240,235,227,.7)" }}>
+            {item.emoji} {item.name}
+          </span>
+          <span style={{ color: "#c8a97e", fontWeight: 700 }}>×{item.qty}</span>
+        </div>
+      ))}
       {order.observations && (
         <div
           style={{
@@ -1491,15 +1542,15 @@ function WaiterOrderCard({ order, onMarkReady, onClose }) {
             border: "1px solid rgba(200,169,126,.2)",
             borderRadius: 10,
             padding: "8px 12px",
-            marginBottom: 12,
+            margin: "8px 0",
             fontSize: 12,
             color: "#c8a97e",
           }}
         >
-          💬 <b>Observații:</b> {order.observations}
+          💬 {order.observations}
         </div>
       )}
-      <div style={{ display: "flex", gap: 8 }}>
+      <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
         {order.status === "cooking" && (
           <button
             onClick={() => onMarkReady(order.id)}
