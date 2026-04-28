@@ -20,7 +20,6 @@ export function WaiterLogin({ onLogin, onBack }) {
     setError("");
 
     try {
-      // Verifică în tabelul waiter_accounts
       const { data, error: dbError } = await supabase
         .from("waiter_accounts")
         .select("*")
@@ -34,12 +33,10 @@ export function WaiterLogin({ onLogin, onBack }) {
         return;
       }
 
-      // Verifică parola — comparare simplă (în producție ar trebui hash)
       if (data.password_hash !== password) {
-  setError("Parolă incorectă.");
-  setLoading(false);
-  return;
-}
+        setError("Parolă incorectă.");
+        setLoading(false);
+        return;
       }
 
       onLogin({
