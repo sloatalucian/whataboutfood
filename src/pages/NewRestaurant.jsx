@@ -120,14 +120,21 @@ export default function NewRestaurant() {
   };
 
   const handleCreate = async () => {
-    if (!user?.id) {
-      showToast("❌ Trebuie să fii logat!");
-      return;
-    }
     setLoading(true);
     try {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      const userId = user?.id || session?.user?.id;
+
+      if (!userId) {
+        showToast("❌ Trebuie să fii logat!");
+        setLoading(false);
+        return;
+      }
+
       const { error } = await supabase.from("restaurants").insert({
-        owner_id: user.id,
+        owner_id: userId,
         name: form.name,
         type: form.type,
         emoji: form.emoji,
@@ -137,9 +144,10 @@ export default function NewRestaurant() {
         email: form.email || null,
         website: form.website || null,
         description: form.description || null,
-        plan: user.plan || "free",
+        plan: user?.plan || "free",
         is_active: true,
       });
+
       if (error) throw error;
       showToast(`🎉 Restaurantul „${form.name}" a fost creat!`);
       navigate("adminFloor");
