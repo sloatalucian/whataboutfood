@@ -35,10 +35,11 @@ export function WaiterLogin({ onLogin, onBack }) {
       }
 
       // Verifică parola — comparare simplă (în producție ar trebui hash)
-      if (data.password_hash && data.password_hash !== password) {
-        setError("Parolă incorectă.");
-        setLoading(false);
-        return;
+      if (data.password_hash !== password) {
+  setError("Parolă incorectă.");
+  setLoading(false);
+  return;
+}
       }
 
       onLogin({
