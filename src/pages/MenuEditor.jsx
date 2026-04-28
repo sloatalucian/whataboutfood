@@ -63,7 +63,7 @@ function EmojiPicker({ selected, onSelect, onClose }) {
         zIndex: 400,
         background: "rgba(0,0,0,.7)",
         display: "flex",
-        alignItems: "flex-end",
+        alignItems: "center",
         justifyContent: "center",
       }}
       onClick={onClose}
@@ -72,7 +72,7 @@ function EmojiPicker({ selected, onSelect, onClose }) {
         onClick={(e) => e.stopPropagation()}
         style={{
           background: "#1e1a14",
-          borderRadius: "20px 20px 0 0",
+          borderRadius: "20px",
           border: "1px solid #2a2218",
           width: "100%",
           maxWidth: 430,
@@ -419,7 +419,7 @@ export default function MenuEditor() {
             background: "rgba(0,0,0,.7)",
             backdropFilter: "blur(8px)",
             display: "flex",
-            alignItems: "flex-end",
+            alignItems: "center",
             justifyContent: "center",
           }}
           onClick={() => setShowAddCat(false)}
@@ -428,11 +428,13 @@ export default function MenuEditor() {
             onClick={(e) => e.stopPropagation()}
             style={{
               background: "#161210",
-              borderRadius: "20px 20px 0 0",
+              borderRadius: "20px",
               border: "1px solid #2a2218",
-              width: "100%",
-              maxWidth: 430,
-              padding: "24px 20px 40px",
+              width: "calc(100% - 40px)",
+              maxWidth: 390,
+              padding: "24px 20px 28px",
+              maxHeight: "85vh",
+              overflowY: "auto",
             }}
           >
             <div
@@ -537,7 +539,7 @@ export default function MenuEditor() {
             background: "rgba(0,0,0,.7)",
             backdropFilter: "blur(8px)",
             display: "flex",
-            alignItems: "flex-end",
+            alignItems: "center",
             justifyContent: "center",
           }}
           onClick={() => setShowAddProd(false)}
@@ -546,11 +548,11 @@ export default function MenuEditor() {
             onClick={(e) => e.stopPropagation()}
             style={{
               background: "#161210",
-              borderRadius: "20px 20px 0 0",
+              borderRadius: "20px",
               border: "1px solid #2a2218",
-              width: "100%",
-              maxWidth: 430,
-              padding: "24px 20px 40px",
+              width: "calc(100% - 40px)",
+              maxWidth: 390,
+              padding: "24px 20px 28px",
               maxHeight: "85vh",
               overflowY: "auto",
             }}
@@ -764,7 +766,7 @@ export default function MenuEditor() {
             background: "rgba(0,0,0,.7)",
             backdropFilter: "blur(8px)",
             display: "flex",
-            alignItems: "flex-end",
+            alignItems: "center",
             justifyContent: "center",
           }}
           onClick={() => setEditProduct(null)}
@@ -773,11 +775,11 @@ export default function MenuEditor() {
             onClick={(e) => e.stopPropagation()}
             style={{
               background: "#161210",
-              borderRadius: "20px 20px 0 0",
+              borderRadius: "20px",
               border: "1px solid #2a2218",
-              width: "100%",
-              maxWidth: 430,
-              padding: "24px 20px 40px",
+              width: "calc(100% - 40px)",
+              maxWidth: 390,
+              padding: "24px 20px 28px",
               maxHeight: "85vh",
               overflowY: "auto",
             }}
