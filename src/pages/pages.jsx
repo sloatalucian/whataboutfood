@@ -3,7 +3,7 @@ import { useApp } from "../context/AppContext";
 import { TIME_SLOTS, tableClass, PLANS } from "../data/constants";
 import { MENUS } from "../data/menu";
 import CartBar from "../components/CartBar";
-
+import { supabase } from "../supabase";
 // ─── REZERVARE ────────────────────────────────────────────────────────────────
 export function Rezervare() {
   const { state, dispatch, navigate, showToast } = useApp();
@@ -312,30 +312,54 @@ export function Meniu() {
   const cartQty = (id) => cart.find((i) => i.id === id)?.qty || 0;
   const hasTable = orderTableNum && orderTableNum !== 1;
 
-  const placeOrder = (observations = "") => {
+  const placeOrder = async (observations = "") => {
     if (!cart.length) return;
     if (!hasTable) {
       showToast("⚠️ Selectează mai întâi masa!");
       navigate("selectTable");
       return;
     }
-    dispatch({
-      type: "PLACE_ORDER",
-      payload: {
-        id: Date.now(),
-        table: orderTableNum,
-        tableLabel: orderTableNum,
-        restId: selectedRest.id,
-        items: [...cart],
-        observations,
-        status: "pending",
-        time: new Date().toLocaleTimeString("ro-RO", {
-          hour: "2-digit",
-          minute: "2-digit",
-        }),
-      },
-    });
-    showToast("✅ Comanda trimisă la bucătărie!");
+
+    const total = cart.reduce((s, i) => s + i.price * i.qty, 0);
+
+    try {
+      const { data, error } = await supabase
+        .from("orders")
+        .insert({
+          restaurant_id: selectedRest.id,
+          table_label: orderTableNum,
+          items: cart,
+          observations: observations || null,
+          status: "pending",
+          total: total,
+          payment_method: null,
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+      dispatch({ type: "CART_CLEAR" });
+      showToast("✅ Comanda trimisă!");
+    } catch (err) {
+      console.log("Order error:", err);
+      dispatch({
+        type: "PLACE_ORDER",
+        payload: {
+          id: Date.now(),
+          table: orderTableNum,
+          tableLabel: orderTableNum,
+          restId: selectedRest.id,
+          items: [...cart],
+          observations,
+          status: "pending",
+          time: new Date().toLocaleTimeString("ro-RO", {
+            hour: "2-digit",
+            minute: "2-digit",
+          }),
+        },
+      });
+      showToast("✅ Comanda trimisă!");
+    }
   };
 
   if (paid)

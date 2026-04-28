@@ -11,28 +11,22 @@ export function SelectTable({ restaurant, onSelected, onBack }) {
   const [selectedFloor, setSelectedFloor] = useState(0);
   const [confirming, setConfirming] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [zoom, setZoom] = useState(70); // zoom automat mic la start
+  const [zoom, setZoom] = useState(70);
   const containerRef = useRef(null);
 
   const ZOOM_MIN = 40;
   const ZOOM_MAX = 150;
   const ZOOM_STEP = 10;
 
-  // Zoom automat la deschidere — calculează cât trebuie să fie zoom-ul
-  // ca tot planșeul să încapă pe ecran
   useEffect(() => {
     const calcAutoZoom = () => {
       if (!containerRef.current) return;
       const containerW = containerRef.current.offsetWidth;
-      const containerH = 420; // înălțimea fixă a canvasului
-      const canvasW = 900;
-      const canvasH = 700;
-      const zoomW = Math.floor((containerW / canvasW) * 100);
-      const zoomH = Math.floor((containerH / canvasH) * 100);
-      const autoZoom = Math.max(ZOOM_MIN, Math.min(zoomW, zoomH, 90));
-      setZoom(autoZoom);
+      const containerH = 420;
+      const zoomW = Math.floor((containerW / 900) * 100);
+      const zoomH = Math.floor((containerH / 700) * 100);
+      setZoom(Math.max(ZOOM_MIN, Math.min(zoomW, zoomH, 90)));
     };
-    // Mic delay ca DOM-ul să fie randat
     const timer = setTimeout(calcAutoZoom, 100);
     return () => clearTimeout(timer);
   }, []);
@@ -41,12 +35,6 @@ export function SelectTable({ restaurant, onSelected, onBack }) {
   const floor = floors[selectedFloor];
   const tables = floor?.tables || [];
   const elements = floor?.elements || [];
-
-  const handleSelect = (table) => {
-    const status = getStatus(table.id);
-    if (status !== "free") return;
-    setConfirming(table);
-  };
 
   const handleConfirm = async () => {
     if (!confirming) return;
@@ -60,49 +48,6 @@ export function SelectTable({ restaurant, onSelected, onBack }) {
     setLoading(false);
   };
 
-  const getElementStyle = (el) => ({
-    position: "absolute",
-    left: el.x,
-    top: el.y,
-    width: el.w,
-    height: el.h,
-    background: `${el.color}22`,
-    border: `2px solid ${el.color}66`,
-    borderRadius: 8,
-    display: "flex",
-    flexDirection: "column",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 2,
-    pointerEvents: "none", // elementele fixe nu sunt clickabile
-  });
-
-  const getTableStyle = (table) => {
-    const status = getStatus(table.id);
-    const cfg = TABLE_STATUS[status] || TABLE_STATUS.free;
-    const isFree = status === "free";
-    const isSel = confirming?.id === table.id;
-    return {
-      position: "absolute",
-      left: table.x,
-      top: table.y,
-      width: table.seats <= 2 ? 52 : table.seats <= 4 ? 64 : 80,
-      height: table.seats <= 2 ? 52 : table.seats <= 4 ? 64 : 52,
-      background: cfg.bg,
-      border: `2px solid ${isSel ? "#fff" : cfg.border}`,
-      borderRadius: 10,
-      display: "flex",
-      flexDirection: "column",
-      alignItems: "center",
-      justifyContent: "center",
-      gap: 1,
-      cursor: isFree ? "pointer" : "not-allowed",
-      outline: isSel ? `3px solid #fff` : "none",
-      transition: "transform .15s",
-      transform: isSel ? "scale(1.1)" : "scale(1)",
-    };
-  };
-
   return (
     <div
       style={{
@@ -113,7 +58,6 @@ export function SelectTable({ restaurant, onSelected, onBack }) {
         paddingBottom: 80,
       }}
     >
-      {/* Hero */}
       <div
         style={{
           padding: "44px 20px 20px",
@@ -168,11 +112,6 @@ export function SelectTable({ restaurant, onSelected, onBack }) {
           }}
         >
           {restaurant?.name}
-        </div>
-        <div
-          style={{ fontSize: 12, color: "rgba(255,255,255,.5)", marginTop: 2 }}
-        >
-          {restaurant?.type}
         </div>
       </div>
 
@@ -248,9 +187,8 @@ export function SelectTable({ restaurant, onSelected, onBack }) {
           </div>
         )}
 
-        {/* Canvas planșeu cu zoom */}
+        {/* Canvas */}
         <div style={{ position: "relative", marginBottom: 16 }}>
-          {/* Butoane zoom */}
           <div
             style={{
               position: "absolute",
@@ -320,8 +258,6 @@ export function SelectTable({ restaurant, onSelected, onBack }) {
               −
             </button>
           </div>
-
-          {/* Canvas scrollabil */}
           <div
             ref={containerRef}
             style={{
@@ -345,7 +281,6 @@ export function SelectTable({ restaurant, onSelected, onBack }) {
                 backgroundSize: "30px 30px",
               }}
             >
-              {/* Label etaj */}
               <div
                 style={{
                   position: "absolute",
@@ -361,36 +296,64 @@ export function SelectTable({ restaurant, onSelected, onBack }) {
               >
                 {floor?.type === "terrace" ? "☀️" : "🏢"} {floor?.name}
               </div>
-
-              {/* Elemente fixe (Bar, Bucătărie etc.) — doar decorative */}
               {elements.map((el) => (
-                <div key={el.id} style={getElementStyle(el)}>
-                  <span style={{ fontSize: 16, pointerEvents: "none" }}>
-                    {el.icon}
-                  </span>
+                <div
+                  key={el.id}
+                  style={{
+                    position: "absolute",
+                    left: el.x,
+                    top: el.y,
+                    width: el.w,
+                    height: el.h,
+                    background: `${el.color}22`,
+                    border: `2px solid ${el.color}66`,
+                    borderRadius: 8,
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: 2,
+                    pointerEvents: "none",
+                  }}
+                >
+                  <span style={{ fontSize: 16 }}>{el.icon}</span>
                   <span
-                    style={{
-                      fontSize: 8,
-                      color: el.color,
-                      fontWeight: 700,
-                      pointerEvents: "none",
-                    }}
+                    style={{ fontSize: 8, color: el.color, fontWeight: 700 }}
                   >
                     {el.label}
                   </span>
                 </div>
               ))}
-
-              {/* Mese — clickabile */}
               {tables.map((table) => {
                 const status = getStatus(table.id);
                 const cfg = TABLE_STATUS[status] || TABLE_STATUS.free;
                 const isFree = status === "free";
+                const isSel = confirming?.id === table.id;
+                const w = table.seats <= 2 ? 52 : table.seats <= 4 ? 64 : 80;
+                const h = table.seats <= 2 ? 52 : table.seats <= 4 ? 64 : 52;
                 return (
                   <div
                     key={table.id}
-                    style={getTableStyle(table)}
-                    onClick={() => isFree && handleSelect(table)}
+                    onClick={() => isFree && setConfirming(table)}
+                    style={{
+                      position: "absolute",
+                      left: table.x,
+                      top: table.y,
+                      width: w,
+                      height: h,
+                      background: cfg.bg,
+                      border: `2px solid ${isSel ? "#fff" : cfg.border}`,
+                      borderRadius: 10,
+                      display: "flex",
+                      flexDirection: "column",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      gap: 1,
+                      cursor: isFree ? "pointer" : "not-allowed",
+                      outline: isSel ? "3px solid #fff" : "none",
+                      transform: isSel ? "scale(1.1)" : "scale(1)",
+                      transition: "transform .15s",
+                    }}
                   >
                     <span style={{ fontSize: 14, pointerEvents: "none" }}>
                       🪑
@@ -419,7 +382,6 @@ export function SelectTable({ restaurant, onSelected, onBack }) {
                   </div>
                 );
               })}
-
               {tables.length === 0 && elements.length === 0 && (
                 <div
                   style={{
@@ -444,7 +406,7 @@ export function SelectTable({ restaurant, onSelected, onBack }) {
           </div>
         </div>
 
-        {/* Modal confirmare masă */}
+        {/* Confirmare */}
         {confirming && (
           <div
             style={{
@@ -528,21 +490,15 @@ export function SelectTable({ restaurant, onSelected, onBack }) {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// TABLETA OSPĂTARULUI
+// TABLETA OSPĂTARULUI — cu Realtime Supabase
 // ═══════════════════════════════════════════════════════════════════════════
-export function WaiterTablet({
-  restaurant,
-  orders = [],
-  onOrderUpdate,
-  onOrderClose,
-  onBack,
-  waiterName,
-  waiterId,
-}) {
-  const { tableStates, activeSessions, markPaid, freeTable, reload } =
-    useTable();
+export function WaiterTablet({ restaurant, onBack, waiterName, waiterId }) {
+  const { tableStates, markPaid, freeTable, reload } = useTable();
   const { dispatch, showToast } = useApp();
   const [tab, setTab] = useState("orders");
+  const [orders, setOrders] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [activeMapFloor, setActiveMapFloor] = useState(0);
   const [displayReservations, setDisplayReservations] = useState([
     {
       id: "r1",
@@ -562,48 +518,157 @@ export function WaiterTablet({
       time: "19:00",
       confirmed: true,
     },
-    {
-      id: "r3",
-      table_label: "E1",
-      customer_name: "Andrei Gheorghe",
-      persons: 2,
-      date: "azi",
-      time: "20:30",
-      confirmed: false,
-    },
   ]);
-  const [activeMapFloor, setActiveMapFloor] = useState(0);
 
-  const acceptOrder = (orderId) => {
-    onOrderUpdate(orderId, "cooking", { waiterId, waiterName });
-    dispatch({
-      type: "ADD_NOTIFICATION",
-      payload: {
-        id: Date.now(),
-        type: "order_accepted",
-        message: "Comanda ta a fost preluată!",
-        details: `Ospătarul ${waiterName || "nostru"} se ocupă de comanda ta.`,
-        isRead: false,
-        createdAt: new Date().toISOString(),
-      },
-    });
-    showToast("✅ Comandă acceptată!");
+  const restaurantId = restaurant?.id;
+
+  // ── Încarcă comenzile din Supabase ──
+  const loadOrders = async () => {
+    if (!restaurantId) {
+      setLoading(false);
+      return;
+    }
+    try {
+      const { data, error } = await supabase
+        .from("orders")
+        .select("*")
+        .eq("restaurant_id", restaurantId)
+        .in("status", ["pending", "cooking", "ready"])
+        .order("created_at", { ascending: true });
+      if (error) throw error;
+      setOrders(data || []);
+    } catch (err) {
+      console.log("Load orders error:", err);
+    }
+    setLoading(false);
   };
 
-  const markReady = (orderId) => {
-    onOrderUpdate(orderId, "ready", {});
-    dispatch({
-      type: "ADD_NOTIFICATION",
-      payload: {
-        id: Date.now(),
-        type: "order_ready",
-        message: "Comanda ta este gata! 🍽️",
-        details: "Ospătarul vine cu comanda la masa ta.",
-        isRead: false,
-        createdAt: new Date().toISOString(),
-      },
-    });
-    showToast("🍽️ Comandă gata de servit!");
+  // ── Realtime — ascultă comenzi noi ──
+  useEffect(() => {
+    loadOrders();
+    if (!restaurantId) return;
+
+    const channel = supabase
+      .channel(`orders_${restaurantId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "orders",
+          filter: `restaurant_id=eq.${restaurantId}`,
+        },
+        (payload) => {
+          if (payload.eventType === "INSERT") {
+            setOrders((prev) => {
+              const exists = prev.find((o) => o.id === payload.new.id);
+              if (exists) return prev;
+              return [...prev, payload.new];
+            });
+            showToast("🆕 Comandă nouă!");
+          }
+          if (payload.eventType === "UPDATE") {
+            setOrders((prev) =>
+              prev
+                .map((o) => (o.id === payload.new.id ? payload.new : o))
+                .filter((o) =>
+                  ["pending", "cooking", "ready"].includes(o.status),
+                ),
+            );
+          }
+          if (payload.eventType === "DELETE") {
+            setOrders((prev) => prev.filter((o) => o.id !== payload.old.id));
+          }
+        },
+      )
+      .subscribe();
+
+    return () => supabase.removeChannel(channel);
+  }, [restaurantId]);
+
+  // ── Acceptă comanda ──
+  const acceptOrder = async (orderId) => {
+    try {
+      const { error } = await supabase
+        .from("orders")
+        .update({
+          status: "cooking",
+          waiter_id: waiterId || null,
+          accepted_at: new Date().toISOString(),
+        })
+        .eq("id", orderId);
+      if (error) throw error;
+
+      setOrders((prev) =>
+        prev.map((o) =>
+          o.id === orderId
+            ? { ...o, status: "cooking", waiter_name: waiterName }
+            : o,
+        ),
+      );
+
+      // Notificare client
+      dispatch({
+        type: "ADD_NOTIFICATION",
+        payload: {
+          id: Date.now(),
+          type: "order_accepted",
+          message: "Comanda ta a fost preluată!",
+          details: `Ospătarul ${waiterName || "nostru"} se ocupă de comanda ta.`,
+          isRead: false,
+          createdAt: new Date().toISOString(),
+        },
+      });
+      showToast("✅ Comandă acceptată!");
+    } catch (err) {
+      showToast("❌ Eroare la acceptare.");
+    }
+  };
+
+  // ── Marchează gata ──
+  const markReady = async (orderId) => {
+    try {
+      const { error } = await supabase
+        .from("orders")
+        .update({
+          status: "ready",
+          completed_at: new Date().toISOString(),
+        })
+        .eq("id", orderId);
+      if (error) throw error;
+
+      setOrders((prev) =>
+        prev.map((o) => (o.id === orderId ? { ...o, status: "ready" } : o)),
+      );
+
+      dispatch({
+        type: "ADD_NOTIFICATION",
+        payload: {
+          id: Date.now(),
+          type: "order_ready",
+          message: "Comanda ta este gata! 🍽️",
+          details: "Ospătarul vine cu comanda la masa ta.",
+          isRead: false,
+          createdAt: new Date().toISOString(),
+        },
+      });
+      showToast("🍽️ Comandă gata!");
+    } catch (err) {
+      showToast("❌ Eroare.");
+    }
+  };
+
+  // ── Închide comandă ──
+  const closeOrder = async (orderId) => {
+    try {
+      await supabase
+        .from("orders")
+        .update({ status: "paid", paid_at: new Date().toISOString() })
+        .eq("id", orderId);
+      setOrders((prev) => prev.filter((o) => o.id !== orderId));
+    } catch (err) {
+      showToast("❌ Eroare.");
+    }
   };
 
   const confirmReservation = (resId) => {
@@ -623,7 +688,7 @@ export function WaiterTablet({
   const pendingRes = displayReservations.filter((r) => !r.confirmed);
   const confirmedRes = displayReservations.filter((r) => r.confirmed);
 
-  const DEMO_FLOORS =
+  const FLOORS =
     restaurant?.floors?.length > 0
       ? restaurant.floors
       : [
@@ -637,20 +702,16 @@ export function WaiterTablet({
               { id: 4, label: "T4", seats: 8 },
               { id: 5, label: "T5", seats: 8 },
               { id: 6, label: "T6", seats: 4 },
-              { id: 7, label: "T7", seats: 4 },
-              { id: 8, label: "T8", seats: 2 },
             ],
           },
         ];
-
-  const allTables = DEMO_FLOORS.flatMap((f) => f.tables || []);
+  const allTables = FLOORS.flatMap((f) => f.tables || []);
   const freeCount = allTables.filter(
     (t) => !tableStates[t.id] || tableStates[t.id] === "free",
   ).length;
   const occCount = allTables.filter(
     (t) => tableStates[t.id] === "occupied",
   ).length;
-  const now = new Date();
 
   return (
     <div
@@ -676,7 +737,7 @@ export function WaiterTablet({
           style={{
             display: "flex",
             justifyContent: "space-between",
-            alignItems: "flex-start",
+            alignItems: "center",
           }}
         >
           <div>
@@ -691,7 +752,7 @@ export function WaiterTablet({
             </div>
             <div style={{ fontSize: 11, color: "#6b6050", marginTop: 2 }}>
               {restaurant?.name || "Restaurant"} •{" "}
-              {now.toLocaleTimeString("ro-RO", {
+              {new Date().toLocaleTimeString("ro-RO", {
                 hour: "2-digit",
                 minute: "2-digit",
               })}
@@ -699,7 +760,10 @@ export function WaiterTablet({
           </div>
           <div style={{ display: "flex", gap: 8 }}>
             <button
-              onClick={reload}
+              onClick={() => {
+                reload();
+                loadOrders();
+              }}
               style={{
                 padding: "6px 10px",
                 borderRadius: 8,
@@ -861,7 +925,21 @@ export function WaiterTablet({
         {/* ── COMENZI ── */}
         {tab === "orders" && (
           <div>
-            {pendingOrders.length > 0 && (
+            {loading && (
+              <div
+                style={{
+                  textAlign: "center",
+                  padding: "40px 0",
+                  color: "#6b6050",
+                }}
+              >
+                <div style={{ fontSize: 32, marginBottom: 10 }}>🍽️</div>
+                <div>Se încarcă comenzile...</div>
+              </div>
+            )}
+
+            {/* Comenzi noi */}
+            {!loading && pendingOrders.length > 0 && (
               <div style={{ marginBottom: 20 }}>
                 <div
                   style={{
@@ -872,7 +950,7 @@ export function WaiterTablet({
                     marginBottom: 10,
                   }}
                 >
-                  🆕 Comenzi noi
+                  🆕 Comenzi noi — necesită acceptare
                 </div>
                 {pendingOrders.map((o) => (
                   <div
@@ -900,10 +978,13 @@ export function WaiterTablet({
                             fontWeight: 900,
                           }}
                         >
-                          🪑 Masa {o.tableLabel || o.table}
+                          🪑 Masa {o.table_label || o.table}
                         </div>
                         <div style={{ fontSize: 11, color: "#6b6050" }}>
-                          Ora {o.time}
+                          {new Date(o.created_at).toLocaleTimeString("ro-RO", {
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })}
                         </div>
                       </div>
                       <div
@@ -952,30 +1033,50 @@ export function WaiterTablet({
                         💬 {o.observations}
                       </div>
                     )}
-                    <button
-                      onClick={() => acceptOrder(o.id)}
+                    <div
                       style={{
-                        width: "100%",
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
                         marginTop: 8,
-                        padding: 12,
-                        borderRadius: 12,
-                        background: "linear-gradient(135deg,#4a6e4a,#2d4a2d)",
-                        border: "none",
-                        color: "#fff",
-                        fontFamily: "'Fraunces',serif",
-                        fontSize: 15,
-                        fontWeight: 700,
-                        cursor: "pointer",
+                        paddingTop: 8,
+                        borderTop: "1px solid rgba(255,255,255,.06)",
                       }}
                     >
-                      ✅ Acceptă comanda
-                    </button>
+                      <span
+                        style={{
+                          fontFamily: "'Fraunces',serif",
+                          fontSize: 16,
+                          fontWeight: 700,
+                          color: "#c8a97e",
+                        }}
+                      >
+                        Total: {o.total} lei
+                      </span>
+                      <button
+                        onClick={() => acceptOrder(o.id)}
+                        style={{
+                          padding: "10px 18px",
+                          borderRadius: 12,
+                          background: "linear-gradient(135deg,#4a6e4a,#2d4a2d)",
+                          border: "none",
+                          color: "#fff",
+                          fontFamily: "'Fraunces',serif",
+                          fontSize: 14,
+                          fontWeight: 700,
+                          cursor: "pointer",
+                        }}
+                      >
+                        ✅ Acceptă
+                      </button>
+                    </div>
                   </div>
                 ))}
               </div>
             )}
 
-            {cookingOrders.length > 0 && (
+            {/* În pregătire */}
+            {!loading && cookingOrders.length > 0 && (
               <div style={{ marginBottom: 16 }}>
                 <div
                   style={{
@@ -993,13 +1094,14 @@ export function WaiterTablet({
                     key={o.id}
                     order={o}
                     onMarkReady={markReady}
-                    onClose={onOrderClose}
+                    onClose={closeOrder}
                   />
                 ))}
               </div>
             )}
 
-            {readyOrders.length > 0 && (
+            {/* Gata */}
+            {!loading && readyOrders.length > 0 && (
               <div style={{ marginBottom: 16 }}>
                 <div
                   style={{
@@ -1017,13 +1119,14 @@ export function WaiterTablet({
                     key={o.id}
                     order={o}
                     onMarkReady={markReady}
-                    onClose={onOrderClose}
+                    onClose={closeOrder}
                   />
                 ))}
               </div>
             )}
 
-            {pendingOrders.length === 0 &&
+            {!loading &&
+              pendingOrders.length === 0 &&
               cookingOrders.length === 0 &&
               readyOrders.length === 0 && (
                 <div
@@ -1035,6 +1138,9 @@ export function WaiterTablet({
                 >
                   <div style={{ fontSize: 40, marginBottom: 10 }}>🍽️</div>
                   <div style={{ fontSize: 15 }}>Nicio comandă activă</div>
+                  <div style={{ fontSize: 12, marginTop: 6 }}>
+                    Comenzile clienților apar automat aici
+                  </div>
                 </div>
               )}
           </div>
@@ -1043,7 +1149,7 @@ export function WaiterTablet({
         {/* ── HARTA MESE ── */}
         {tab === "map" && (
           <div>
-            {DEMO_FLOORS.length > 1 && (
+            {FLOORS.length > 1 && (
               <div
                 style={{
                   display: "flex",
@@ -1052,7 +1158,7 @@ export function WaiterTablet({
                   flexWrap: "wrap",
                 }}
               >
-                {DEMO_FLOORS.map((fl, i) => (
+                {FLOORS.map((fl, i) => (
                   <button
                     key={fl.id}
                     onClick={() => setActiveMapFloor(i)}
@@ -1078,7 +1184,7 @@ export function WaiterTablet({
                 gap: 8,
               }}
             >
-              {(DEMO_FLOORS[activeMapFloor]?.tables || []).map((table) => {
+              {(FLOORS[activeMapFloor]?.tables || []).map((table) => {
                 const status = tableStates[table.id] || "free";
                 const colors = {
                   free: "#4a6e4a",
@@ -1490,13 +1596,16 @@ function WaiterOrderCard({ order, onMarkReady, onClose }) {
               fontWeight: 900,
             }}
           >
-            🪑 Masa {order.tableLabel || order.table}
+            🪑 Masa {order.table_label || order.table}
           </div>
           <div style={{ fontSize: 11, color: "#6b6050" }}>
-            {order.time}
-            {order.waiterName && (
+            {new Date(order.created_at).toLocaleTimeString("ro-RO", {
+              hour: "2-digit",
+              minute: "2-digit",
+            })}
+            {order.waiter_name && (
               <span style={{ marginLeft: 8, color: "#c8a97e" }}>
-                • {order.waiterName}
+                • {order.waiter_name}
               </span>
             )}
           </div>
@@ -1505,8 +1614,6 @@ function WaiterOrderCard({ order, onMarkReady, onClose }) {
           style={{
             fontSize: 10,
             fontWeight: 800,
-            letterSpacing: 1,
-            textTransform: "uppercase",
             padding: "4px 10px",
             borderRadius: 20,
             background:
@@ -1550,41 +1657,58 @@ function WaiterOrderCard({ order, onMarkReady, onClose }) {
           💬 {order.observations}
         </div>
       )}
-      <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
-        {order.status === "cooking" && (
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          marginTop: 8,
+        }}
+      >
+        <span
+          style={{
+            fontFamily: "'Fraunces',serif",
+            fontSize: 15,
+            fontWeight: 700,
+            color: "#c8a97e",
+          }}
+        >
+          {order.total} lei
+        </span>
+        <div style={{ display: "flex", gap: 8 }}>
+          {order.status === "cooking" && (
+            <button
+              onClick={() => onMarkReady(order.id)}
+              style={{
+                padding: "8px 14px",
+                borderRadius: 10,
+                background: "rgba(74,110,74,.2)",
+                border: "1px solid rgba(74,110,74,.4)",
+                color: "#6b9e6b",
+                fontSize: 12,
+                cursor: "pointer",
+                fontWeight: 600,
+              }}
+            >
+              ✅ Gata
+            </button>
+          )}
           <button
-            onClick={() => onMarkReady(order.id)}
+            onClick={() => onClose(order.id)}
             style={{
-              flex: 1,
-              padding: 9,
+              padding: "8px 14px",
               borderRadius: 10,
-              background: "rgba(74,110,74,.2)",
-              border: "1px solid rgba(74,110,74,.4)",
-              color: "#6b9e6b",
+              background: "#1e1a14",
+              border: "1px solid #2a2218",
+              color: "#f0ebe3",
               fontSize: 12,
               cursor: "pointer",
               fontWeight: 600,
             }}
           >
-            ✅ Marchează gata
+            🗑️
           </button>
-        )}
-        <button
-          onClick={() => onClose(order.id)}
-          style={{
-            flex: 1,
-            padding: 9,
-            borderRadius: 10,
-            background: "#1e1a14",
-            border: "1px solid #2a2218",
-            color: "#f0ebe3",
-            fontSize: 12,
-            cursor: "pointer",
-            fontWeight: 600,
-          }}
-        >
-          🗑️ Închide
-        </button>
+        </div>
       </div>
     </div>
   );
