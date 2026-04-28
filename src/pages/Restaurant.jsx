@@ -595,7 +595,8 @@ export default function Restaurant() {
           style={{
             padding: "48px 20px 24px",
             position: "relative",
-            background: selectedRest.cover,
+            background:
+              selectedRest.cover || "linear-gradient(135deg,#2d1507,#1a0e05)",
             display: "flex",
             flexDirection: "column",
             justifyContent: "flex-end",
@@ -664,7 +665,8 @@ export default function Restaurant() {
             <span
               style={{ fontSize: 14, fontWeight: 700, color: "var(--gold)" }}
             >
-              ★ {selectedRest.rating} ({selectedRest.reviews} recenzii)
+              ★ {selectedRest.rating || "—"}{" "}
+              {selectedRest.reviews ? `(${selectedRest.reviews} recenzii)` : ""}
             </span>
             <span style={{ fontSize: 12, color: "rgba(255,255,255,.5)" }}>
               ⏰ {programZiCurenta}
@@ -673,7 +675,7 @@ export default function Restaurant() {
           <div
             style={{ display: "flex", gap: 6, marginTop: 10, flexWrap: "wrap" }}
           >
-            {selectedRest.tags.map((t) => (
+            {(selectedRest.tags || []).map((t) => (
               <span
                 key={t}
                 style={{
