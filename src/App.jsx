@@ -4,7 +4,7 @@ import { TableProvider } from "./context/TableContext";
 import BottomNav from "./components/BottomNav";
 import Home from "./pages/Home";
 import Restaurant from "./pages/Restaurant";
-import { Rezervare, Meniu, Admin, Auth } from "./pages/pages";
+import { Rezervare, Meniu, Auth } from "./pages/pages";
 import { SelectTable, WaiterTablet } from "./pages/SelectTable";
 import { WaiterLogin, WaiterManagement } from "./pages/WaiterManagement";
 import StatisticiProprietar from "./pages/StatisticiProprietar";
@@ -12,6 +12,7 @@ import SplashScreen from "./pages/SplashScreen";
 import MenuEditor from "./pages/MenuEditor";
 import NewRestaurant from "./pages/NewRestaurant";
 import Notifications from "./pages/Notifications";
+import FloorEditor from "./pages/FloorEditor";
 import { supabase } from "./supabase";
 import "./styles/global.css";
 
@@ -69,9 +70,8 @@ function Router() {
 
   const noNav = ["auth", "selectTable", "newRestaurant", "waiterLogin"];
 
-  const handleOrderUpdate = (id, status, extra = {}) => {
+  const handleOrderUpdate = (id, status, extra = {}) =>
     dispatch({ type: "ORDER_UPDATE", payload: { id, status, ...extra } });
-  };
   const handleOrderClose = (id) =>
     dispatch({ type: "ORDER_REMOVE", payload: id });
   const handleTableSelected = ({ table }) => {
@@ -149,7 +149,7 @@ function Router() {
     );
   }
 
-  // Admin Dashboard
+  // Admin Dashboard — Gestionare Ospătari
   const AdminDashboard = () => (
     <div className="page fade-in">
       <div
@@ -221,7 +221,7 @@ function Router() {
     menu: <Meniu />,
     auth: <Auth />,
     admin: <AdminDashboard />,
-    adminFloor: <Admin />,
+    adminFloor: <FloorEditor />, // ← Editor Planșeu nou cu Supabase
     statistici: <StatisticiProprietar />,
     menuEditor: <MenuEditor />,
     newRestaurant: <NewRestaurant />,
