@@ -13,10 +13,53 @@ export function SelectTable({ restaurant, onSelected, onBack }) {
   const [loading, setLoading] = useState(false);
   const [zoom, setZoom] = useState(70);
   const containerRef = useRef(null);
+  const [dbFloors, setDbFloors] = useState([]);
+  const [floorsLoading, setFloorsLoading] = useState(true);
 
   const ZOOM_MIN = 40;
   const ZOOM_MAX = 150;
   const ZOOM_STEP = 10;
+
+  // Încarcă floors + tables + elements din Supabase
+  useEffect(() => {
+    if (!restaurant?.id) {
+      setFloorsLoading(false);
+      return;
+    }
+    const load = async () => {
+      setFloorsLoading(true);
+      const { data: floorsData } = await supabase
+        .from("floors")
+        .select("*")
+        .eq("restaurant_id", restaurant.id)
+        .order("floor_order");
+      if (!floorsData || floorsData.length === 0) {
+        setDbFloors([]);
+        setFloorsLoading(false);
+        return;
+      }
+      const floorsWithData = await Promise.all(
+        floorsData.map(async (fl) => {
+          const { data: tablesData } = await supabase
+            .from("tables")
+            .select("*")
+            .eq("floor_id", fl.id);
+          const { data: elementsData } = await supabase
+            .from("floor_elements")
+            .select("*")
+            .eq("floor_id", fl.id);
+          return {
+            ...fl,
+            tables: tablesData || [],
+            elements: elementsData || [],
+          };
+        }),
+      );
+      setDbFloors(floorsWithData);
+      setFloorsLoading(false);
+    };
+    load();
+  }, [restaurant?.id]);
 
   useEffect(() => {
     const calcAutoZoom = () => {
@@ -31,7 +74,7 @@ export function SelectTable({ restaurant, onSelected, onBack }) {
     return () => clearTimeout(timer);
   }, []);
 
-  const floors = restaurant?.floors || [];
+  const floors = dbFloors.length > 0 ? dbFloors : restaurant?.floors || [];
   const floor = floors[selectedFloor];
   const tables = floor?.tables || [];
   const elements = floor?.elements || [];
@@ -382,26 +425,28 @@ export function SelectTable({ restaurant, onSelected, onBack }) {
                   </div>
                 );
               })}
-              {tables.length === 0 && elements.length === 0 && (
-                <div
-                  style={{
-                    position: "absolute",
-                    inset: 0,
-                    display: "flex",
-                    flexDirection: "column",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    color: "#6b6050",
-                    gap: 8,
-                    pointerEvents: "none",
-                  }}
-                >
-                  <span style={{ fontSize: 36 }}>🏗️</span>
-                  <span style={{ fontSize: 13 }}>
-                    Planșeul nu a fost configurat încă
-                  </span>
-                </div>
-              )}
+              {tables.length === 0 &&
+                elements.length === 0 &&
+                !floorsLoading && (
+                  <div
+                    style={{
+                      position: "absolute",
+                      inset: 0,
+                      display: "flex",
+                      flexDirection: "column",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      color: "#6b6050",
+                      gap: 8,
+                      pointerEvents: "none",
+                    }}
+                  >
+                    <span style={{ fontSize: 36 }}>🏗️</span>
+                    <span style={{ fontSize: 13 }}>
+                      Planșeul nu a fost configurat încă
+                    </span>
+                  </div>
+                )}
             </div>
           </div>
         </div>
