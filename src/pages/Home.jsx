@@ -596,7 +596,7 @@ function HomeClient() {
 
   useEffect(() => {
     const load = async () => {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from("restaurants")
         .select("*")
         .eq("is_active", true)
