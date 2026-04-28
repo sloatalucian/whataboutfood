@@ -47,7 +47,7 @@ function HighlightText({ text, query }) {
   );
 }
 
-function SearchBar({ onSelect, selectedCity, onCityChange }) {
+function SearchBar({ onSelect, selectedCity, onCityChange, restaurants = [] }) {
   const [query, setQuery] = useState("");
   const [focused, setFocused] = useState(false);
   const [showCities, setShowCities] = useState(false);
@@ -57,16 +57,17 @@ function SearchBar({ onSelect, selectedCity, onCityChange }) {
   const results =
     query.trim().length === 0
       ? []
-      : RESTAURANTS.filter((r) => {
+      : restaurants.filter((r) => {
           const matchName = r.name.toLowerCase().includes(query.toLowerCase());
-          const matchType = r.type.toLowerCase().includes(query.toLowerCase());
-          const matchTag = r.tags?.some((t) =>
-            t.toLowerCase().includes(query.toLowerCase()),
-          );
+          const matchType = (r.type || "")
+            .toLowerCase()
+            .includes(query.toLowerCase());
           const matchCity =
             selectedCity === "Toate orașele" ||
-            r.address.toLowerCase().includes(selectedCity.toLowerCase());
-          return (matchName || matchType || matchTag) && matchCity;
+            (r.city || r.address || "")
+              .toLowerCase()
+              .includes(selectedCity.toLowerCase());
+          return (matchName || matchType) && matchCity;
         });
 
   useEffect(() => {
@@ -590,11 +591,28 @@ function HomeClient() {
   const { state, dispatch, navigate } = useApp();
   const { user } = state;
   const [selectedCity, setSelectedCity] = useState("Toate orașele");
+  const [allRestaurants, setAllRestaurants] = useState([]);
+  const [loadingRests, setLoadingRests] = useState(true);
 
-  const filteredRestaurants = RESTAURANTS.filter(
+  useEffect(() => {
+    const load = async () => {
+      const { data } = await supabase
+        .from("restaurants")
+        .select("*")
+        .eq("is_active", true)
+        .order("created_at");
+      if (data) setAllRestaurants(data);
+      setLoadingRests(false);
+    };
+    load();
+  }, []);
+
+  const filteredRestaurants = allRestaurants.filter(
     (r) =>
       selectedCity === "Toate orașele" ||
-      r.address.toLowerCase().includes(selectedCity.toLowerCase()),
+      (r.city || r.address || "")
+        .toLowerCase()
+        .includes(selectedCity.toLowerCase()),
   );
 
   const handleSearchSelect = (restaurant) => {
@@ -674,6 +692,7 @@ function HomeClient() {
           selectedCity={selectedCity}
           onCityChange={setSelectedCity}
           onSelect={handleSearchSelect}
+          restaurants={allRestaurants}
         />
       </div>
 
@@ -710,7 +729,18 @@ function HomeClient() {
             </div>
           )}
         </div>
-        {filteredRestaurants.length === 0 ? (
+        {loadingRests ? (
+          <div
+            style={{
+              textAlign: "center",
+              padding: "40px 0",
+              color: "var(--muted)",
+              fontSize: 13,
+            }}
+          >
+            Se încarcă restaurantele...
+          </div>
+        ) : filteredRestaurants.length === 0 ? (
           <div
             style={{
               textAlign: "center",
@@ -722,23 +752,27 @@ function HomeClient() {
             <div
               style={{ fontSize: 15, marginBottom: 6, color: "var(--cream)" }}
             >
-              Niciun restaurant în {selectedCity}
+              {selectedCity !== "Toate orașele"
+                ? `Niciun restaurant în ${selectedCity}`
+                : "Niciun restaurant disponibil"}
             </div>
-            <button
-              onClick={() => setSelectedCity("Toate orașele")}
-              style={{
-                padding: "9px 20px",
-                borderRadius: 20,
-                background: "var(--terra)",
-                border: "none",
-                color: "#fff",
-                fontSize: 13,
-                fontWeight: 700,
-                cursor: "pointer",
-              }}
-            >
-              Vezi toate
-            </button>
+            {selectedCity !== "Toate orașele" && (
+              <button
+                onClick={() => setSelectedCity("Toate orașele")}
+                style={{
+                  padding: "9px 20px",
+                  borderRadius: 20,
+                  background: "var(--terra)",
+                  border: "none",
+                  color: "#fff",
+                  fontSize: 13,
+                  fontWeight: 700,
+                  cursor: "pointer",
+                }}
+              >
+                Vezi toate
+              </button>
+            )}
           </div>
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
@@ -773,7 +807,16 @@ function HomeOwner({ onLogout }) {
         .select("*")
         .eq("owner_id", user.id)
         .order("created_at");
-      if (!error && data) setMyRestaurants(data);
+      if (error) {
+        console.error(
+          "Supabase error:",
+          error.message,
+          error.details,
+          error.hint,
+        );
+        console.error("user.id folosit:", user.id);
+      }
+      if (data) setMyRestaurants(data);
     } catch (err) {
       console.log("Load restaurants error:", err);
     }
