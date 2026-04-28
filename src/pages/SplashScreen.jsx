@@ -2,10 +2,8 @@ import { useState, useEffect } from "react";
 import { useApp } from "../context/AppContext";
 import { supabase } from "../supabase";
 
-// ─── ANIMAȚIE FARFURIE ────────────────────────────────────────────────────────
 function FoodAnimation({ onComplete }) {
   const [phase, setPhase] = useState(0);
-
   useEffect(() => {
     const timers = [
       setTimeout(() => setPhase(1), 300),
@@ -16,7 +14,6 @@ function FoodAnimation({ onComplete }) {
     ];
     return () => timers.forEach(clearTimeout);
   }, []);
-
   return (
     <div
       style={{
@@ -116,7 +113,7 @@ function FoodAnimation({ onComplete }) {
           </div>
         </div>
         {phase >= 2 &&
-          ["🍕", "🍷", "🥗", "☕", "🍰"].map((emoji, i) => (
+          ["🍕", "🍷", "🥗", "☕", "🍰"].map((e, i) => (
             <div
               key={i}
               style={{
@@ -129,7 +126,7 @@ function FoodAnimation({ onComplete }) {
                 transition: `all .5s cubic-bezier(.34,1.56,.64,1) ${0.1 + i * 0.08}s`,
               }}
             >
-              {emoji}
+              {e}
             </div>
           ))}
       </div>
@@ -167,7 +164,6 @@ function FoodAnimation({ onComplete }) {
   );
 }
 
-// ─── WAITER LOGIN MODAL ───────────────────────────────────────────────────────
 function WaiterLoginModal({ onLogin, onClose }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -185,11 +181,16 @@ function WaiterLoginModal({ onLogin, onClose }) {
       const { data, error: dbError } = await supabase
         .from("waiter_accounts")
         .select("*")
-        .eq("email", email.toLowerCase())
+        .eq("email", email.toLowerCase().trim())
         .eq("is_active", true)
         .single();
       if (dbError || !data) {
-        setError("Cont de ospătar inexistent sau dezactivat.");
+        setError("Cont inexistent sau dezactivat.");
+        setLoading(false);
+        return;
+      }
+      if (data.password_hash !== password) {
+        setError("Parolă incorectă.");
         setLoading(false);
         return;
       }
@@ -199,18 +200,10 @@ function WaiterLoginModal({ onLogin, onClose }) {
         email: data.email,
         role: "waiter",
         restaurantId: data.restaurant_id,
+        restaurantName: data.restaurant_name || "Restaurant",
       });
     } catch {
-      if (email.includes("@") && password.length >= 4) {
-        onLogin({
-          id: Date.now(),
-          name: email.split("@")[0],
-          email,
-          role: "waiter",
-        });
-      } else {
-        setError("Email sau parolă incorectă.");
-      }
+      setError("Eroare la conectare.");
     }
     setLoading(false);
   };
@@ -227,7 +220,6 @@ function WaiterLoginModal({ onLogin, onClose }) {
         flexDirection: "column",
         alignItems: "center",
         justifyContent: "flex-end",
-        animation: "fadeIn .3s ease",
       }}
       onClick={onClose}
     >
@@ -240,10 +232,10 @@ function WaiterLoginModal({ onLogin, onClose }) {
           width: "100%",
           maxWidth: 430,
           padding: "28px 24px 48px",
-          animation: "slideUp .35s cubic-bezier(.4,0,.2,1)",
+          animation: "slideUp .35s ease",
         }}
       >
-        <div style={{ textAlign: "center", marginBottom: 28 }}>
+        <div style={{ textAlign: "center", marginBottom: 24 }}>
           <div
             style={{
               width: 64,
@@ -391,26 +383,74 @@ function WaiterLoginModal({ onLogin, onClose }) {
           Anulează
         </button>
       </div>
-      <style>{`@keyframes slideUp{from{transform:translateY(100%);}to{transform:translateY(0);}} @keyframes fadeIn{from{opacity:0;}to{opacity:1;}}`}</style>
+      <style>{`@keyframes slideUp{from{transform:translateY(100%);}to{transform:translateY(0);}}`}</style>
     </div>
   );
 }
 
-// ─── SELECTOR DEMO ────────────────────────────────────────────────────────────
-function DemoSelector({ onSelect, onClose }) {
+function OwnerRegisterModal({ onClose, onSuccess }) {
+  const [form, setForm] = useState({
+    name: "",
+    email: "",
+    password: "",
+    phone: "",
+  });
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
+
+  const handleRegister = async () => {
+    if (!form.name || !form.email || !form.password) {
+      setError("Completează câmpurile obligatorii.");
+      return;
+    }
+    if (form.password.length < 6) {
+      setError("Parola trebuie să aibă minim 6 caractere.");
+      return;
+    }
+    setLoading(true);
+    setError("");
+
+    const { data, error: authError } = await supabase.auth.signUp({
+      email: form.email,
+      password: form.password,
+      options: { data: { full_name: form.name } },
+    });
+
+    if (authError) {
+      setError(authError.message);
+      setLoading(false);
+      return;
+    }
+
+    if (data.user) {
+      await supabase.from("profiles").upsert({
+        id: data.user.id,
+        full_name: form.name,
+        phone: form.phone || null,
+        role: "owner",
+        plan: "free",
+        status: "pending",
+        requested_at: new Date().toISOString(),
+      });
+    }
+
+    setLoading(false);
+    onSuccess();
+  };
+
   return (
     <div
       style={{
         position: "fixed",
         inset: 0,
         zIndex: 500,
-        background: "rgba(0,0,0,.8)",
+        background: "rgba(0,0,0,.85)",
         backdropFilter: "blur(10px)",
         display: "flex",
         flexDirection: "column",
         alignItems: "center",
         justifyContent: "flex-end",
-        animation: "fadeIn .3s ease",
       }}
       onClick={onClose}
     >
@@ -422,120 +462,156 @@ function DemoSelector({ onSelect, onClose }) {
           border: "1px solid #2a2218",
           width: "100%",
           maxWidth: 430,
-          padding: "28px 24px 40px",
-          animation: "slideUp .35s cubic-bezier(.4,0,.2,1)",
+          padding: "28px 24px 48px",
+          maxHeight: "85vh",
+          overflowY: "auto",
+          animation: "slideUp .35s ease",
         }}
       >
-        <div style={{ textAlign: "center", marginBottom: 24 }}>
+        <div style={{ textAlign: "center", marginBottom: 20 }}>
+          <div
+            style={{
+              width: 64,
+              height: 64,
+              borderRadius: 18,
+              margin: "0 auto 16px",
+              background: "linear-gradient(135deg,#4a6e4a,#2d4a2d)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              fontSize: 32,
+            }}
+          >
+            🏪
+          </div>
           <div
             style={{
               fontFamily: "'Fraunces',serif",
               fontSize: 22,
               fontWeight: 900,
-              marginBottom: 6,
+              marginBottom: 4,
             }}
           >
-            Alege experiența demo
+            Înregistrare Proprietar
           </div>
-          <div style={{ fontSize: 13, color: "#6b6050" }}>
-            Explorează fără cont real
+          <div style={{ fontSize: 13, color: "#6b6050", lineHeight: 1.5 }}>
+            Cererea ta va fi verificată și aprobată în 24-48 ore.
           </div>
         </div>
-        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          {[
-            {
-              role: "client",
-              icon: "👤",
-              label: "Sunt client",
-              desc: "Rezervă masă, explorează meniul, comandă",
-              color: "#c0622f",
-              bg: "rgba(192,98,47,.2)",
-              border: "rgba(192,98,47,.35)",
-            },
-            {
-              role: "ospatar",
-              icon: "🤵",
-              label: "Sunt ospătar",
-              desc: "Gestionează comenzile și rezervările",
-              color: "#c8a97e",
-              bg: "rgba(200,169,126,.15)",
-              border: "rgba(200,169,126,.3)",
-            },
-            {
-              role: "proprietar",
-              icon: "👑",
-              label: "Sunt proprietar",
-              desc: "Dashboard, statistici, editor planșeu",
-              color: "#4a6e4a",
-              bg: "rgba(74,110,74,.15)",
-              border: "rgba(74,110,74,.3)",
-            },
-          ].map((opt) => (
-            <button
-              key={opt.role}
-              onClick={() => onSelect(opt.role)}
+        {error && (
+          <div
+            style={{
+              background: "rgba(192,57,43,.15)",
+              border: "1px solid rgba(192,57,43,.3)",
+              borderRadius: 12,
+              padding: "11px 14px",
+              marginBottom: 16,
+              fontSize: 13,
+              color: "#e05050",
+            }}
+          >
+            ⚠️ {error}
+          </div>
+        )}
+        {[
+          {
+            key: "name",
+            label: "Numele tău *",
+            type: "text",
+            placeholder: "Ion Popescu",
+          },
+          {
+            key: "email",
+            label: "Email *",
+            type: "email",
+            placeholder: "email@restaurant.ro",
+          },
+          {
+            key: "password",
+            label: "Parolă * (min. 6)",
+            type: "password",
+            placeholder: "••••••••",
+          },
+          {
+            key: "phone",
+            label: "Telefon",
+            type: "tel",
+            placeholder: "0721 234 567",
+          },
+        ].map((f) => (
+          <div key={f.key} style={{ marginBottom: 14 }}>
+            <label
               style={{
-                padding: "16px 18px",
-                borderRadius: 16,
-                background: `linear-gradient(135deg,${opt.bg},transparent)`,
-                border: `1px solid ${opt.border}`,
-                color: "#f0ebe3",
-                cursor: "pointer",
-                textAlign: "left",
-                display: "flex",
-                alignItems: "center",
-                gap: 14,
+                fontSize: 11,
+                letterSpacing: 1.5,
+                textTransform: "uppercase",
+                color: "#6b6050",
+                marginBottom: 7,
+                display: "block",
               }}
             >
-              <div
-                style={{
-                  width: 48,
-                  height: 48,
-                  borderRadius: 13,
-                  flexShrink: 0,
-                  background: `linear-gradient(135deg,${opt.color},${opt.color}88)`,
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  fontSize: 24,
-                }}
-              >
-                {opt.icon}
-              </div>
-              <div>
-                <div
-                  style={{
-                    fontFamily: "'Fraunces',serif",
-                    fontSize: 16,
-                    fontWeight: 700,
-                    marginBottom: 2,
-                  }}
-                >
-                  {opt.label}
-                </div>
-                <div
-                  style={{
-                    fontSize: 11,
-                    color: "rgba(240,235,227,.5)",
-                    lineHeight: 1.4,
-                  }}
-                >
-                  {opt.desc}
-                </div>
-              </div>
-              <span
-                style={{ marginLeft: "auto", fontSize: 16, color: opt.color }}
-              >
-                ›
-              </span>
-            </button>
-          ))}
+              {f.label}
+            </label>
+            <input
+              type={f.type}
+              placeholder={f.placeholder}
+              value={form[f.key]}
+              onChange={(e) => set(f.key, e.target.value)}
+              style={{
+                width: "100%",
+                background: "#1e1a14",
+                border: "1px solid #2a2218",
+                borderRadius: 14,
+                padding: "13px 16px",
+                color: "#f0ebe3",
+                fontFamily: "'Plus Jakarta Sans',sans-serif",
+                fontSize: 14,
+                outline: "none",
+                boxSizing: "border-box",
+              }}
+            />
+          </div>
+        ))}
+        <div
+          style={{
+            background: "rgba(200,169,126,.08)",
+            border: "1px solid rgba(200,169,126,.2)",
+            borderRadius: 12,
+            padding: "12px 14px",
+            marginBottom: 20,
+            fontSize: 12,
+            color: "#c8a97e",
+            lineHeight: 1.6,
+          }}
+        >
+          💡 Contul tău va fi în așteptare până când echipa WhataboutFood
+          verifică și aprobă cererea. Vei fi contactat în 24-48 ore.
         </div>
+        <button
+          onClick={handleRegister}
+          disabled={loading}
+          style={{
+            width: "100%",
+            padding: 15,
+            background: loading
+              ? "#2a2218"
+              : "linear-gradient(135deg,#4a6e4a,#2d4a2d)",
+            border: "none",
+            borderRadius: 16,
+            color: loading ? "#6b6050" : "#fff",
+            fontFamily: "'Fraunces',serif",
+            fontSize: 17,
+            fontWeight: 700,
+            cursor: loading ? "not-allowed" : "pointer",
+            marginBottom: 12,
+          }}
+        >
+          {loading ? "Se trimite cererea..." : "🏪 Trimite cererea"}
+        </button>
         <button
           onClick={onClose}
           style={{
             width: "100%",
-            marginTop: 14,
             padding: 11,
             borderRadius: 12,
             background: "none",
@@ -552,17 +628,16 @@ function DemoSelector({ onSelect, onClose }) {
   );
 }
 
-// ─── SPLASH SCREEN PRINCIPAL ──────────────────────────────────────────────────
 export default function SplashScreen({ onComplete, onWaiterLogin }) {
   const { dispatch, showToast } = useApp();
   const [showSplash, setShowSplash] = useState(true);
-  const [showDemo, setShowDemo] = useState(false);
   const [showWaiterLogin, setShowWaiterLogin] = useState(false);
+  const [showOwnerRegister, setShowOwnerRegister] = useState(false);
+  const [showOwnerPending, setShowOwnerPending] = useState(false);
   const [loginMode, setLoginMode] = useState("login");
   const [form, setForm] = useState({ email: "", password: "", name: "" });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
 
   const handleLogin = async () => {
@@ -586,6 +661,20 @@ export default function SplashScreen({ onComplete, onWaiterLogin }) {
       .select("*")
       .eq("id", data.user.id)
       .single();
+    if (profile?.role === "owner" && profile?.status === "pending") {
+      await supabase.auth.signOut();
+      setError(
+        "Contul tău este în așteptarea aprobării. Vei fi contactat în 24-48 ore.",
+      );
+      setLoading(false);
+      return;
+    }
+    if (profile?.role === "owner" && profile?.status === "rejected") {
+      await supabase.auth.signOut();
+      setError("Cererea ta a fost respinsă. Contactează-ne pentru detalii.");
+      setLoading(false);
+      return;
+    }
     dispatch({
       type: "SET_USER",
       payload: {
@@ -594,15 +683,15 @@ export default function SplashScreen({ onComplete, onWaiterLogin }) {
         email: data.user.email,
         plan: profile?.plan || "free",
         restName: profile?.restaurant_name || "Restaurantul meu",
-        role: profile?.role || "owner",
+        role: profile?.role || "client",
       },
     });
     showToast("👋 Bine ai venit!");
-    onComplete("owner");
+    onComplete(profile?.role || "client");
     setLoading(false);
   };
 
-  const handleRegister = async () => {
+  const handleRegisterClient = async () => {
     if (!form.name || !form.email || !form.password) {
       setError("Completează toate câmpurile.");
       return;
@@ -629,8 +718,9 @@ export default function SplashScreen({ onComplete, onWaiterLogin }) {
         .upsert({
           id: data.user.id,
           full_name: form.name,
+          role: "client",
           plan: "free",
-          role: "owner",
+          status: "approved",
         });
     }
     dispatch({
@@ -640,40 +730,12 @@ export default function SplashScreen({ onComplete, onWaiterLogin }) {
         name: form.name,
         email: form.email,
         plan: "free",
-        restName: "Restaurantul meu",
-        role: "owner",
+        role: "client",
       },
     });
     showToast(`🎉 Bun venit, ${form.name}!`);
-    onComplete("owner");
+    onComplete("client");
     setLoading(false);
-  };
-
-  const handleDemo = (role) => {
-    setShowDemo(false);
-    if (role === "client") {
-      dispatch({
-        type: "SET_USER",
-        payload: { name: "Client Demo", role: "client", plan: "free" },
-      });
-      onComplete("client");
-      showToast("👤 Demo client activat!");
-    } else if (role === "ospatar") {
-      setShowWaiterLogin(true);
-    } else {
-      dispatch({
-        type: "SET_USER",
-        payload: {
-          name: "Demo Admin",
-          email: "demo@mamamia.ro",
-          plan: "pro",
-          restName: "Mama Mia",
-          role: "owner",
-        },
-      });
-      onComplete("owner");
-      showToast("👑 Demo proprietar activat!");
-    }
   };
 
   if (showSplash)
@@ -681,12 +743,6 @@ export default function SplashScreen({ onComplete, onWaiterLogin }) {
 
   return (
     <>
-      {showDemo && (
-        <DemoSelector
-          onSelect={handleDemo}
-          onClose={() => setShowDemo(false)}
-        />
-      )}
       {showWaiterLogin && (
         <WaiterLoginModal
           onLogin={(w) => {
@@ -695,6 +751,84 @@ export default function SplashScreen({ onComplete, onWaiterLogin }) {
           }}
           onClose={() => setShowWaiterLogin(false)}
         />
+      )}
+      {showOwnerRegister && (
+        <OwnerRegisterModal
+          onClose={() => setShowOwnerRegister(false)}
+          onSuccess={() => {
+            setShowOwnerRegister(false);
+            setShowOwnerPending(true);
+          }}
+        />
+      )}
+
+      {showOwnerPending && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 500,
+            background: "rgba(0,0,0,.85)",
+            backdropFilter: "blur(10px)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: 24,
+          }}
+        >
+          <div
+            style={{
+              background: "#161210",
+              border: "1px solid rgba(74,110,74,.3)",
+              borderRadius: 24,
+              padding: 32,
+              maxWidth: 380,
+              textAlign: "center",
+            }}
+          >
+            <div style={{ fontSize: 48, marginBottom: 16 }}>⏳</div>
+            <div
+              style={{
+                fontFamily: "'Fraunces',serif",
+                fontSize: 22,
+                fontWeight: 900,
+                marginBottom: 10,
+              }}
+            >
+              Cerere trimisă!
+            </div>
+            <div
+              style={{
+                fontSize: 14,
+                color: "#6b6050",
+                lineHeight: 1.7,
+                marginBottom: 24,
+              }}
+            >
+              Cererea ta a fost primită.
+              <br />
+              Echipa <b style={{ color: "#f0ebe3" }}>WhataboutFood</b> te va
+              contacta în <b style={{ color: "#c8a97e" }}>24-48 ore</b>.
+            </div>
+            <button
+              onClick={() => setShowOwnerPending(false)}
+              style={{
+                width: "100%",
+                padding: 13,
+                borderRadius: 14,
+                background: "linear-gradient(135deg,#4a6e4a,#2d4a2d)",
+                border: "none",
+                color: "#fff",
+                fontFamily: "'Fraunces',serif",
+                fontSize: 15,
+                fontWeight: 700,
+                cursor: "pointer",
+              }}
+            >
+              Am înțeles
+            </button>
+          </div>
+        </div>
       )}
 
       <div
@@ -708,7 +842,6 @@ export default function SplashScreen({ onComplete, onWaiterLogin }) {
           animation: "fadeInUp .5s ease",
         }}
       >
-        {/* Hero */}
         <div
           style={{
             padding: "60px 28px 36px",
@@ -764,9 +897,7 @@ export default function SplashScreen({ onComplete, onWaiterLogin }) {
           </div>
         </div>
 
-        {/* Form */}
         <div style={{ padding: "24px 24px 0", flex: 1 }}>
-          {/* Tabs */}
           <div
             style={{
               display: "grid",
@@ -775,11 +906,14 @@ export default function SplashScreen({ onComplete, onWaiterLogin }) {
               marginBottom: 24,
             }}
           >
-            {["login", "register"].map((m) => (
+            {[
+              { id: "login", label: "Intră în cont" },
+              { id: "register", label: "Cont nou" },
+            ].map((m) => (
               <button
-                key={m}
+                key={m.id}
                 onClick={() => {
-                  setLoginMode(m);
+                  setLoginMode(m.id);
                   setError("");
                 }}
                 style={{
@@ -788,13 +922,12 @@ export default function SplashScreen({ onComplete, onWaiterLogin }) {
                   fontSize: 14,
                   fontWeight: 600,
                   cursor: "pointer",
-                  background: loginMode === m ? "#c0622f" : "#1e1a14",
-                  border: `1px solid ${loginMode === m ? "#c0622f" : "#2a2218"}`,
-                  color: loginMode === m ? "#fff" : "#6b6050",
-                  transition: "all .2s",
+                  background: loginMode === m.id ? "#c0622f" : "#1e1a14",
+                  border: `1px solid ${loginMode === m.id ? "#c0622f" : "#2a2218"}`,
+                  color: loginMode === m.id ? "#fff" : "#6b6050",
                 }}
               >
-                {m === "login" ? "Intră în cont" : "Înregistrare"}
+                {m.label}
               </button>
             ))}
           </div>
@@ -832,7 +965,7 @@ export default function SplashScreen({ onComplete, onWaiterLogin }) {
                 </label>
                 <input
                   type="email"
-                  placeholder="email@restaurant.ro"
+                  placeholder="email@gmail.com"
                   value={form.email}
                   onChange={(e) => set("email", e.target.value)}
                   onKeyDown={(e) => e.key === "Enter" && handleLogin()}
@@ -907,7 +1040,6 @@ export default function SplashScreen({ onComplete, onWaiterLogin }) {
             </>
           ) : (
             <>
-              {/* FĂRĂ câmpul Restaurant — doar Nume + Email + Parolă */}
               <div style={{ marginBottom: 14 }}>
                 <label
                   style={{
@@ -954,7 +1086,7 @@ export default function SplashScreen({ onComplete, onWaiterLogin }) {
                 </label>
                 <input
                   type="email"
-                  placeholder="email@restaurant.ro"
+                  placeholder="email@gmail.com"
                   value={form.email}
                   onChange={(e) => set("email", e.target.value)}
                   style={{
@@ -1013,10 +1145,10 @@ export default function SplashScreen({ onComplete, onWaiterLogin }) {
                   borderRadius: 10,
                 }}
               >
-                🔒 Datele tale sunt stocate securizat. Parola e criptată.
+                🔒 Datele tale sunt stocate securizat.
               </div>
               <button
-                onClick={handleRegister}
+                onClick={handleRegisterClient}
                 disabled={loading}
                 style={{
                   width: "100%",
@@ -1031,10 +1163,45 @@ export default function SplashScreen({ onComplete, onWaiterLogin }) {
                   fontSize: 17,
                   fontWeight: 700,
                   cursor: loading ? "not-allowed" : "pointer",
+                  marginBottom: 14,
+                }}
+              >
+                {loading ? "Se creează contul..." : "Creează cont client"}
+              </button>
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 12,
                   marginBottom: 12,
                 }}
               >
-                {loading ? "Se creează contul..." : "Creează contul gratuit"}
+                <div style={{ flex: 1, height: 1, background: "#2a2218" }} />
+                <span style={{ fontSize: 12, color: "#6b6050" }}>sau</span>
+                <div style={{ flex: 1, height: 1, background: "#2a2218" }} />
+              </div>
+              <button
+                onClick={() => setShowOwnerRegister(true)}
+                style={{
+                  width: "100%",
+                  padding: 14,
+                  borderRadius: 16,
+                  background:
+                    "linear-gradient(135deg,rgba(74,110,74,.2),rgba(45,74,45,.1))",
+                  border: "1px solid rgba(74,110,74,.35)",
+                  color: "#6b9e6b",
+                  fontFamily: "'Fraunces',serif",
+                  fontSize: 15,
+                  fontWeight: 700,
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: 10,
+                  marginBottom: 12,
+                }}
+              >
+                <span>🏪</span> Sunt proprietar de locație
               </button>
             </>
           )}
@@ -1051,41 +1218,6 @@ export default function SplashScreen({ onComplete, onWaiterLogin }) {
             <span style={{ fontSize: 12, color: "#6b6050" }}>sau</span>
             <div style={{ flex: 1, height: 1, background: "#2a2218" }} />
           </div>
-
-          <button
-            onClick={() => setShowDemo(true)}
-            style={{
-              width: "100%",
-              padding: 15,
-              borderRadius: 16,
-              background:
-                "linear-gradient(135deg,rgba(200,169,126,.15),rgba(139,106,64,.08))",
-              border: "1px solid rgba(200,169,126,.3)",
-              color: "#c8a97e",
-              fontFamily: "'Fraunces',serif",
-              fontSize: 16,
-              fontWeight: 700,
-              cursor: "pointer",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              gap: 10,
-              marginBottom: 12,
-            }}
-          >
-            <span>✨</span> Explorează demo-ul{" "}
-            <span
-              style={{
-                fontSize: 11,
-                color: "rgba(200,169,126,.5)",
-                fontFamily: "'Plus Jakarta Sans',sans-serif",
-                fontWeight: 400,
-              }}
-            >
-              fără cont
-            </span>
-          </button>
-
           <button
             onClick={() => setShowWaiterLogin(true)}
             style={{

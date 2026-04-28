@@ -1192,3 +1192,33 @@ export default function Home({ onLogout }) {
   if (user?.role === "owner") return <HomeOwner onLogout={onLogout} />;
   return <HomeClient />;
 }
+// Adaugă după butoanele existente de acțiuni rapide
+{
+  user?.email === "sloatalucian@yahoo.com" && (
+    <div
+      onClick={() => navigate("superAdmin")}
+      style={{
+        background:
+          "linear-gradient(135deg,rgba(91,141,217,.2),rgba(60,100,180,.1))",
+        border: "1px solid rgba(91,141,217,.3)",
+        borderRadius: 16,
+        padding: 16,
+        cursor: "pointer",
+        gridColumn: "1 / -1",
+        display: "flex",
+        alignItems: "center",
+        gap: 14,
+      }}
+    >
+      <div style={{ fontSize: 26 }}>⚙️</div>
+      <div>
+        <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 2 }}>
+          Super Admin
+        </div>
+        <div style={{ fontSize: 10, color: "var(--muted)" }}>
+          Gestionează platforma
+        </div>
+      </div>
+    </div>
+  );
+}

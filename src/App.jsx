@@ -13,8 +13,11 @@ import MenuEditor from "./pages/MenuEditor";
 import NewRestaurant from "./pages/NewRestaurant";
 import Notifications from "./pages/Notifications";
 import FloorEditor from "./pages/FloorEditor";
+import SuperAdmin from "./pages/SuperAdmin";
 import { supabase } from "./supabase";
 import "./styles/global.css";
+
+const ADMIN_EMAIL = "sloatalucian@yahoo.com";
 
 function Router() {
   const { state, dispatch, navigate, showToast } = useApp();
@@ -36,6 +39,11 @@ function Router() {
             .select("*")
             .eq("id", session.user.id)
             .single();
+          if (profile?.role === "owner" && profile?.status === "pending") {
+            await supabase.auth.signOut();
+            setCheckingSession(false);
+            return;
+          }
           dispatch({
             type: "SET_USER",
             payload: {
@@ -44,7 +52,7 @@ function Router() {
               email: session.user.email,
               plan: profile?.plan || "free",
               restName: profile?.restaurant_name || "Restaurantul meu",
-              role: profile?.role || "owner",
+              role: profile?.role || "client",
             },
           });
           setSplashDone(true);
@@ -68,7 +76,13 @@ function Router() {
     return () => subscription.unsubscribe();
   }, []);
 
-  const noNav = ["auth", "selectTable", "newRestaurant", "waiterLogin"];
+  const noNav = [
+    "auth",
+    "selectTable",
+    "newRestaurant",
+    "waiterLogin",
+    "superAdmin",
+  ];
 
   const handleOrderUpdate = (id, status, extra = {}) =>
     dispatch({ type: "ORDER_UPDATE", payload: { id, status, ...extra } });
@@ -123,7 +137,7 @@ function Router() {
       <div className="app">
         {toast && <div className="toast">{toast}</div>}
         <SplashScreen
-          onComplete={() => setSplashDone(true)}
+          onComplete={(role) => setSplashDone(true)}
           onWaiterLogin={handleWaiterLogin}
         />
       </div>
@@ -149,7 +163,6 @@ function Router() {
     );
   }
 
-  // Admin Dashboard — Gestionare Ospătari
   const AdminDashboard = () => (
     <div className="page fade-in">
       <div
@@ -206,10 +219,7 @@ function Router() {
         </button>
       </div>
       <div style={{ padding: 20 }}>
-        <WaiterManagement
-          restaurantId={selectedRest?.id}
-          restaurantName={selectedRest?.name || user?.restName}
-        />
+        <WaiterManagement />
       </div>
     </div>
   );
@@ -221,11 +231,12 @@ function Router() {
     menu: <Meniu />,
     auth: <Auth />,
     admin: <AdminDashboard />,
-    adminFloor: <FloorEditor />, // ← Editor Planșeu nou cu Supabase
+    adminFloor: <FloorEditor />,
     statistici: <StatisticiProprietar />,
     menuEditor: <MenuEditor />,
     newRestaurant: <NewRestaurant />,
     notifications: <Notifications />,
+    superAdmin: <SuperAdmin />,
     waiterLogin: (
       <WaiterLogin
         onLogin={handleWaiterLogin}
