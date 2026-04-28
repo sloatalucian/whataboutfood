@@ -70,7 +70,7 @@ export default function SuperAdmin() {
   const [viewAsOwner, setViewAsOwner] = useState(null);
 
   // ── Verifică acces admin ──
-  if (user?.email !== ADMIN_EMAIL) {
+  if (!user || user?.email !== ADMIN_EMAIL) {
     return (
       <div
         className="page fade-in"
@@ -278,18 +278,16 @@ export default function SuperAdmin() {
     const end = new Date(now);
     end.setMonth(end.getMonth() + 1);
     try {
-      await supabase
-        .from("subscriptions")
-        .insert({
-          owner_id: ownerId,
-          restaurant_id: restaurantId,
-          plan,
-          amount,
-          status: "paid",
-          payment_method: "manual",
-          period_start: now.toISOString(),
-          period_end: end.toISOString(),
-        });
+      await supabase.from("subscriptions").insert({
+        owner_id: ownerId,
+        restaurant_id: restaurantId,
+        plan,
+        amount,
+        status: "paid",
+        payment_method: "manual",
+        period_start: now.toISOString(),
+        period_end: end.toISOString(),
+      });
       await supabase
         .from("restaurants")
         .update({ plan, plan_expires_at: end.toISOString() })
