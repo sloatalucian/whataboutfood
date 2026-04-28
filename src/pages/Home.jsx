@@ -601,6 +601,8 @@ function HomeClient() {
         .select("*")
         .eq("is_active", true)
         .order("created_at");
+      console.log("Restaurants data:", data);
+      console.log("Restaurants error:", error);
       if (data) setAllRestaurants(data);
       setLoadingRests(false);
     };
