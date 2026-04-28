@@ -302,14 +302,63 @@ export function Meniu() {
     orders,
     user,
   } = state;
+
+  const [dbCategories, setDbCategories] = useState([]);
+  const [menuLoading, setMenuLoading] = useState(true);
+
+  useEffect(() => {
+    if (!selectedRest?.id) return;
+    const loadMenu = async () => {
+      setMenuLoading(true);
+      try {
+        const { data: cats, error: catsError } = await supabase
+          .from("menu_categories")
+          .select("*")
+          .eq("restaurant_id", selectedRest.id)
+          .order("category_order");
+        console.log(
+          "Menu cats:",
+          cats,
+          "Error:",
+          catsError,
+          "RestID:",
+          selectedRest.id,
+        );
+        if (!cats || cats.length === 0) {
+          setDbCategories([]);
+          setMenuLoading(false);
+          return;
+        }
+        const catsWithItems = await Promise.all(
+          cats.map(async (cat) => {
+            const { data: items } = await supabase
+              .from("menu_items")
+              .select("*")
+              .eq("category_id", cat.id)
+              .eq("is_available", true)
+              .order("item_order");
+            return { ...cat, items: items || [] };
+          }),
+        );
+        setDbCategories(catsWithItems);
+        if (catsWithItems.length > 0) {
+          dispatch({ type: "SET_MENU_CAT", payload: catsWithItems[0].id });
+        }
+      } catch (err) {
+        console.log("Load menu error:", err);
+      }
+      setMenuLoading(false);
+    };
+    loadMenu();
+  }, [selectedRest?.id]);
+
   if (!selectedRest) {
     navigate("home");
     return null;
   }
-  const menu = MENUS[selectedRest.id] || {};
-  const cats = Object.keys(menu);
-  const activeCat =
-    activeMenuCat && cats.includes(activeMenuCat) ? activeMenuCat : cats[0];
+
+  const activeCatObj =
+    dbCategories.find((c) => c.id === activeMenuCat) || dbCategories[0];
   const cartQty = (id) => cart.find((i) => i.id === id)?.qty || 0;
   const hasTable = orderTableNum && orderTableNum !== 1;
 
@@ -609,184 +658,257 @@ export function Meniu() {
         className="inner"
         style={{ paddingBottom: cart.length > 0 ? 160 : 90 }}
       >
-        <div
-          style={{
-            display: "flex",
-            gap: 8,
-            overflowX: "auto",
-            margin: "0 -20px 16px",
-            paddingLeft: 20,
-            paddingRight: 20,
-            scrollbarWidth: "none",
-          }}
-        >
-          {cats.map((cat) => (
-            <div
-              key={cat}
-              onClick={() => dispatch({ type: "SET_MENU_CAT", payload: cat })}
-              style={{
-                padding: "8px 16px",
-                borderRadius: 20,
-                whiteSpace: "nowrap",
-                background: activeCat === cat ? "var(--terra)" : "var(--card2)",
-                border: `1px solid ${activeCat === cat ? "var(--terra)" : "var(--border)"}`,
-                fontSize: 13,
-                cursor: "pointer",
-                flexShrink: 0,
-                color: activeCat === cat ? "#fff" : "var(--muted)",
-                fontWeight: activeCat === cat ? 600 : 400,
-              }}
-            >
-              {cat}
+        {/* Loading */}
+        {menuLoading ? (
+          <div
+            style={{
+              textAlign: "center",
+              padding: "40px 0",
+              color: "var(--muted)",
+              fontSize: 13,
+            }}
+          >
+            Se încarcă meniul...
+          </div>
+        ) : dbCategories.length === 0 ? (
+          <div style={{ textAlign: "center", padding: "40px 0" }}>
+            <div style={{ fontSize: 36, marginBottom: 10 }}>🍽️</div>
+            <div style={{ fontSize: 14, color: "var(--muted)" }}>
+              Meniul nu este disponibil momentan.
             </div>
-          ))}
-        </div>
-        {(menu[activeCat] || []).map((item) => {
-          const qty = cartQty(item.id);
-          return (
+          </div>
+        ) : (
+          <>
+            {/* Tabs categorii */}
             <div
-              key={item.id}
               style={{
-                background: "var(--card)",
-                border: "1px solid var(--border)",
-                borderRadius: 18,
-                padding: 14,
                 display: "flex",
-                alignItems: "flex-start",
-                gap: 12,
-                marginBottom: 10,
+                gap: 8,
+                overflowX: "auto",
+                margin: "0 -20px 16px",
+                paddingLeft: 20,
+                paddingRight: 20,
+                scrollbarWidth: "none",
               }}
             >
-              <div
-                style={{
-                  width: 52,
-                  height: 52,
-                  background: "var(--card2)",
-                  borderRadius: 13,
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  fontSize: 24,
-                  flexShrink: 0,
-                }}
-              >
-                {item.emoji}
-              </div>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontWeight: 600, fontSize: 15, marginBottom: 2 }}>
-                  {item.name}
-                </div>
+              {dbCategories.map((cat) => (
                 <div
+                  key={cat.id}
+                  onClick={() =>
+                    dispatch({ type: "SET_MENU_CAT", payload: cat.id })
+                  }
                   style={{
-                    fontSize: 12,
-                    color: "var(--muted)",
-                    lineHeight: 1.4,
-                    marginBottom: 6,
-                  }}
-                >
-                  {item.desc}
-                </div>
-                <div
-                  style={{
+                    padding: "8px 16px",
+                    borderRadius: 20,
+                    whiteSpace: "nowrap",
+                    background:
+                      activeCatObj?.id === cat.id
+                        ? "var(--terra)"
+                        : "var(--card2)",
+                    border: `1px solid ${activeCatObj?.id === cat.id ? "var(--terra)" : "var(--border)"}`,
+                    fontSize: 13,
+                    cursor: "pointer",
+                    flexShrink: 0,
+                    color:
+                      activeCatObj?.id === cat.id ? "#fff" : "var(--muted)",
+                    fontWeight: activeCatObj?.id === cat.id ? 600 : 400,
                     display: "flex",
                     alignItems: "center",
-                    justifyContent: "space-between",
+                    gap: 5,
+                  }}
+                >
+                  <span>{cat.emoji}</span>
+                  <span>{cat.name}</span>
+                </div>
+              ))}
+            </div>
+
+            {/* Produse */}
+            {(activeCatObj?.items || []).map((item) => {
+              const qty = cartQty(item.id);
+              return (
+                <div
+                  key={item.id}
+                  style={{
+                    background: "var(--card)",
+                    border: "1px solid var(--border)",
+                    borderRadius: 18,
+                    padding: 14,
+                    display: "flex",
+                    alignItems: "flex-start",
+                    gap: 12,
+                    marginBottom: 10,
                   }}
                 >
                   <div
                     style={{
-                      fontFamily: "'Fraunces',serif",
-                      fontSize: 18,
-                      fontWeight: 700,
-                      color: "var(--warm)",
+                      width: 52,
+                      height: 52,
+                      background: "var(--card2)",
+                      borderRadius: 13,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      fontSize: 24,
+                      flexShrink: 0,
                     }}
                   >
-                    {item.price} lei
+                    {item.emoji}
                   </div>
-                  <div
-                    style={{ display: "flex", alignItems: "center", gap: 7 }}
-                  >
-                    {qty > 0 ? (
-                      <>
-                        <button
-                          onClick={() =>
-                            dispatch({ type: "CART_REMOVE", payload: item.id })
-                          }
-                          style={{
-                            width: 28,
-                            height: 28,
-                            borderRadius: 8,
-                            background: "var(--card2)",
-                            border: "1px solid var(--border)",
-                            color: "var(--cream)",
-                            fontSize: 15,
-                            cursor: "pointer",
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "center",
-                          }}
-                        >
-                          −
-                        </button>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div
+                      style={{ fontWeight: 600, fontSize: 15, marginBottom: 2 }}
+                    >
+                      {item.name}
+                      {item.is_vegetarian && (
                         <span
                           style={{
-                            fontSize: 14,
-                            fontWeight: 700,
-                            minWidth: 18,
-                            textAlign: "center",
-                          }}
-                        >
-                          {qty}
-                        </span>
-                        <button
-                          onClick={() =>
-                            dispatch({ type: "CART_ADD", payload: item })
-                          }
-                          style={{
-                            width: 28,
-                            height: 28,
+                            fontSize: 9,
+                            padding: "2px 6px",
                             borderRadius: 8,
-                            background: "var(--card2)",
-                            border: "1px solid var(--border)",
-                            color: "var(--cream)",
-                            fontSize: 15,
-                            cursor: "pointer",
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "center",
+                            background: "rgba(74,110,74,.2)",
+                            color: "#6b9e6b",
+                            marginLeft: 6,
                           }}
                         >
-                          +
-                        </button>
-                      </>
-                    ) : (
-                      <button
-                        onClick={() =>
-                          dispatch({ type: "CART_ADD", payload: item })
-                        }
+                          🌿 Veg
+                        </span>
+                      )}
+                    </div>
+                    {item.description && (
+                      <div
                         style={{
-                          width: 32,
-                          height: 32,
-                          borderRadius: 9,
-                          background: "var(--terra)",
-                          border: "none",
-                          color: "#fff",
-                          fontSize: 20,
-                          cursor: "pointer",
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
+                          fontSize: 12,
+                          color: "var(--muted)",
+                          lineHeight: 1.4,
+                          marginBottom: 6,
                         }}
                       >
-                        +
-                      </button>
+                        {item.description}
+                      </div>
                     )}
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                      }}
+                    >
+                      <div
+                        style={{
+                          fontFamily: "'Fraunces',serif",
+                          fontSize: 18,
+                          fontWeight: 700,
+                          color: "var(--warm)",
+                        }}
+                      >
+                        {item.price} lei
+                      </div>
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 7,
+                        }}
+                      >
+                        {qty > 0 ? (
+                          <>
+                            <button
+                              onClick={() =>
+                                dispatch({
+                                  type: "CART_REMOVE",
+                                  payload: item.id,
+                                })
+                              }
+                              style={{
+                                width: 28,
+                                height: 28,
+                                borderRadius: 8,
+                                background: "var(--card2)",
+                                border: "1px solid var(--border)",
+                                color: "var(--cream)",
+                                fontSize: 15,
+                                cursor: "pointer",
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                              }}
+                            >
+                              −
+                            </button>
+                            <span
+                              style={{
+                                fontSize: 14,
+                                fontWeight: 700,
+                                minWidth: 18,
+                                textAlign: "center",
+                              }}
+                            >
+                              {qty}
+                            </span>
+                            <button
+                              onClick={() =>
+                                dispatch({ type: "CART_ADD", payload: item })
+                              }
+                              style={{
+                                width: 28,
+                                height: 28,
+                                borderRadius: 8,
+                                background: "var(--card2)",
+                                border: "1px solid var(--border)",
+                                color: "var(--cream)",
+                                fontSize: 15,
+                                cursor: "pointer",
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                              }}
+                            >
+                              +
+                            </button>
+                          </>
+                        ) : (
+                          <button
+                            onClick={() =>
+                              dispatch({ type: "CART_ADD", payload: item })
+                            }
+                            style={{
+                              width: 32,
+                              height: 32,
+                              borderRadius: 9,
+                              background: "var(--terra)",
+                              border: "none",
+                              color: "#fff",
+                              fontSize: 20,
+                              cursor: "pointer",
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                            }}
+                          >
+                            +
+                          </button>
+                        )}
+                      </div>
+                    </div>
                   </div>
                 </div>
+              );
+            })}
+            {(activeCatObj?.items || []).length === 0 && (
+              <div
+                style={{
+                  textAlign: "center",
+                  padding: "30px 0",
+                  color: "var(--muted)",
+                  fontSize: 13,
+                }}
+              >
+                Niciun produs în această categorie.
               </div>
-            </div>
-          );
-        })}
+            )}
+          </>
+        )}
         {orders.filter(
           (o) => o.table === orderTableNum || o.tableLabel === orderTableNum,
         ).length > 0 && (
