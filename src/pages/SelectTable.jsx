@@ -537,7 +537,13 @@ export function SelectTable({ restaurant, onSelected, onBack }) {
 // ═══════════════════════════════════════════════════════════════════════════
 // TABLETA OSPĂTARULUI — cu Realtime Supabase
 // ═══════════════════════════════════════════════════════════════════════════
-export function WaiterTablet({ restaurant, onBack, waiterName, waiterId }) {
+export function WaiterTablet({
+  restaurant,
+  restaurantId: restaurantIdProp,
+  onBack,
+  waiterName,
+  waiterId,
+}) {
   const { tableStates, markPaid, freeTable, reload } = useTable();
   const { dispatch, showToast } = useApp();
   const [tab, setTab] = useState("orders");
@@ -565,7 +571,15 @@ export function WaiterTablet({ restaurant, onBack, waiterName, waiterId }) {
     },
   ]);
 
-  const restaurantId = restaurant?.id;
+  const restaurantId = restaurantIdProp || restaurant?.id;
+  console.log(
+    "WaiterTablet restaurantId:",
+    restaurantId,
+    "restaurantIdProp:",
+    restaurantIdProp,
+    "restaurant?.id:",
+    restaurant?.id,
+  );
   const [istoricDate, setIstoricDate] = useState(
     () => new Date().toISOString().split("T")[0],
   );

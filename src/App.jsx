@@ -158,7 +158,13 @@ function Router() {
         <div className="app">
           {toast && <div className="toast">{toast}</div>}
           <WaiterTablet
-            restaurant={selectedRest || { name: "Mama Mia", floors: [] }}
+            restaurant={
+              selectedRest || {
+                name: waiterUser?.restaurantName || "Restaurant",
+                floors: [],
+              }
+            }
+            restaurantId={waiterUser?.restaurantId || selectedRest?.id}
             orders={orders}
             onOrderUpdate={handleOrderUpdate}
             onOrderClose={handleOrderClose}
