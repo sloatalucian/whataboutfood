@@ -23,12 +23,6 @@ export default function Notifications() {
         .limit(50);
       if (data) setNotifications(data);
       setLoading(false);
-      // Marchează toate ca citite
-      await supabase
-        .from("notifications")
-        .update({ is_read: true })
-        .eq("user_id", user.id)
-        .eq("is_read", false);
     };
     load();
 
@@ -49,7 +43,18 @@ export default function Notifications() {
       )
       .subscribe();
 
-    return () => supabase.removeChannel(channel);
+    return () => {
+      supabase.removeChannel(channel);
+      // Marchează toate ca citite când iese din pagina de notificări
+      if (user?.id) {
+        supabase
+          .from("notifications")
+          .update({ is_read: true })
+          .eq("user_id", user.id)
+          .eq("is_read", false)
+          .then(() => {});
+      }
+    };
   }, [user?.id]);
 
   const getIcon = (type) => {

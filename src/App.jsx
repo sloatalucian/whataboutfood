@@ -86,7 +86,7 @@ function Router() {
         .select("*", { count: "exact", head: true })
         .eq("user_id", state.user.id)
         .eq("is_read", false);
-      if (count > 0) dispatch({ type: "SET_UNREAD", payload: count });
+      dispatch({ type: "SET_UNREAD", payload: count || 0 });
     };
     loadUnread();
 
