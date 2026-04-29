@@ -354,7 +354,6 @@ export function Meniu() {
   const [payNoteLoading, setPayNoteLoading] = useState(false);
 
   useEffect(() => {
-    console.log("selectedRest in Meniu:", selectedRest);
     if (!selectedRest?.id) return;
     const loadMenu = async () => {
       setMenuLoading(true);
@@ -364,14 +363,6 @@ export function Meniu() {
           .select("*")
           .eq("restaurant_id", selectedRest.id)
           .order("category_order");
-        console.log(
-          "Menu cats:",
-          cats,
-          "Error:",
-          catsError,
-          "RestID:",
-          selectedRest.id,
-        );
         if (!cats || cats.length === 0) {
           setDbCategories([]);
           setMenuLoading(false);
@@ -392,9 +383,7 @@ export function Meniu() {
         if (catsWithItems.length > 0) {
           dispatch({ type: "SET_MENU_CAT", payload: catsWithItems[0].id });
         }
-      } catch (err) {
-        console.log("Load menu error:", err);
-      }
+      } catch (err) {}
       setMenuLoading(false);
     };
     loadMenu();
@@ -484,7 +473,6 @@ export function Meniu() {
       dispatch({ type: "CART_CLEAR" });
       showToast("✅ Comanda trimisă!");
     } catch (err) {
-      console.log("Order error:", err);
       dispatch({
         type: "PLACE_ORDER",
         payload: {

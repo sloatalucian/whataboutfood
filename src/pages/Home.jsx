@@ -604,8 +604,6 @@ function HomeClient() {
         .select("*")
         .eq("is_active", true)
         .order("created_at");
-      console.log("Restaurants data:", data);
-      console.log("Restaurants error:", error);
       if (data) setAllRestaurants(data);
       setLoadingRests(false);
     };
@@ -1081,9 +1079,7 @@ function HomeOwner({ onLogout }) {
         console.error("user.id folosit:", user.id);
       }
       if (data) setMyRestaurants(data);
-    } catch (err) {
-      console.log("Load restaurants error:", err);
-    }
+    } catch (err) {}
     setLoading(false);
   }, [user?.id]);
 

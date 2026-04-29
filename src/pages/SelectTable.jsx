@@ -572,14 +572,6 @@ export function WaiterTablet({
   ]);
 
   const restaurantId = restaurantIdProp || restaurant?.id;
-  console.log(
-    "WaiterTablet restaurantId:",
-    restaurantId,
-    "restaurantIdProp:",
-    restaurantIdProp,
-    "restaurant?.id:",
-    restaurant?.id,
-  );
   const [istoricDate, setIstoricDate] = useState(
     () => new Date().toISOString().split("T")[0],
   );
@@ -599,19 +591,9 @@ export function WaiterTablet({
         .eq("restaurant_id", restaurantId)
         .in("status", ["pending", "cooking", "ready", "paying"])
         .order("created_at", { ascending: true });
-      console.log(
-        "loadOrders restaurantId:",
-        restaurantId,
-        "data:",
-        data,
-        "error:",
-        error,
-      );
       if (error) throw error;
       setOrders(data || []);
-    } catch (err) {
-      console.log("Load orders error:", err);
-    }
+    } catch (err) {}
     setLoading(false);
   };
 
@@ -631,9 +613,7 @@ export function WaiterTablet({
         .order("created_at", { ascending: false });
       if (error) throw error;
       setIstoricOrders(data || []);
-    } catch (err) {
-      console.log("Load istoric error:", err);
-    }
+    } catch (err) {}
     setIstoricLoading(false);
   };
 
