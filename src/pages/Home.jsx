@@ -813,6 +813,149 @@ function HomeClient() {
                 );
               })}
             </div>
+            {/* Buton cere nota */}
+            {activeOrder?.status === "ready" && (
+              <button
+                onClick={() => setShowPayNote(true)}
+                style={{
+                  marginTop: 10,
+                  width: "100%",
+                  padding: "11px",
+                  borderRadius: 14,
+                  background: "linear-gradient(135deg,#c0622f,#8b3a18)",
+                  border: "none",
+                  color: "#fff",
+                  fontFamily: "'Fraunces',serif",
+                  fontSize: 14,
+                  fontWeight: 700,
+                  cursor: "pointer",
+                }}
+              >
+                🧾 Cere nota de plată
+              </button>
+            )}
+            {activeOrder?.status === "paying" && (
+              <div
+                style={{
+                  fontSize: 12,
+                  color: "#5b8dd9",
+                  textAlign: "center",
+                  marginTop: 8,
+                  fontWeight: 600,
+                }}
+              >
+                ✓ Ai ales:{" "}
+                {activeOrder.payment_method === "cash" ? "💵 Cash" : "💳 Card"}{" "}
+                — ospătarul vine
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Modal Cere Nota din Home */}
+        {showPayNote && activeOrder && (
+          <div
+            style={{
+              position: "fixed",
+              inset: 0,
+              background: "rgba(0,0,0,.7)",
+              zIndex: 100,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              padding: 20,
+            }}
+            onClick={() => setShowPayNote(false)}
+          >
+            <div
+              style={{
+                background: "#161210",
+                borderRadius: 20,
+                border: "1px solid #2a2218",
+                width: "100%",
+                maxWidth: 390,
+                padding: "24px 20px 28px",
+              }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div
+                style={{
+                  fontFamily: "'Fraunces',serif",
+                  fontSize: 20,
+                  fontWeight: 900,
+                  marginBottom: 6,
+                }}
+              >
+                🧾 Nota de plată
+              </div>
+              <div
+                style={{
+                  fontSize: 13,
+                  color: "var(--muted)",
+                  marginBottom: 20,
+                }}
+              >
+                Masa {activeOrder.table_label} • Total: {activeOrder.total} lei
+              </div>
+              <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 12 }}>
+                Cum dorești să plătești?
+              </div>
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "1fr 1fr",
+                  gap: 12,
+                }}
+              >
+                {[
+                  { method: "cash", icon: "💵", label: "Cash" },
+                  { method: "card", icon: "💳", label: "Card" },
+                ].map((p) => (
+                  <button
+                    key={p.method}
+                    onClick={() => !payNoteLoading && requestBill(p.method)}
+                    style={{
+                      padding: "20px 14px",
+                      borderRadius: 16,
+                      border: "2px solid #2a2218",
+                      background: "#1e1a14",
+                      color: "#f0ebe3",
+                      fontFamily: "'Fraunces',serif",
+                      fontSize: 16,
+                      fontWeight: 700,
+                      cursor: "pointer",
+                      textAlign: "center",
+                    }}
+                  >
+                    <span
+                      style={{
+                        fontSize: 28,
+                        display: "block",
+                        marginBottom: 6,
+                      }}
+                    >
+                      {p.icon}
+                    </span>
+                    {p.label}
+                  </button>
+                ))}
+              </div>
+              <button
+                onClick={() => setShowPayNote(false)}
+                style={{
+                  marginTop: 16,
+                  width: "100%",
+                  padding: 10,
+                  background: "none",
+                  border: "none",
+                  color: "var(--muted)",
+                  cursor: "pointer",
+                  fontSize: 13,
+                }}
+              >
+                Anulează
+              </button>
+            </div>
           </div>
         )}
 
