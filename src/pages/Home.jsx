@@ -631,6 +631,28 @@ function HomeClient() {
     return () => clearInterval(interval);
   }, [user?.id]);
 
+  const requestBill = async (method) => {
+    if (!activeOrder) return;
+    setPayNoteLoading(true);
+    try {
+      const { error } = await supabase
+        .from("orders")
+        .update({ status: "paying", payment_method: method })
+        .eq("id", activeOrder.id);
+      if (error) throw error;
+      setActiveOrder((prev) => ({
+        ...prev,
+        status: "paying",
+        payment_method: method,
+      }));
+      setShowPayNote(false);
+      showToast("🧾 Nota cerută! Ospătarul vine în curând.");
+    } catch (err) {
+      showToast("❌ Eroare. Încearcă din nou.");
+    }
+    setPayNoteLoading(false);
+  };
+
   const filteredRestaurants = allRestaurants.filter(
     (r) =>
       selectedCity === "Toate orașele" ||
