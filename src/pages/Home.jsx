@@ -588,7 +588,7 @@ function DeleteRestaurantModal({ restaurant, onConfirm, onClose }) {
 
 // ─── HOME CLIENT ──────────────────────────────────────────────────────────────
 function HomeClient() {
-  const { state, dispatch, navigate } = useApp();
+  const { state, dispatch, navigate, showToast } = useApp();
   const { user } = state;
   const [selectedCity, setSelectedCity] = useState("Toate orașele");
   const [allRestaurants, setAllRestaurants] = useState([]);
