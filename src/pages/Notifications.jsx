@@ -45,17 +45,20 @@ export default function Notifications() {
 
     return () => {
       supabase.removeChannel(channel);
-      // Marchează toate ca citite când iese din pagina de notificări
-      if (user?.id) {
-        supabase
-          .from("notifications")
-          .update({ is_read: true })
-          .eq("user_id", user.id)
-          .eq("is_read", false)
-          .then(() => {});
-      }
     };
   }, [user?.id]);
+
+  // Marchează ca citite când utilizatorul vede notificările
+  useEffect(() => {
+    if (!user?.id || loading || notifications.length === 0) return;
+    const unreadIds = notifications.filter((n) => !n.is_read).map((n) => n.id);
+    if (unreadIds.length === 0) return;
+    supabase
+      .from("notifications")
+      .update({ is_read: true })
+      .in("id", unreadIds)
+      .then(() => {});
+  }, [loading, user?.id]);
 
   const getIcon = (type) => {
     switch (type) {
