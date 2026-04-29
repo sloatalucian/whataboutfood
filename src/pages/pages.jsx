@@ -25,33 +25,9 @@ export function Rezervare() {
     };
     loadActiveOrder();
 
-    const channel = supabase
-      .channel(`active_order_${user.id}_${selectedRest.id}`)
-      .on(
-        "postgres_changes",
-        {
-          event: "UPDATE",
-          schema: "public",
-          table: "orders",
-          filter: `restaurant_id=eq.${selectedRest.id}`,
-        },
-        (payload) => {
-          if (payload.new.user_id === user.id) {
-            if (
-              ["pending", "cooking", "ready", "paying"].includes(
-                payload.new.status,
-              )
-            ) {
-              setActiveOrder(payload.new);
-            } else {
-              setActiveOrder(null);
-            }
-          }
-        },
-      )
-      .subscribe();
-
-    return () => supabase.removeChannel(channel);
+    // Polling la fiecare 5 secunde
+    const interval = setInterval(loadActiveOrder, 5000);
+    return () => clearInterval(interval);
   }, [user?.id, selectedRest?.id]);
 
   const requestBill = async (method) => {
@@ -441,33 +417,9 @@ export function Meniu() {
     };
     loadActiveOrder();
 
-    const channel = supabase
-      .channel(`active_order_${user.id}_${selectedRest.id}`)
-      .on(
-        "postgres_changes",
-        {
-          event: "UPDATE",
-          schema: "public",
-          table: "orders",
-          filter: `restaurant_id=eq.${selectedRest.id}`,
-        },
-        (payload) => {
-          if (payload.new.user_id === user.id) {
-            if (
-              ["pending", "cooking", "ready", "paying"].includes(
-                payload.new.status,
-              )
-            ) {
-              setActiveOrder(payload.new);
-            } else {
-              setActiveOrder(null);
-            }
-          }
-        },
-      )
-      .subscribe();
-
-    return () => supabase.removeChannel(channel);
+    // Polling la fiecare 5 secunde
+    const interval = setInterval(loadActiveOrder, 5000);
+    return () => clearInterval(interval);
   }, [user?.id, selectedRest?.id]);
 
   const requestBill = async (method) => {

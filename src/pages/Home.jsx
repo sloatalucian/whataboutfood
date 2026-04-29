@@ -626,31 +626,9 @@ function HomeClient() {
     };
     loadActiveOrder();
 
-    const channel = supabase
-      .channel(`home_active_order_${user.id}`)
-      .on(
-        "postgres_changes",
-        {
-          event: "UPDATE",
-          schema: "public",
-          table: "orders",
-          filter: `user_id=eq.${user.id}`,
-        },
-        (payload) => {
-          if (
-            ["pending", "cooking", "ready", "paying"].includes(
-              payload.new.status,
-            )
-          ) {
-            setActiveOrder((prev) => ({ ...prev, ...payload.new }));
-          } else {
-            setActiveOrder(null);
-          }
-        },
-      )
-      .subscribe();
-
-    return () => supabase.removeChannel(channel);
+    // Polling la fiecare 5 secunde pentru a urmări statusul comenzii
+    const interval = setInterval(loadActiveOrder, 5000);
+    return () => clearInterval(interval);
   }, [user?.id]);
 
   const filteredRestaurants = allRestaurants.filter(
