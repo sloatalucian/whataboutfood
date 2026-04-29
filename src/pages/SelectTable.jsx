@@ -585,6 +585,14 @@ export function WaiterTablet({ restaurant, onBack, waiterName, waiterId }) {
         .eq("restaurant_id", restaurantId)
         .in("status", ["pending", "cooking", "ready"])
         .order("created_at", { ascending: true });
+      console.log(
+        "loadOrders restaurantId:",
+        restaurantId,
+        "data:",
+        data,
+        "error:",
+        error,
+      );
       if (error) throw error;
       setOrders(data || []);
     } catch (err) {
