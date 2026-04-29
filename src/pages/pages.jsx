@@ -7,7 +7,7 @@ import { supabase } from "../supabase";
 // ─── REZERVARE ────────────────────────────────────────────────────────────────
 export function Rezervare() {
   const { state, dispatch, navigate, showToast } = useApp();
-  const { selectedRest, resForm, reservations } = state;
+  const { selectedRest, resForm, reservations, user } = state;
   // Urmărește comanda activă a clientului în timp real
   useEffect(() => {
     if (!user?.id || !selectedRest?.id) return;
