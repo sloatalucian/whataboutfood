@@ -556,6 +556,11 @@ export function WaiterTablet({
   const restaurantId = restaurantIdProp || restaurant?.id;
   const [mapZoom, setMapZoom] = useState(60);
   const [dbFloors, setDbFloors] = useState([]);
+  const [mapDate, setMapDate] = useState(
+    () => new Date().toISOString().split("T")[0],
+  );
+  const [mapTime, setMapTime] = useState("");
+  const [mapReservedTables, setMapReservedTables] = useState([]);
 
   // ── Încarcă floors din Supabase pentru harta mese ──
   useEffect(() => {
@@ -589,6 +594,24 @@ export function WaiterTablet({
   );
   const [istoricOrders, setIstoricOrders] = useState([]);
   const [istoricLoading, setIstoricLoading] = useState(false);
+
+  // ── Încarcă rezervările pentru harta mese ──
+  useEffect(() => {
+    if (!restaurantId || !mapDate) return;
+    const loadMapReservations = async () => {
+      let query = supabase
+        .from("reservations")
+        .select("table_label")
+        .eq("restaurant_id", restaurantId)
+        .eq("date", mapDate)
+        .eq("status", "confirmed");
+      if (mapTime) query = query.eq("time", mapTime);
+      const { data } = await query;
+      if (data)
+        setMapReservedTables(data.map((r) => r.table_label).filter(Boolean));
+    };
+    loadMapReservations();
+  }, [restaurantId, mapDate, mapTime]);
 
   // ── Încarcă comenzile din Supabase ──
   const loadOrders = async () => {
@@ -949,8 +972,10 @@ export function WaiterTablet({
             <div style={{ fontSize: 11, color: "#6b6050", marginTop: 2 }}>
               {restaurant?.name || "Restaurant"} •{" "}
               {new Date().toLocaleTimeString("ro-RO", {
+                timeZone: "Europe/Bucharest",
                 hour: "2-digit",
                 minute: "2-digit",
+                timeZone: "Europe/Bucharest",
               })}
             </div>
           </div>
@@ -1192,6 +1217,7 @@ export function WaiterTablet({
                           {new Date(o.created_at).toLocaleTimeString("ro-RO", {
                             hour: "2-digit",
                             minute: "2-digit",
+                            timeZone: "Europe/Bucharest",
                           })}
                         </div>
                       </div>
@@ -1482,6 +1508,67 @@ export function WaiterTablet({
         {/* ── HARTA MESE ── */}
         {tab === "map" && (
           <div>
+            {/* Selector dată/oră */}
+            <div
+              style={{
+                display: "flex",
+                gap: 8,
+                marginBottom: 14,
+                flexWrap: "wrap",
+                alignItems: "center",
+              }}
+            >
+              <input
+                type="date"
+                value={mapDate}
+                onChange={(e) => setMapDate(e.target.value)}
+                style={{
+                  flex: 1,
+                  background: "#1e1a14",
+                  border: "1px solid #2a2218",
+                  borderRadius: 10,
+                  color: "#f0ebe3",
+                  padding: "8px 10px",
+                  fontSize: 12,
+                  fontFamily: "inherit",
+                }}
+              />
+              <select
+                value={mapTime}
+                onChange={(e) => setMapTime(e.target.value)}
+                style={{
+                  flex: 1,
+                  background: "#1e1a14",
+                  border: "1px solid #2a2218",
+                  borderRadius: 10,
+                  color: mapTime ? "#f0ebe3" : "#6b6050",
+                  padding: "8px 10px",
+                  fontSize: 12,
+                  fontFamily: "inherit",
+                }}
+              >
+                <option value="">Toate orele</option>
+                {[
+                  "12:00",
+                  "12:30",
+                  "13:00",
+                  "13:30",
+                  "14:00",
+                  "14:30",
+                  "18:00",
+                  "18:30",
+                  "19:00",
+                  "19:30",
+                  "20:00",
+                  "20:30",
+                  "21:00",
+                ].map((t) => (
+                  <option key={t} value={t}>
+                    {t}
+                  </option>
+                ))}
+              </select>
+            </div>
             {/* Legenda */}
             <div
               style={{
@@ -1659,7 +1746,16 @@ export function WaiterTablet({
                     ))}
                     {/* Mese */}
                     {(dbFloors[activeMapFloor]?.tables || []).map((table) => {
-                      const status = tableStates[table.id] || "free";
+                      const rtStatus = tableStates[table.id] || "free";
+                      const isMapReserved = mapReservedTables.includes(
+                        table.label,
+                      );
+                      const status =
+                        rtStatus !== "free"
+                          ? rtStatus
+                          : isMapReserved
+                            ? "reserved"
+                            : "free";
                       const colors = {
                         free: "#4a6e4a",
                         reserved: "#c8a97e",
@@ -2130,6 +2226,7 @@ export function WaiterTablet({
                 const ora = new Date(o.created_at).toLocaleTimeString("ro-RO", {
                   hour: "2-digit",
                   minute: "2-digit",
+                  timeZone: "Europe/Bucharest",
                 });
                 const statusColors = {
                   completed: "#6b9e6b",

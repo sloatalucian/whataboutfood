@@ -9,6 +9,27 @@ export function Rezervare() {
   const { state, dispatch, navigate, showToast } = useApp();
   const { selectedRest, resForm, reservations, user } = state;
   const [dbFloors, setDbFloors] = useState([]);
+  const [reservedTables, setReservedTables] = useState([]); // label-urile meselor rezervate
+
+  // Încarcă rezervările confirmate pentru data+ora selectată
+  useEffect(() => {
+    if (!selectedRest?.id || !resForm.date || !resForm.time) {
+      setReservedTables([]);
+      return;
+    }
+    const loadReserved = async () => {
+      const { data } = await supabase
+        .from("reservations")
+        .select("table_label")
+        .eq("restaurant_id", selectedRest.id)
+        .eq("date", resForm.date)
+        .eq("time", resForm.time)
+        .eq("status", "confirmed");
+      if (data)
+        setReservedTables(data.map((r) => r.table_label).filter(Boolean));
+    };
+    loadReserved();
+  }, [selectedRest?.id, resForm.date, resForm.time]);
 
   // Încarcă floors + tables din Supabase
   useEffect(() => {
@@ -386,7 +407,7 @@ export function Rezervare() {
                     ))}
                     {/* Mese */}
                     {allTables.map((t) => {
-                      const isTaken = taken.includes(t.id);
+                      const isTaken = reservedTables.includes(t.label);
                       const isSel = resForm.tableId === t.id;
                       const w = t.seats <= 2 ? 52 : t.seats <= 4 ? 64 : 80;
                       return (
@@ -615,6 +636,8 @@ export function Meniu() {
           observations,
           status: "pending",
           time: new Date().toLocaleTimeString("ro-RO", {
+            timeZone: "Europe/Bucharest",
+            timeZone: "Europe/Bucharest",
             hour: "2-digit",
             minute: "2-digit",
           }),
@@ -2097,6 +2120,7 @@ export function Auth() {
       day: "numeric",
       month: "short",
       year: "numeric",
+      timeZone: "Europe/Bucharest",
     });
   };
 
@@ -2105,6 +2129,7 @@ export function Auth() {
     return new Date(iso).toLocaleTimeString("ro-RO", {
       hour: "2-digit",
       minute: "2-digit",
+      timeZone: "Europe/Bucharest",
     });
   };
 
