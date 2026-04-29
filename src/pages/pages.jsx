@@ -62,7 +62,22 @@ export function Rezervare() {
   const floor = floors[resForm.floorIdx] || floors[0];
   const set = (patch) => dispatch({ type: "RES_FORM", payload: patch });
 
-  const handleReserve = () => {
+  const handleReserve = async () => {
+    try {
+      await supabase.from("reservations").insert({
+        user_id: user?.id || null,
+        restaurant_id: selectedRest.id,
+        customer_name: user?.name || "Client",
+        date: resForm.date || new Date().toISOString().split("T")[0],
+        time: resForm.time || "",
+        persons: resForm.persons || 1,
+        table_label: resForm.tableId || null,
+        observations: resForm.observations || null,
+        status: "pending",
+      });
+    } catch (err) {
+      // Continuăm chiar dacă Supabase pică
+    }
     dispatch({
       type: "RES_CONFIRM",
       payload: {

@@ -550,28 +550,11 @@ export function WaiterTablet({
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeMapFloor, setActiveMapFloor] = useState(0);
-  const [displayReservations, setDisplayReservations] = useState([
-    {
-      id: "r1",
-      table_label: "T2",
-      customer_name: "Ion Popescu",
-      persons: 3,
-      date: "azi",
-      time: "13:00",
-      confirmed: false,
-    },
-    {
-      id: "r2",
-      table_label: "T5",
-      customer_name: "Maria Constantin",
-      persons: 6,
-      date: "azi",
-      time: "19:00",
-      confirmed: true,
-    },
-  ]);
+  const [displayReservations, setDisplayReservations] = useState([]);
+  const [suggestionModal, setSuggestionModal] = useState(null); // { reservationId, text }
 
   const restaurantId = restaurantIdProp || restaurant?.id;
+  const [mapZoom, setMapZoom] = useState(60);
   const [istoricDate, setIstoricDate] = useState(
     () => new Date().toISOString().split("T")[0],
   );
@@ -620,6 +603,39 @@ export function WaiterTablet({
   useEffect(() => {
     if (tab === "istoric") loadIstoric(istoricDate);
   }, [tab, istoricDate, restaurantId]);
+
+  // ── Încarcă rezervările din Supabase ──
+  useEffect(() => {
+    if (!restaurantId) return;
+    const loadReservations = async () => {
+      const today = new Date().toISOString().split("T")[0];
+      const { data } = await supabase
+        .from("reservations")
+        .select("*")
+        .eq("restaurant_id", restaurantId)
+        .gte("date", today)
+        .order("date", { ascending: true })
+        .order("time", { ascending: true });
+      if (data) setDisplayReservations(data);
+    };
+    loadReservations();
+
+    const channel = supabase
+      .channel(`reservations_${restaurantId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "reservations",
+          filter: `restaurant_id=eq.${restaurantId}`,
+        },
+        () => loadReservations(),
+      )
+      .subscribe();
+
+    return () => supabase.removeChannel(channel);
+  }, [restaurantId]);
 
   // ── Realtime — ascultă comenzi noi ──
   useEffect(() => {
@@ -764,23 +780,80 @@ export function WaiterTablet({
     }
   };
 
-  const confirmReservation = (resId) => {
-    setDisplayReservations((prev) =>
-      prev.map((r) => (r.id === resId ? { ...r, confirmed: true } : r)),
-    );
-    showToast("✅ Rezervare confirmată!");
+  const confirmReservation = async (resId) => {
+    try {
+      const reservation = displayReservations.find((r) => r.id === resId);
+      const { error } = await supabase
+        .from("reservations")
+        .update({ status: "confirmed" })
+        .eq("id", resId);
+      if (error) throw error;
+      setDisplayReservations((prev) =>
+        prev.map((r) => (r.id === resId ? { ...r, status: "confirmed" } : r)),
+      );
+      // Notificare client
+      if (reservation?.user_id) {
+        await supabase.from("notifications").insert({
+          user_id: reservation.user_id,
+          restaurant_id: restaurantId,
+          type: "reservation_confirmed",
+          message: "Rezervarea ta a fost confirmată! 📅",
+          is_read: false,
+        });
+      }
+      showToast("✅ Rezervare confirmată!");
+    } catch (err) {
+      showToast("❌ Eroare la confirmare.");
+    }
   };
+
   const refuseReservation = (resId) => {
-    setDisplayReservations((prev) => prev.filter((r) => r.id !== resId));
-    showToast("❌ Rezervare refuzată");
+    // Deschide modalul de sugestie în loc să refuze direct
+    setSuggestionModal({ reservationId: resId, text: "" });
+  };
+
+  const sendRefusalWithSuggestion = async (resId, suggestionText) => {
+    try {
+      const reservation = displayReservations.find((r) => r.id === resId);
+      const { error } = await supabase
+        .from("reservations")
+        .update({
+          status: "rejected",
+          suggestion: suggestionText || null,
+        })
+        .eq("id", resId);
+      if (error) throw error;
+      setDisplayReservations((prev) => prev.filter((r) => r.id !== resId));
+      setSuggestionModal(null);
+      // Notificare client
+      if (reservation?.user_id) {
+        const message = suggestionText
+          ? `Rezervarea ta a fost refuzată. Sugestie: ${suggestionText}`
+          : "Rezervarea ta a fost refuzată.";
+        await supabase.from("notifications").insert({
+          user_id: reservation.user_id,
+          restaurant_id: restaurantId,
+          type: "reservation_rejected",
+          message,
+          is_read: false,
+        });
+      }
+      showToast("❌ Rezervare refuzată.");
+    } catch (err) {
+      showToast("❌ Eroare.");
+    }
   };
 
   const payingOrders = orders.filter((o) => o.status === "paying");
   const pendingOrders = orders.filter((o) => o.status === "pending");
   const cookingOrders = orders.filter((o) => o.status === "cooking");
   const readyOrders = orders.filter((o) => o.status === "ready");
-  const pendingRes = displayReservations.filter((r) => !r.confirmed);
-  const confirmedRes = displayReservations.filter((r) => r.confirmed);
+  const pendingRes = displayReservations.filter(
+    (r) => !r.status || r.status === "pending",
+  );
+  const confirmedRes = displayReservations.filter(
+    (r) => r.status === "confirmed",
+  );
 
   const FLOORS =
     restaurant?.floors?.length > 0
@@ -1380,7 +1453,41 @@ export function WaiterTablet({
         {/* ── HARTA MESE ── */}
         {tab === "map" && (
           <div>
-            {FLOORS.length > 1 && (
+            {/* Legenda */}
+            <div
+              style={{
+                display: "flex",
+                gap: 12,
+                marginBottom: 12,
+                flexWrap: "wrap",
+              }}
+            >
+              {[
+                { color: "#4a6e4a", label: "Liberă" },
+                { color: "#c0622f", label: "Ocupată" },
+                { color: "#c8a97e", label: "Rezervată" },
+                { color: "#5b8dd9", label: "Achitată" },
+              ].map((s) => (
+                <div
+                  key={s.label}
+                  style={{ display: "flex", alignItems: "center", gap: 5 }}
+                >
+                  <div
+                    style={{
+                      width: 8,
+                      height: 8,
+                      borderRadius: "50%",
+                      background: s.color,
+                    }}
+                  />
+                  <span style={{ fontSize: 10, color: "#6b6050" }}>
+                    {s.label}
+                  </span>
+                </div>
+              ))}
+            </div>
+            {/* Selector etaj */}
+            {dbFloors.length > 1 && (
               <div
                 style={{
                   display: "flex",
@@ -1389,7 +1496,7 @@ export function WaiterTablet({
                   flexWrap: "wrap",
                 }}
               >
-                {FLOORS.map((fl, i) => (
+                {dbFloors.map((fl, i) => (
                   <button
                     key={fl.id}
                     onClick={() => setActiveMapFloor(i)}
@@ -1408,98 +1515,213 @@ export function WaiterTablet({
                 ))}
               </div>
             )}
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "repeat(3,1fr)",
-                gap: 8,
-              }}
-            >
-              {(FLOORS[activeMapFloor]?.tables || []).map((table) => {
-                const status = tableStates[table.id] || "free";
-                const colors = {
-                  free: "#4a6e4a",
-                  reserved: "#c8a97e",
-                  occupied: "#c0622f",
-                  paid: "#5b8dd9",
-                };
-                const bgs = {
-                  free: "rgba(74,110,74,.15)",
-                  reserved: "rgba(200,169,126,.15)",
-                  occupied: "rgba(192,98,47,.15)",
-                  paid: "rgba(91,141,217,.15)",
-                };
-                return (
+            {/* Canvas planșeu */}
+            {dbFloors.length === 0 ? (
+              <div
+                style={{
+                  textAlign: "center",
+                  padding: "40px 0",
+                  color: "#6b6050",
+                }}
+              >
+                <div style={{ fontSize: 32, marginBottom: 8 }}>🏗️</div>
+                <div>Planșeul nu a fost configurat</div>
+              </div>
+            ) : (
+              <div
+                style={{
+                  position: "relative",
+                  width: "100%",
+                  overflowX: "auto",
+                }}
+              >
+                <div
+                  style={{
+                    position: "relative",
+                    width: 900 * (mapZoom / 100),
+                    height: 700 * (mapZoom / 100),
+                    minWidth: "100%",
+                  }}
+                >
+                  {/* Butoane zoom */}
                   <div
-                    key={table.id}
                     style={{
-                      background: bgs[status],
-                      border: `2px solid ${colors[status]}`,
-                      borderRadius: 14,
-                      padding: "10px 6px",
-                      textAlign: "center",
+                      position: "absolute",
+                      top: 8,
+                      right: 8,
+                      zIndex: 10,
+                      display: "flex",
+                      flexDirection: "column",
+                      gap: 4,
                     }}
                   >
-                    <div style={{ fontSize: 16, marginBottom: 2 }}>🪑</div>
-                    <div
+                    <button
+                      onClick={() => setMapZoom((z) => Math.min(z + 10, 150))}
                       style={{
-                        fontFamily: "'Fraunces',serif",
-                        fontSize: 14,
-                        fontWeight: 700,
-                        color: colors[status],
+                        width: 32,
+                        height: 32,
+                        borderRadius: 8,
+                        background: "#1e1a14",
+                        border: "1px solid #2a2218",
+                        color: "#c8a97e",
+                        fontSize: 18,
+                        cursor: "pointer",
                       }}
                     >
-                      {table.label}
-                    </div>
-                    <div
+                      +
+                    </button>
+                    <button
+                      onClick={() => setMapZoom((z) => Math.max(z - 10, 40))}
                       style={{
-                        fontSize: 9,
-                        color: colors[status],
-                        opacity: 0.7,
+                        width: 32,
+                        height: 32,
+                        borderRadius: 8,
+                        background: "#1e1a14",
+                        border: "1px solid #2a2218",
+                        color: "#c8a97e",
+                        fontSize: 18,
+                        cursor: "pointer",
                       }}
                     >
-                      {table.seats}p
-                    </div>
-                    {status === "occupied" && (
-                      <button
-                        onClick={() => markPaid(table.id)}
-                        style={{
-                          marginTop: 5,
-                          padding: "3px 7px",
-                          borderRadius: 8,
-                          background: "rgba(91,141,217,.2)",
-                          border: "1px solid rgba(91,141,217,.4)",
-                          color: "#5b8dd9",
-                          fontSize: 8,
-                          cursor: "pointer",
-                          fontWeight: 700,
-                        }}
-                      >
-                        💳 Achitat
-                      </button>
-                    )}
-                    {status === "paid" && (
-                      <button
-                        onClick={() => freeTable(table.id)}
-                        style={{
-                          marginTop: 5,
-                          padding: "3px 7px",
-                          borderRadius: 8,
-                          background: "rgba(74,110,74,.2)",
-                          border: "1px solid rgba(74,110,74,.4)",
-                          color: "#6b9e6b",
-                          fontSize: 8,
-                          cursor: "pointer",
-                          fontWeight: 700,
-                        }}
-                      >
-                        ✅ Eliberează
-                      </button>
-                    )}
+                      −
+                    </button>
                   </div>
-                );
-              })}
-            </div>
+                  <div
+                    style={{
+                      position: "relative",
+                      width: 900,
+                      height: 700,
+                      transform: `scale(${mapZoom / 100})`,
+                      transformOrigin: "top left",
+                    }}
+                  >
+                    {/* Elemente decorative */}
+                    {(dbFloors[activeMapFloor]?.elements || []).map((el) => (
+                      <div
+                        key={el.id}
+                        style={{
+                          position: "absolute",
+                          left: el.x,
+                          top: el.y,
+                          width: el.w || 60,
+                          height: el.h || 60,
+                          borderRadius: 10,
+                          background: `${el.color || "#2a2218"}22`,
+                          border: `1px solid ${el.color || "#2a2218"}44`,
+                          display: "flex",
+                          flexDirection: "column",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          gap: 2,
+                          pointerEvents: "none",
+                        }}
+                      >
+                        <span style={{ fontSize: 18 }}>{el.icon}</span>
+                        <span
+                          style={{
+                            fontSize: 9,
+                            color: el.color || "#6b6050",
+                            fontWeight: 700,
+                          }}
+                        >
+                          {el.label}
+                        </span>
+                      </div>
+                    ))}
+                    {/* Mese */}
+                    {(dbFloors[activeMapFloor]?.tables || []).map((table) => {
+                      const status = tableStates[table.id] || "free";
+                      const colors = {
+                        free: "#4a6e4a",
+                        reserved: "#c8a97e",
+                        occupied: "#c0622f",
+                        paid: "#5b8dd9",
+                      };
+                      const bgs = {
+                        free: "rgba(74,110,74,.15)",
+                        reserved: "rgba(200,169,126,.15)",
+                        occupied: "rgba(192,98,47,.15)",
+                        paid: "rgba(91,141,217,.15)",
+                      };
+                      const w =
+                        table.seats <= 2 ? 52 : table.seats <= 4 ? 64 : 80;
+                      const h =
+                        table.seats <= 2 ? 52 : table.seats <= 4 ? 64 : 52;
+                      return (
+                        <div
+                          key={table.id}
+                          style={{
+                            position: "absolute",
+                            left: table.x,
+                            top: table.y,
+                            width: w,
+                            height: h,
+                            borderRadius: 12,
+                            background: bgs[status],
+                            border: `2px solid ${colors[status]}`,
+                            display: "flex",
+                            flexDirection: "column",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            gap: 1,
+                            cursor:
+                              status === "occupied" || status === "paid"
+                                ? "pointer"
+                                : "default",
+                          }}
+                          onClick={() => {
+                            if (status === "occupied") markPaid(table.id);
+                            else if (status === "paid") freeTable(table.id);
+                          }}
+                        >
+                          <div
+                            style={{
+                              fontFamily: "'Fraunces',serif",
+                              fontSize: 13,
+                              fontWeight: 700,
+                              color: colors[status],
+                            }}
+                          >
+                            {table.label}
+                          </div>
+                          <div
+                            style={{
+                              fontSize: 8,
+                              color: colors[status],
+                              opacity: 0.7,
+                            }}
+                          >
+                            {table.seats}p
+                          </div>
+                          {status === "occupied" && (
+                            <div
+                              style={{
+                                fontSize: 7,
+                                color: "#5b8dd9",
+                                fontWeight: 700,
+                              }}
+                            >
+                              → Achitat
+                            </div>
+                          )}
+                          {status === "paid" && (
+                            <div
+                              style={{
+                                fontSize: 7,
+                                color: "#6b9e6b",
+                                fontWeight: 700,
+                              }}
+                            >
+                              → Eliberează
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         )}
 
@@ -1991,6 +2213,117 @@ export function WaiterTablet({
           )}
         </div>
       )}
+      {/* Modal Sugestie Alternativă */}
+      {suggestionModal && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(0,0,0,.7)",
+            zIndex: 9999,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: 20,
+          }}
+          onClick={() => setSuggestionModal(null)}
+        >
+          <div
+            style={{
+              background: "#161210",
+              borderRadius: 20,
+              border: "1px solid #2a2218",
+              width: "100%",
+              maxWidth: 390,
+              padding: "24px 20px 28px",
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div
+              style={{
+                fontFamily: "'Fraunces',serif",
+                fontSize: 18,
+                fontWeight: 900,
+                marginBottom: 8,
+              }}
+            >
+              ❌ Refuză rezervarea
+            </div>
+            <div
+              style={{ fontSize: 13, color: "var(--muted)", marginBottom: 16 }}
+            >
+              Poți trimite clientului o sugestie alternativă (opțional):
+            </div>
+            <textarea
+              value={suggestionModal.text}
+              onChange={(e) =>
+                setSuggestionModal((prev) => ({
+                  ...prev,
+                  text: e.target.value,
+                }))
+              }
+              placeholder="Ex: Masa T3 este disponibilă la ora 20:00. Vă așteptăm!"
+              rows={4}
+              style={{
+                width: "100%",
+                background: "#1e1a14",
+                border: "1px solid #2a2218",
+                borderRadius: 12,
+                color: "#f0ebe3",
+                padding: "12px",
+                fontSize: 13,
+                fontFamily: "inherit",
+                resize: "none",
+                boxSizing: "border-box",
+                marginBottom: 16,
+              }}
+            />
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "1fr 1fr",
+                gap: 10,
+              }}
+            >
+              <button
+                onClick={() => setSuggestionModal(null)}
+                style={{
+                  padding: "11px",
+                  borderRadius: 12,
+                  background: "#1e1a14",
+                  border: "1px solid #2a2218",
+                  color: "var(--muted)",
+                  fontSize: 13,
+                  cursor: "pointer",
+                }}
+              >
+                Anulează
+              </button>
+              <button
+                onClick={() =>
+                  sendRefusalWithSuggestion(
+                    suggestionModal.reservationId,
+                    suggestionModal.text,
+                  )
+                }
+                style={{
+                  padding: "11px",
+                  borderRadius: 12,
+                  background: "rgba(192,57,43,.2)",
+                  border: "1px solid rgba(192,57,43,.4)",
+                  color: "#e05050",
+                  fontSize: 13,
+                  fontWeight: 700,
+                  cursor: "pointer",
+                }}
+              >
+                Refuză & trimite
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Footer nav */}
       <div
         style={{
