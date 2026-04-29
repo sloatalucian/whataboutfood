@@ -76,22 +76,22 @@ function Router() {
     return () => subscription.unsubscribe();
   }, []);
 
-  // ── Notificări în timp real ──
+  // ── Notificări polling ──
   useEffect(() => {
-    if (!state.user?.id) return;
-    // Încarcă numărul de notificări necitite
+    const userId = state.user?.id;
+    if (!userId) return;
+
     const loadUnread = async () => {
       const { count } = await supabase
         .from("notifications")
-        .select("*", { count: "exact", head: true })
-        .eq("user_id", state.user.id)
+        .select("id", { count: "exact", head: true })
+        .eq("user_id", userId)
         .eq("is_read", false);
       dispatch({ type: "SET_UNREAD", payload: count || 0 });
     };
-    loadUnread();
 
-    // Polling la fiecare 10 secunde pentru notificări noi
-    const interval = setInterval(loadUnread, 10000);
+    loadUnread();
+    const interval = setInterval(loadUnread, 8000);
     return () => clearInterval(interval);
   }, [state.user?.id]);
 
