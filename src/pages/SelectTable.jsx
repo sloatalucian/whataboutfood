@@ -672,21 +672,9 @@ export function WaiterTablet({
     };
     loadReservations();
 
-    const channel = supabase
-      .channel(`reservations_${restaurantId}`)
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "reservations",
-          filter: `restaurant_id=eq.${restaurantId}`,
-        },
-        () => loadReservations(),
-      )
-      .subscribe();
-
-    return () => supabase.removeChannel(channel);
+    // Polling la fiecare 10 secunde pentru rezervări noi
+    const interval = setInterval(loadReservations, 10000);
+    return () => clearInterval(interval);
   }, [restaurantId]);
 
   // ── Realtime — ascultă comenzi noi ──

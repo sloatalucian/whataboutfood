@@ -76,6 +76,25 @@ function Router() {
     return () => subscription.unsubscribe();
   }, []);
 
+  // ── Notificări în timp real ──
+  useEffect(() => {
+    if (!state.user?.id) return;
+    // Încarcă numărul de notificări necitite
+    const loadUnread = async () => {
+      const { count } = await supabase
+        .from("notifications")
+        .select("*", { count: "exact", head: true })
+        .eq("user_id", state.user.id)
+        .eq("is_read", false);
+      if (count > 0) dispatch({ type: "SET_UNREAD", payload: count });
+    };
+    loadUnread();
+
+    // Polling la fiecare 10 secunde pentru notificări noi
+    const interval = setInterval(loadUnread, 10000);
+    return () => clearInterval(interval);
+  }, [state.user?.id]);
+
   const noNav = [
     "auth",
     "selectTable",
