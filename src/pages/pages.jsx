@@ -8,55 +8,41 @@ import { supabase } from "../supabase";
 export function Rezervare() {
   const { state, dispatch, navigate, showToast } = useApp();
   const { selectedRest, resForm, reservations, user } = state;
-  // Urmărește comanda activă a clientului în timp real
+  const [dbFloors, setDbFloors] = useState([]);
+
+  // Încarcă floors + tables din Supabase
   useEffect(() => {
-    if (!user?.id || !selectedRest?.id) return;
-    const loadActiveOrder = async () => {
-      const { data } = await supabase
-        .from("orders")
+    if (!selectedRest?.id) return;
+    const load = async () => {
+      const { data: floorsData } = await supabase
+        .from("floors")
         .select("*")
-        .eq("user_id", user.id)
         .eq("restaurant_id", selectedRest.id)
-        .in("status", ["pending", "cooking", "ready", "paying"])
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .single();
-      if (data) setActiveOrder(data);
+        .order("floor_order");
+      if (!floorsData || floorsData.length === 0) return;
+      const floorsWithTables = await Promise.all(
+        floorsData.map(async (fl) => {
+          const { data: tables } = await supabase
+            .from("tables")
+            .select("*")
+            .eq("floor_id", fl.id);
+          const { data: elements } = await supabase
+            .from("floor_elements")
+            .select("*")
+            .eq("floor_id", fl.id);
+          return { ...fl, tables: tables || [], elements: elements || [] };
+        }),
+      );
+      setDbFloors(floorsWithTables);
     };
-    loadActiveOrder();
-
-    // Polling la fiecare 5 secunde
-    const interval = setInterval(loadActiveOrder, 5000);
-    return () => clearInterval(interval);
-  }, [user?.id, selectedRest?.id]);
-
-  const requestBill = async (method) => {
-    if (!activeOrder) return;
-    setPayNoteLoading(true);
-    try {
-      const { error } = await supabase
-        .from("orders")
-        .update({ status: "paying", payment_method: method })
-        .eq("id", activeOrder.id);
-      if (error) throw error;
-      setActiveOrder((prev) => ({
-        ...prev,
-        status: "paying",
-        payment_method: method,
-      }));
-      setShowPayNote(false);
-      showToast("🧾 Nota cerută! Ospătarul vine în curând.");
-    } catch (err) {
-      showToast("❌ Eroare. Încearcă din nou.");
-    }
-    setPayNoteLoading(false);
-  };
+    load();
+  }, [selectedRest?.id]);
 
   if (!selectedRest) {
     navigate("home");
     return null;
   }
-  const floors = selectedRest.floors || [];
+  const floors = dbFloors.length > 0 ? dbFloors : selectedRest.floors || [];
   const rsvp = reservations[selectedRest.id] || {};
   const taken = resForm.time ? rsvp[resForm.time] || [] : [];
   const floor = floors[resForm.floorIdx] || floors[0];
