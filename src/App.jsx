@@ -293,7 +293,10 @@ function Router() {
         {toast && <div className="toast">{toast}</div>}
         {pages[screen] || <Home />}
         {screen !== "waiter" && !noNav.includes(screen) && (
-          <BottomNav waiterLoggedIn={!!waiterUser} />
+          <BottomNav
+            waiterLoggedIn={!!waiterUser}
+            unreadCount={state.unreadCount}
+          />
         )}
       </div>
     </TableProvider>

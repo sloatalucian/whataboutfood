@@ -1,8 +1,13 @@
 import { useApp } from "../context/AppContext";
 
-export default function BottomNav({ onWaiterClick, waiterLoggedIn }) {
+export default function BottomNav({
+  onWaiterClick,
+  waiterLoggedIn,
+  unreadCount: unreadProp,
+}) {
   const { state, navigate } = useApp();
-  const { screen, selectedRest, user, unreadCount } = state;
+  const { screen, selectedRest, user } = state;
+  const unreadCount = unreadProp ?? state.unreadCount;
 
   // ── PROPRIETAR ──
   if (user?.role === "owner") {
