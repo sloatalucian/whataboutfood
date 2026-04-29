@@ -1,4 +1,6 @@
+import { useState, useEffect } from "react";
 import { useApp } from "../context/AppContext";
+import { supabase } from "../supabase";
 
 export default function BottomNav({
   onWaiterClick,
@@ -7,17 +9,29 @@ export default function BottomNav({
 }) {
   const { state, navigate } = useApp();
   const { screen, selectedRest, user } = state;
-  // Folosim prop-ul direct, cu fallback la state
-  const unreadCount =
-    typeof unreadProp === "number" ? unreadProp : state.unreadCount || 0;
-  console.log(
-    "BottomNav render unreadCount:",
-    unreadCount,
-    "prop:",
-    unreadProp,
-    "state:",
-    state.unreadCount,
-  );
+  const [localUnread, setLocalUnread] = useState(0);
+
+  // Polling propriu pentru badge notificări
+  useEffect(() => {
+    const userId = user?.id;
+    if (!userId) {
+      setLocalUnread(0);
+      return;
+    }
+    const load = async () => {
+      const { count } = await supabase
+        .from("notifications")
+        .select("id", { count: "exact", head: true })
+        .eq("user_id", userId)
+        .eq("is_read", false);
+      setLocalUnread(count || 0);
+    };
+    load();
+    const interval = setInterval(load, 8000);
+    return () => clearInterval(interval);
+  }, [user?.id]);
+
+  const unreadCount = localUnread;
 
   // ── PROPRIETAR ──
   if (user?.role === "owner") {
