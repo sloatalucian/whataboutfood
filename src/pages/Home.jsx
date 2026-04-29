@@ -861,7 +861,7 @@ function HomeClient() {
               position: "fixed",
               inset: 0,
               background: "rgba(0,0,0,.7)",
-              zIndex: 100,
+              zIndex: 9999,
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
