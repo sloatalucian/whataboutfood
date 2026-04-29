@@ -1,14 +1,56 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useApp } from "../context/AppContext";
+import { supabase } from "../supabase";
 
 export default function Notifications() {
-  const { state, dispatch, navigate } = useApp();
-  const { notifications } = state;
+  const { state, navigate } = useApp();
+  const { user } = state;
+  const [notifications, setNotifications] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  // Marchează toate ca citite când intri pe pagină
   useEffect(() => {
-    dispatch({ type: "MARK_NOTIFICATIONS_READ" });
-  }, []);
+    if (!user?.id) {
+      setLoading(false);
+      return;
+    }
+
+    const load = async () => {
+      const { data } = await supabase
+        .from("notifications")
+        .select("*")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false })
+        .limit(50);
+      if (data) setNotifications(data);
+      setLoading(false);
+      // Marchează toate ca citite
+      await supabase
+        .from("notifications")
+        .update({ is_read: true })
+        .eq("user_id", user.id)
+        .eq("is_read", false);
+    };
+    load();
+
+    // Realtime - notificări noi
+    const channel = supabase
+      .channel(`notifications_${user.id}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "notifications",
+          filter: `user_id=eq.${user.id}`,
+        },
+        (payload) => {
+          setNotifications((prev) => [payload.new, ...prev]);
+        },
+      )
+      .subscribe();
+
+    return () => supabase.removeChannel(channel);
+  }, [user?.id]);
 
   const getIcon = (type) => {
     switch (type) {
@@ -20,7 +62,7 @@ export default function Notifications() {
         return { icon: "💳", color: "#5b8dd9", bg: "rgba(91,141,217,.15)" };
       case "reservation_confirmed":
         return { icon: "📅", color: "#c0622f", bg: "rgba(192,98,47,.15)" };
-      case "reservation_refused":
+      case "reservation_rejected":
         return { icon: "❌", color: "#e05050", bg: "rgba(192,57,43,.15)" };
       default:
         return { icon: "🔔", color: "#c8a97e", bg: "rgba(200,169,126,.15)" };
@@ -28,12 +70,14 @@ export default function Notifications() {
   };
 
   const formatTime = (date) => {
+    if (!date) return "";
     const now = new Date();
     const then = new Date(date);
     const diff = Math.floor((now - then) / 1000);
     if (diff < 60) return "acum";
     if (diff < 3600) return `${Math.floor(diff / 60)} min`;
     if (diff < 86400) return `${Math.floor(diff / 3600)}h`;
+    if (diff < 86400 * 2) return "ieri";
     return then.toLocaleDateString("ro-RO", { day: "numeric", month: "short" });
   };
 
@@ -79,7 +123,18 @@ export default function Notifications() {
       </div>
 
       <div style={{ padding: 16 }}>
-        {notifications.length === 0 ? (
+        {loading ? (
+          <div
+            style={{
+              textAlign: "center",
+              padding: "60px 0",
+              color: "#6b6050",
+              fontSize: 13,
+            }}
+          >
+            Se încarcă...
+          </div>
+        ) : notifications.length === 0 ? (
           <div
             style={{ textAlign: "center", padding: "60px 0", color: "#6b6050" }}
           >
@@ -99,10 +154,10 @@ export default function Notifications() {
                 <div
                   key={notif.id}
                   style={{
-                    background: notif.isRead
+                    background: notif.is_read
                       ? "#161210"
                       : "rgba(192,98,47,.06)",
-                    border: `1px solid ${notif.isRead ? "#2a2218" : "rgba(192,98,47,.2)"}`,
+                    border: `1px solid ${notif.is_read ? "#2a2218" : "rgba(192,98,47,.2)"}`,
                     borderRadius: 16,
                     padding: "14px 16px",
                     display: "flex",
@@ -110,7 +165,6 @@ export default function Notifications() {
                     gap: 12,
                   }}
                 >
-                  {/* Icon */}
                   <div
                     style={{
                       width: 44,
@@ -126,8 +180,6 @@ export default function Notifications() {
                   >
                     {icon}
                   </div>
-
-                  {/* Content */}
                   <div style={{ flex: 1 }}>
                     <div
                       style={{
@@ -139,24 +191,11 @@ export default function Notifications() {
                     >
                       {notif.message}
                     </div>
-                    {notif.details && (
-                      <div
-                        style={{
-                          fontSize: 12,
-                          color: "#6b6050",
-                          marginBottom: 4,
-                        }}
-                      >
-                        {notif.details}
-                      </div>
-                    )}
                     <div style={{ fontSize: 11, color: "#6b6050" }}>
-                      {formatTime(notif.createdAt)}
+                      {formatTime(notif.created_at)}
                     </div>
                   </div>
-
-                  {/* Dot necitit */}
-                  {!notif.isRead && (
+                  {!notif.is_read && (
                     <div
                       style={{
                         width: 8,
