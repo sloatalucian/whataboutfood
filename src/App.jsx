@@ -94,8 +94,16 @@ function Router() {
     navigate("menu");
     showToast(`✅ Masa ${table.label} selectată!`);
   };
-  const handleWaiterLogin = (waiter) => {
+  const handleWaiterLogin = async (waiter) => {
     setWaiterUser(waiter);
+    if (waiter.restaurantId) {
+      const { data: rest } = await supabase
+        .from("restaurants")
+        .select("*")
+        .eq("id", waiter.restaurantId)
+        .single();
+      if (rest) dispatch({ type: "SET_REST", payload: rest });
+    }
     setSplashDone(true);
     navigate("waiter");
     showToast(`👋 Bun venit, ${waiter.name}!`);
