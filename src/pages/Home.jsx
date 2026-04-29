@@ -594,6 +594,8 @@ function HomeClient() {
   const [allRestaurants, setAllRestaurants] = useState([]);
   const [loadingRests, setLoadingRests] = useState(true);
   const [activeOrder, setActiveOrder] = useState(null);
+  const [showPayNote, setShowPayNote] = useState(false);
+  const [payNoteLoading, setPayNoteLoading] = useState(false);
 
   useEffect(() => {
     const load = async () => {
