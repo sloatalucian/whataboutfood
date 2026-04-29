@@ -49,6 +49,10 @@ export function Rezervare() {
   const set = (patch) => dispatch({ type: "RES_FORM", payload: patch });
 
   const handleReserve = async () => {
+    // Găsim label-ul mesei din ID
+    const selectedTable = (floor?.tables || []).find(
+      (t) => t.id === resForm.tableId,
+    );
     try {
       await supabase.from("reservations").insert({
         user_id: user?.id || null,
@@ -57,7 +61,7 @@ export function Rezervare() {
         date: resForm.date || new Date().toISOString().split("T")[0],
         time: resForm.time || "",
         persons: resForm.persons || 1,
-        table_label: resForm.tableId || null,
+        table_label: selectedTable?.label || resForm.tableId || null,
         observations: resForm.observations || null,
         status: "pending",
       });
@@ -164,7 +168,7 @@ export function Rezervare() {
           Rezervare — {selectedRest.name}
         </span>
       </div>
-      <div className="inner">
+      <div className="inner" style={{ paddingBottom: 120 }}>
         <div className="form-group">
           <label className="form-label">Data</label>
           <input
@@ -441,8 +445,18 @@ export function Rezervare() {
           className="btn-primary"
           disabled={!resForm.date || !resForm.time || !resForm.tableId}
           onClick={handleReserve}
+          style={{ marginBottom: 20 }}
         >
           Trimite rezervarea
+          {(!resForm.date || !resForm.time || !resForm.tableId) && (
+            <span style={{ fontSize: 10, display: "block", opacity: 0.7 }}>
+              {!resForm.date
+                ? "• Alege data"
+                : !resForm.time
+                  ? "• Alege ora"
+                  : "• Alege masa"}
+            </span>
+          )}
         </button>
       </div>
     </div>
