@@ -597,7 +597,7 @@ export function WaiterTablet({
         .from("orders")
         .select("*")
         .eq("restaurant_id", restaurantId)
-        .in("status", ["pending", "cooking", "ready"])
+        .in("status", ["pending", "cooking", "ready", "paying"])
         .order("created_at", { ascending: true });
       console.log(
         "loadOrders restaurantId:",
@@ -670,7 +670,7 @@ export function WaiterTablet({
               prev
                 .map((o) => (o.id === payload.new.id ? payload.new : o))
                 .filter((o) =>
-                  ["pending", "cooking", "ready"].includes(o.status),
+                  ["pending", "cooking", "ready", "paying"].includes(o.status),
                 ),
             );
           }
@@ -769,6 +769,21 @@ export function WaiterTablet({
     }
   };
 
+  // ── Confirmă plata ──
+  const confirmPayment = async (orderId) => {
+    try {
+      const { error } = await supabase
+        .from("orders")
+        .update({ status: "paid", paid_at: new Date().toISOString() })
+        .eq("id", orderId);
+      if (error) throw error;
+      setOrders((prev) => prev.filter((o) => o.id !== orderId));
+      showToast("💳 Plată confirmată!");
+    } catch (err) {
+      showToast("❌ Eroare la confirmare plată.");
+    }
+  };
+
   const confirmReservation = (resId) => {
     setDisplayReservations((prev) =>
       prev.map((r) => (r.id === resId ? { ...r, confirmed: true } : r)),
@@ -780,6 +795,7 @@ export function WaiterTablet({
     showToast("❌ Rezervare refuzată");
   };
 
+  const payingOrders = orders.filter((o) => o.status === "paying");
   const pendingOrders = orders.filter((o) => o.status === "pending");
   const cookingOrders = orders.filter((o) => o.status === "cooking");
   const readyOrders = orders.filter((o) => o.status === "ready");
@@ -896,7 +912,7 @@ export function WaiterTablet({
         <div
           style={{
             display: "grid",
-            gridTemplateColumns: "repeat(4,1fr)",
+            gridTemplateColumns: "repeat(5,1fr)",
             gap: 8,
             marginTop: 12,
           }}
@@ -910,6 +926,11 @@ export function WaiterTablet({
               color: "#e07a47",
             },
             { label: "Rezervări", value: pendingRes.length, color: "#c8a97e" },
+            {
+              label: "Note plată",
+              value: payingOrders.length,
+              color: "#5b8dd9",
+            },
           ].map((s) => (
             <div
               key={s.label}
@@ -1034,6 +1055,137 @@ export function WaiterTablet({
               >
                 <div style={{ fontSize: 32, marginBottom: 10 }}>🍽️</div>
                 <div>Se încarcă comenzile...</div>
+              </div>
+            )}
+
+            {/* ── CERERI DE PLATĂ ── */}
+            {!loading && payingOrders.length > 0 && (
+              <div style={{ marginBottom: 20 }}>
+                <div
+                  style={{
+                    fontSize: 10,
+                    letterSpacing: 2,
+                    textTransform: "uppercase",
+                    color: "#5b8dd9",
+                    marginBottom: 10,
+                  }}
+                >
+                  💳 Cereri de plată — acțiune necesară
+                </div>
+                {payingOrders.map((o) => (
+                  <div
+                    key={o.id}
+                    style={{
+                      background: "rgba(91,141,217,.08)",
+                      border: "2px solid rgba(91,141,217,.4)",
+                      borderRadius: 16,
+                      padding: 16,
+                      marginBottom: 10,
+                    }}
+                  >
+                    <div
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        marginBottom: 10,
+                      }}
+                    >
+                      <div>
+                        <div
+                          style={{
+                            fontFamily: "'Fraunces',serif",
+                            fontSize: 18,
+                            fontWeight: 900,
+                          }}
+                        >
+                          🪑 Masa {o.table_label || o.table}
+                        </div>
+                        <div
+                          style={{
+                            fontSize: 11,
+                            color: "#6b6050",
+                            marginTop: 2,
+                          }}
+                        >
+                          {new Date(o.created_at).toLocaleTimeString("ro-RO", {
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })}
+                        </div>
+                      </div>
+                      <div
+                        style={{
+                          fontSize: 11,
+                          fontWeight: 800,
+                          padding: "4px 12px",
+                          borderRadius: 20,
+                          background: "rgba(91,141,217,.2)",
+                          color: "#5b8dd9",
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 4,
+                        }}
+                      >
+                        {o.payment_method === "cash" ? "💵 Cash" : "💳 Card"}
+                      </div>
+                    </div>
+                    {(o.items || []).map((item, i) => (
+                      <div
+                        key={i}
+                        style={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                          fontSize: 13,
+                          marginBottom: 4,
+                        }}
+                      >
+                        <span style={{ color: "rgba(240,235,227,.7)" }}>
+                          {item.emoji} {item.name}
+                        </span>
+                        <span style={{ color: "#c8a97e", fontWeight: 700 }}>
+                          ×{item.qty}
+                        </span>
+                      </div>
+                    ))}
+                    <div
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                        marginTop: 10,
+                        paddingTop: 10,
+                        borderTop: "1px solid rgba(91,141,217,.2)",
+                      }}
+                    >
+                      <span
+                        style={{
+                          fontFamily: "'Fraunces',serif",
+                          fontSize: 16,
+                          fontWeight: 700,
+                          color: "#c8a97e",
+                        }}
+                      >
+                        Total: {o.total} lei
+                      </span>
+                      <button
+                        onClick={() => confirmPayment(o.id)}
+                        style={{
+                          padding: "10px 18px",
+                          borderRadius: 12,
+                          background: "linear-gradient(135deg,#3a5a8a,#1e3a6a)",
+                          border: "none",
+                          color: "#fff",
+                          fontFamily: "'Fraunces',serif",
+                          fontSize: 14,
+                          fontWeight: 700,
+                          cursor: "pointer",
+                        }}
+                      >
+                        ✅ Confirmă plata
+                      </button>
+                    </div>
+                  </div>
+                ))}
               </div>
             )}
 

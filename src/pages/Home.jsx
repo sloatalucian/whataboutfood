@@ -593,6 +593,7 @@ function HomeClient() {
   const [selectedCity, setSelectedCity] = useState("Toate orașele");
   const [allRestaurants, setAllRestaurants] = useState([]);
   const [loadingRests, setLoadingRests] = useState(true);
+  const [activeOrder, setActiveOrder] = useState(null);
 
   useEffect(() => {
     const load = async () => {
@@ -608,6 +609,49 @@ function HomeClient() {
     };
     load();
   }, []);
+
+  // Urmărește comanda activă în timp real
+  useEffect(() => {
+    if (!user?.id) return;
+    const loadActiveOrder = async () => {
+      const { data } = await supabase
+        .from("orders")
+        .select("*, restaurants(name, emoji)")
+        .eq("user_id", user.id)
+        .in("status", ["pending", "cooking", "ready", "paying"])
+        .order("created_at", { ascending: false })
+        .limit(1);
+      if (data && data.length > 0) setActiveOrder(data[0]);
+      else setActiveOrder(null);
+    };
+    loadActiveOrder();
+
+    const channel = supabase
+      .channel(`home_active_order_${user.id}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "orders",
+          filter: `user_id=eq.${user.id}`,
+        },
+        (payload) => {
+          if (
+            ["pending", "cooking", "ready", "paying"].includes(
+              payload.new.status,
+            )
+          ) {
+            setActiveOrder((prev) => ({ ...prev, ...payload.new }));
+          } else {
+            setActiveOrder(null);
+          }
+        },
+      )
+      .subscribe();
+
+    return () => supabase.removeChannel(channel);
+  }, [user?.id]);
 
   const filteredRestaurants = allRestaurants.filter(
     (r) =>
@@ -699,6 +743,101 @@ function HomeClient() {
       </div>
 
       <div className="inner" style={{ paddingTop: 16 }}>
+        {/* ── Comandă Activă ── */}
+        {activeOrder && (
+          <div
+            style={{
+              background:
+                activeOrder.status === "paying"
+                  ? "rgba(91,141,217,.1)"
+                  : activeOrder.status === "ready"
+                    ? "rgba(107,158,107,.1)"
+                    : activeOrder.status === "cooking"
+                      ? "rgba(224,122,71,.1)"
+                      : "rgba(200,169,126,.1)",
+              border: `1px solid ${
+                activeOrder.status === "paying"
+                  ? "rgba(91,141,217,.4)"
+                  : activeOrder.status === "ready"
+                    ? "rgba(107,158,107,.4)"
+                    : activeOrder.status === "cooking"
+                      ? "rgba(224,122,71,.4)"
+                      : "rgba(200,169,126,.4)"
+              }`,
+              borderRadius: 18,
+              padding: "16px",
+              marginBottom: 20,
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "flex-start",
+                marginBottom: 12,
+              }}
+            >
+              <div>
+                <div
+                  style={{
+                    fontSize: 12,
+                    color: "var(--muted)",
+                    marginBottom: 4,
+                  }}
+                >
+                  {activeOrder.restaurants?.emoji || "🍽️"}{" "}
+                  {activeOrder.restaurants?.name || "Restaurant"}
+                </div>
+                <div style={{ fontSize: 14, fontWeight: 700 }}>
+                  {activeOrder.status === "pending" &&
+                    "⏳ Comanda ta a fost trimisă"}
+                  {activeOrder.status === "cooking" && "👨‍🍳 Comanda se prepară"}
+                  {activeOrder.status === "ready" && "✅ Comanda e gata!"}
+                  {activeOrder.status === "paying" && "🧾 Nota cerută"}
+                </div>
+              </div>
+              <span style={{ fontSize: 12, color: "var(--muted)" }}>
+                Masa {activeOrder.table_label}
+              </span>
+            </div>
+            {/* Progress bar */}
+            <div style={{ display: "flex", gap: 4 }}>
+              {[
+                { s: "pending", label: "Trimisă" },
+                { s: "cooking", label: "Preparare" },
+                { s: "ready", label: "Gata" },
+                { s: "paying", label: "Plată" },
+              ].map((step) => {
+                const statuses = ["pending", "cooking", "ready", "paying"];
+                const isDone =
+                  statuses.indexOf(step.s) <=
+                  statuses.indexOf(activeOrder.status);
+                return (
+                  <div key={step.s} style={{ flex: 1 }}>
+                    <div
+                      style={{
+                        height: 4,
+                        borderRadius: 4,
+                        background: isDone ? "#c0622f" : "rgba(255,255,255,.1)",
+                        marginBottom: 4,
+                      }}
+                    />
+                    <div
+                      style={{
+                        fontSize: 9,
+                        color: isDone ? "#c0622f" : "#6b6050",
+                        textAlign: "center",
+                      }}
+                    >
+                      {step.label}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
         <div
           style={{
             display: "flex",

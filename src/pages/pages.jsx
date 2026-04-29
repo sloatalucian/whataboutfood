@@ -8,6 +8,74 @@ import { supabase } from "../supabase";
 export function Rezervare() {
   const { state, dispatch, navigate, showToast } = useApp();
   const { selectedRest, resForm, reservations } = state;
+  // Urmărește comanda activă a clientului în timp real
+  useEffect(() => {
+    if (!user?.id || !selectedRest?.id) return;
+    const loadActiveOrder = async () => {
+      const { data } = await supabase
+        .from("orders")
+        .select("*")
+        .eq("user_id", user.id)
+        .eq("restaurant_id", selectedRest.id)
+        .in("status", ["pending", "cooking", "ready", "paying"])
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .single();
+      if (data) setActiveOrder(data);
+    };
+    loadActiveOrder();
+
+    const channel = supabase
+      .channel(`active_order_${user.id}_${selectedRest.id}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "orders",
+          filter: `restaurant_id=eq.${selectedRest.id}`,
+        },
+        (payload) => {
+          if (payload.new.user_id === user.id) {
+            if (
+              ["pending", "cooking", "ready", "paying"].includes(
+                payload.new.status,
+              )
+            ) {
+              setActiveOrder(payload.new);
+            } else {
+              setActiveOrder(null);
+            }
+          }
+        },
+      )
+      .subscribe();
+
+    return () => supabase.removeChannel(channel);
+  }, [user?.id, selectedRest?.id]);
+
+  const requestBill = async (method) => {
+    if (!activeOrder) return;
+    setPayNoteLoading(true);
+    try {
+      const { error } = await supabase
+        .from("orders")
+        .update({ status: "paying", payment_method: method })
+        .eq("id", activeOrder.id);
+      if (error) throw error;
+      setActiveOrder((prev) => ({
+        ...prev,
+        status: "paying",
+        payment_method: method,
+      }));
+      setShowPayNote(false);
+      showToast("🧾 Nota cerută! Ospătarul vine în curând.");
+    } catch (err) {
+      showToast("❌ Eroare. Încearcă din nou.");
+    }
+    setPayNoteLoading(false);
+  };
+
   if (!selectedRest) {
     navigate("home");
     return null;
@@ -305,6 +373,9 @@ export function Meniu() {
 
   const [dbCategories, setDbCategories] = useState([]);
   const [menuLoading, setMenuLoading] = useState(true);
+  const [activeOrder, setActiveOrder] = useState(null);
+  const [showPayNote, setShowPayNote] = useState(false);
+  const [payNoteLoading, setPayNoteLoading] = useState(false);
 
   useEffect(() => {
     console.log("selectedRest in Meniu:", selectedRest);
@@ -352,6 +423,74 @@ export function Meniu() {
     };
     loadMenu();
   }, [selectedRest?.id]);
+
+  // Urmărește comanda activă a clientului în timp real
+  useEffect(() => {
+    if (!user?.id || !selectedRest?.id) return;
+    const loadActiveOrder = async () => {
+      const { data } = await supabase
+        .from("orders")
+        .select("*")
+        .eq("user_id", user.id)
+        .eq("restaurant_id", selectedRest.id)
+        .in("status", ["pending", "cooking", "ready", "paying"])
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .single();
+      if (data) setActiveOrder(data);
+    };
+    loadActiveOrder();
+
+    const channel = supabase
+      .channel(`active_order_${user.id}_${selectedRest.id}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "orders",
+          filter: `restaurant_id=eq.${selectedRest.id}`,
+        },
+        (payload) => {
+          if (payload.new.user_id === user.id) {
+            if (
+              ["pending", "cooking", "ready", "paying"].includes(
+                payload.new.status,
+              )
+            ) {
+              setActiveOrder(payload.new);
+            } else {
+              setActiveOrder(null);
+            }
+          }
+        },
+      )
+      .subscribe();
+
+    return () => supabase.removeChannel(channel);
+  }, [user?.id, selectedRest?.id]);
+
+  const requestBill = async (method) => {
+    if (!activeOrder) return;
+    setPayNoteLoading(true);
+    try {
+      const { error } = await supabase
+        .from("orders")
+        .update({ status: "paying", payment_method: method })
+        .eq("id", activeOrder.id);
+      if (error) throw error;
+      setActiveOrder((prev) => ({
+        ...prev,
+        status: "paying",
+        payment_method: method,
+      }));
+      setShowPayNote(false);
+      showToast("🧾 Nota cerută! Ospătarul vine în curând.");
+    } catch (err) {
+      showToast("❌ Eroare. Încearcă din nou.");
+    }
+    setPayNoteLoading(false);
+  };
 
   if (!selectedRest) {
     navigate("home");
@@ -659,6 +798,254 @@ export function Meniu() {
         className="inner"
         style={{ paddingBottom: cart.length > 0 ? 160 : 90 }}
       >
+        {/* ── Status Bar Comandă Activă ── */}
+        {activeOrder && (
+          <div
+            style={{
+              background:
+                activeOrder.status === "paying"
+                  ? "rgba(91,141,217,.1)"
+                  : activeOrder.status === "ready"
+                    ? "rgba(107,158,107,.1)"
+                    : activeOrder.status === "cooking"
+                      ? "rgba(224,122,71,.1)"
+                      : "rgba(200,169,126,.1)",
+              border: `1px solid ${
+                activeOrder.status === "paying"
+                  ? "rgba(91,141,217,.4)"
+                  : activeOrder.status === "ready"
+                    ? "rgba(107,158,107,.4)"
+                    : activeOrder.status === "cooking"
+                      ? "rgba(224,122,71,.4)"
+                      : "rgba(200,169,126,.4)"
+              }`,
+              borderRadius: 16,
+              padding: "14px 16px",
+              marginBottom: 16,
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                marginBottom: 10,
+              }}
+            >
+              <div style={{ fontSize: 13, fontWeight: 700 }}>
+                {activeOrder.status === "pending" &&
+                  "⏳ Comanda ta a fost trimisă"}
+                {activeOrder.status === "cooking" && "👨‍🍳 Comanda ta se prepară"}
+                {activeOrder.status === "ready" &&
+                  "✅ Comanda e gata! Ospătarul vine"}
+                {activeOrder.status === "paying" &&
+                  "🧾 Nota cerută — ospătarul vine"}
+              </div>
+              <span
+                style={{
+                  fontSize: 10,
+                  fontWeight: 800,
+                  padding: "3px 8px",
+                  borderRadius: 10,
+                  background:
+                    activeOrder.status === "paying"
+                      ? "rgba(91,141,217,.2)"
+                      : activeOrder.status === "ready"
+                        ? "rgba(107,158,107,.2)"
+                        : activeOrder.status === "cooking"
+                          ? "rgba(224,122,71,.2)"
+                          : "rgba(200,169,126,.2)",
+                  color:
+                    activeOrder.status === "paying"
+                      ? "#5b8dd9"
+                      : activeOrder.status === "ready"
+                        ? "#6b9e6b"
+                        : activeOrder.status === "cooking"
+                          ? "#e07a47"
+                          : "#c8a97e",
+                }}
+              >
+                Masa {activeOrder.table_label}
+              </span>
+            </div>
+            {/* Pași status */}
+            <div style={{ display: "flex", gap: 4, marginBottom: 12 }}>
+              {[
+                { s: "pending", label: "Trimisă" },
+                { s: "cooking", label: "Preparare" },
+                { s: "ready", label: "Gata" },
+                { s: "paying", label: "Plată" },
+              ].map((step, idx) => {
+                const statuses = ["pending", "cooking", "ready", "paying"];
+                const currentIdx = statuses.indexOf(activeOrder.status);
+                const stepIdx = statuses.indexOf(step.s);
+                const isDone = stepIdx <= currentIdx;
+                return (
+                  <div key={step.s} style={{ flex: 1 }}>
+                    <div
+                      style={{
+                        height: 4,
+                        borderRadius: 4,
+                        background: isDone ? "#c0622f" : "rgba(255,255,255,.1)",
+                        marginBottom: 4,
+                      }}
+                    />
+                    <div
+                      style={{
+                        fontSize: 9,
+                        color: isDone ? "#c0622f" : "#6b6050",
+                        textAlign: "center",
+                      }}
+                    >
+                      {step.label}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+            {/* Buton Cere Nota - doar când e ready */}
+            {activeOrder.status === "ready" && (
+              <button
+                onClick={() => setShowPayNote(true)}
+                style={{
+                  width: "100%",
+                  padding: "12px",
+                  borderRadius: 14,
+                  background: "linear-gradient(135deg,#c0622f,#8b3a18)",
+                  border: "none",
+                  color: "#fff",
+                  fontFamily: "'Fraunces',serif",
+                  fontSize: 15,
+                  fontWeight: 700,
+                  cursor: "pointer",
+                }}
+              >
+                🧾 Cere nota de plată
+              </button>
+            )}
+            {activeOrder.status === "paying" && (
+              <div
+                style={{
+                  fontSize: 12,
+                  color: "var(--muted)",
+                  textAlign: "center",
+                }}
+              >
+                Ai ales:{" "}
+                {activeOrder.payment_method === "cash" ? "💵 Cash" : "💳 Card"}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ── Modal Cere Nota ── */}
+        {showPayNote && (
+          <div
+            style={{
+              position: "fixed",
+              inset: 0,
+              background: "rgba(0,0,0,.7)",
+              zIndex: 100,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              padding: 20,
+            }}
+            onClick={() => setShowPayNote(false)}
+          >
+            <div
+              style={{
+                background: "#161210",
+                borderRadius: 20,
+                border: "1px solid #2a2218",
+                width: "100%",
+                maxWidth: 390,
+                padding: "24px 20px 28px",
+              }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div
+                style={{
+                  fontFamily: "'Fraunces',serif",
+                  fontSize: 20,
+                  fontWeight: 900,
+                  marginBottom: 6,
+                }}
+              >
+                🧾 Nota de plată
+              </div>
+              <div
+                style={{
+                  fontSize: 13,
+                  color: "var(--muted)",
+                  marginBottom: 20,
+                }}
+              >
+                Masa {activeOrder?.table_label} • Total: {activeOrder?.total}{" "}
+                lei
+              </div>
+              <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 12 }}>
+                Cum dorești să plătești?
+              </div>
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "1fr 1fr",
+                  gap: 12,
+                }}
+              >
+                {[
+                  { method: "cash", icon: "💵", label: "Cash" },
+                  { method: "card", icon: "💳", label: "Card" },
+                ].map((p) => (
+                  <button
+                    key={p.method}
+                    onClick={() => !payNoteLoading && requestBill(p.method)}
+                    style={{
+                      padding: "20px 14px",
+                      borderRadius: 16,
+                      border: "2px solid #2a2218",
+                      background: "#1e1a14",
+                      color: "#f0ebe3",
+                      fontFamily: "'Fraunces',serif",
+                      fontSize: 16,
+                      fontWeight: 700,
+                      cursor: "pointer",
+                      textAlign: "center",
+                    }}
+                  >
+                    <span
+                      style={{
+                        fontSize: 28,
+                        display: "block",
+                        marginBottom: 6,
+                      }}
+                    >
+                      {p.icon}
+                    </span>
+                    {p.label}
+                  </button>
+                ))}
+              </div>
+              <button
+                onClick={() => setShowPayNote(false)}
+                style={{
+                  marginTop: 16,
+                  width: "100%",
+                  padding: 10,
+                  background: "none",
+                  border: "none",
+                  color: "var(--muted)",
+                  cursor: "pointer",
+                  fontSize: 13,
+                }}
+              >
+                Anulează
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* Loading */}
         {menuLoading ? (
           <div
