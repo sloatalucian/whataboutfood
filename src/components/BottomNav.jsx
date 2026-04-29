@@ -7,7 +7,17 @@ export default function BottomNav({
 }) {
   const { state, navigate } = useApp();
   const { screen, selectedRest, user } = state;
-  const unreadCount = unreadProp ?? state.unreadCount;
+  // Folosim prop-ul direct, cu fallback la state
+  const unreadCount =
+    typeof unreadProp === "number" ? unreadProp : state.unreadCount || 0;
+  console.log(
+    "BottomNav render unreadCount:",
+    unreadCount,
+    "prop:",
+    unreadProp,
+    "state:",
+    state.unreadCount,
+  );
 
   // ── PROPRIETAR ──
   if (user?.role === "owner") {
