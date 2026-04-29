@@ -720,7 +720,7 @@ function HomeClient() {
         />
       </div>
 
-      <div className="inner" style={{ paddingTop: 16 }}>
+      <div className="inner" style={{ paddingTop: 16, paddingBottom: 100 }}>
         {/* ── Comandă Activă ── */}
         {activeOrder && (
           <div
