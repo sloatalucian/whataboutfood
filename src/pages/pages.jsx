@@ -296,29 +296,145 @@ export function Rezervare() {
               ))}
             </div>
             <label className="form-label">Selectează masa</label>
-            <div
-              className="floor-map"
-              style={{ height: 360, marginBottom: 16 }}
-            >
-              <div className="fmap-grid" />
-              <div className="fmap-label">{floor?.name}</div>
-              {(floor?.tables || []).map((t) => {
-                const isTaken = taken.includes(t.id);
-                const isSel = resForm.tableId === t.id;
-                return (
+            {(() => {
+              const allTables = floor?.tables || [];
+              const allElements = floor?.elements || [];
+              const allItems = [
+                ...allTables.map((t) => ({ x: t.x + 80, y: t.y + 80 })),
+                ...allElements.map((e) => ({
+                  x: e.x + (e.w || 60),
+                  y: e.y + (e.h || 60),
+                })),
+              ];
+              const maxX = Math.max(300, ...allItems.map((i) => i.x));
+              const maxY = Math.max(200, ...allItems.map((i) => i.y));
+              const containerW = 340;
+              const containerH = 320;
+              const autoZoom =
+                Math.min(containerW / maxX, containerH / maxY, 1) * 0.92;
+              return (
+                <div
+                  style={{
+                    position: "relative",
+                    width: "100%",
+                    height: containerH,
+                    background: "#0d0a07",
+                    borderRadius: 16,
+                    border: "1px solid #2a2218",
+                    overflow: "hidden",
+                    marginBottom: 16,
+                  }}
+                >
                   <div
-                    key={t.id}
-                    className={`tnode ${tableClass(t.seats)} ${isSel ? "selected" : isTaken ? "taken" : "free"}`}
-                    style={{ left: t.x, top: t.y }}
-                    onClick={() => !isTaken && set({ tableId: t.id })}
+                    style={{
+                      position: "absolute",
+                      fontSize: 9,
+                      top: 6,
+                      left: 8,
+                      color: "#6b6050",
+                      letterSpacing: 1,
+                      textTransform: "uppercase",
+                    }}
                   >
-                    <span className="tnode-icon">🪑</span>
-                    <span>{t.label}</span>
-                    <span className="tnode-seats">{t.seats}p</span>
+                    {floor?.name}
                   </div>
-                );
-              })}
-            </div>
+                  <div
+                    style={{
+                      position: "absolute",
+                      inset: 0,
+                      transform: `scale(${autoZoom})`,
+                      transformOrigin: "top left",
+                      width: maxX / autoZoom,
+                      height: maxY / autoZoom,
+                    }}
+                  >
+                    {/* Elemente decorative */}
+                    {allElements.map((el) => (
+                      <div
+                        key={el.id}
+                        style={{
+                          position: "absolute",
+                          left: el.x,
+                          top: el.y,
+                          width: el.w || 60,
+                          height: el.h || 60,
+                          borderRadius: 10,
+                          background: `${el.color || "#2a2218"}22`,
+                          border: `1px solid ${el.color || "#2a2218"}55`,
+                          display: "flex",
+                          flexDirection: "column",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          pointerEvents: "none",
+                        }}
+                      >
+                        <span style={{ fontSize: 18 }}>{el.icon}</span>
+                        <span
+                          style={{
+                            fontSize: 8,
+                            color: el.color || "#6b6050",
+                            fontWeight: 700,
+                          }}
+                        >
+                          {el.label}
+                        </span>
+                      </div>
+                    ))}
+                    {/* Mese */}
+                    {allTables.map((t) => {
+                      const isTaken = taken.includes(t.id);
+                      const isSel = resForm.tableId === t.id;
+                      const w = t.seats <= 2 ? 52 : t.seats <= 4 ? 64 : 80;
+                      return (
+                        <div
+                          key={t.id}
+                          onClick={() => !isTaken && set({ tableId: t.id })}
+                          style={{
+                            position: "absolute",
+                            left: t.x,
+                            top: t.y,
+                            width: w,
+                            height: w * 0.85,
+                            borderRadius: 12,
+                            background: isSel
+                              ? "rgba(192,98,47,.35)"
+                              : isTaken
+                                ? "rgba(192,57,43,.15)"
+                                : "rgba(74,110,74,.15)",
+                            border: `2px solid ${isSel ? "#c0622f" : isTaken ? "#e05050" : "#4a6e4a"}`,
+                            display: "flex",
+                            flexDirection: "column",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            cursor: isTaken ? "not-allowed" : "pointer",
+                            gap: 1,
+                          }}
+                        >
+                          <span style={{ fontSize: 14 }}>🪑</span>
+                          <span
+                            style={{
+                              fontFamily: "'Fraunces',serif",
+                              fontSize: 12,
+                              fontWeight: 700,
+                              color: isSel
+                                ? "#c0622f"
+                                : isTaken
+                                  ? "#e05050"
+                                  : "#4a6e4a",
+                            }}
+                          >
+                            {t.label}
+                          </span>
+                          <span style={{ fontSize: 9, color: "#6b6050" }}>
+                            {t.seats}p
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })()}
           </div>
         )}
         <button
