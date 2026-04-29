@@ -87,8 +87,9 @@ function Router() {
         .select("id", { count: "exact", head: true })
         .eq("user_id", userId)
         .eq("is_read", false);
-      console.log("loadUnread:", { userId, count, error });
-      dispatch({ type: "SET_UNREAD", payload: count || 0 });
+      const unread = parseInt(count) || 0;
+      console.log("loadUnread:", { userId, count, unread, error });
+      dispatch({ type: "SET_UNREAD", payload: unread });
     };
 
     loadUnread();
