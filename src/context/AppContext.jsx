@@ -1,4 +1,11 @@
-import { createContext, useContext, useReducer, useCallback } from "react";
+import {
+  createContext,
+  useContext,
+  useReducer,
+  useCallback,
+  useEffect,
+} from "react";
+import { supabase } from "../supabase";
 
 const AppContext = createContext(null);
 
@@ -28,6 +35,8 @@ const initialState = {
   ],
   adminFloorIdx: 0,
   selectedNode: null,
+  // Coș persistent
+  savedCart: null, // { restaurant_id, restaurant_name, table_label, items }
   // Notificări client
   notifications: [],
   unreadCount: 0,
@@ -79,7 +88,9 @@ function reducer(state, { type, payload }) {
       };
     }
     case "CART_CLEAR":
-      return { ...state, cart: [] };
+      return { ...state, cart: [], orderTableNum: null };
+    case "SET_SAVED_CART":
+      return { ...state, savedCart: payload };
 
     // ── Comenzi ──
     case "PLACE_ORDER":
@@ -108,6 +119,8 @@ function reducer(state, { type, payload }) {
         notifications: [payload, ...state.notifications],
         unreadCount: state.unreadCount + 1,
       };
+    case "SET_UNREAD":
+      return { ...state, unreadCount: payload };
     case "MARK_NOTIFICATIONS_READ":
       return {
         ...state,
@@ -248,6 +261,59 @@ function reducer(state, { type, payload }) {
 
 export function AppProvider({ children }) {
   const [state, dispatch] = useReducer(reducer, initialState);
+
+  // ── Încarcă coșul salvat la login ──
+  useEffect(() => {
+    const userId = state.user?.id;
+    if (!userId) {
+      dispatch({ type: "SET_SAVED_CART", payload: null });
+      return;
+    }
+    supabase
+      .from("cart_sessions")
+      .select("*")
+      .eq("user_id", userId)
+      .order("updated_at", { ascending: false })
+      .limit(1)
+      .then(({ data }) => {
+        if (data && data.length > 0 && data[0].items?.length > 0) {
+          dispatch({ type: "SET_SAVED_CART", payload: data[0] });
+        }
+      });
+  }, [state.user?.id]);
+
+  // ── Salvează coșul în Supabase când se modifică ──
+  useEffect(() => {
+    const userId = state.user?.id;
+    const restId = state.selectedRest?.id;
+    if (!userId || !restId) return;
+    if (state.cart.length === 0) {
+      // Șterge coșul salvat când e gol
+      supabase
+        .from("cart_sessions")
+        .delete()
+        .eq("user_id", userId)
+        .then(() => {
+          dispatch({ type: "SET_SAVED_CART", payload: null });
+        });
+      return;
+    }
+    // Upsert coșul curent
+    supabase
+      .from("cart_sessions")
+      .upsert(
+        {
+          user_id: userId,
+          restaurant_id: restId,
+          restaurant_name: state.selectedRest?.name || "",
+          table_label: state.orderTableNum || null,
+          items: state.cart,
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: "user_id" },
+      )
+      .then(() => {});
+  }, [state.cart, state.orderTableNum]);
 
   const navigate = useCallback(
     (screen) => dispatch({ type: "NAVIGATE", payload: screen }),

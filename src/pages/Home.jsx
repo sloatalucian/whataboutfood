@@ -589,7 +589,7 @@ function DeleteRestaurantModal({ restaurant, onConfirm, onClose }) {
 // ─── HOME CLIENT ──────────────────────────────────────────────────────────────
 function HomeClient() {
   const { state, dispatch, navigate, showToast } = useApp();
-  const { user } = state;
+  const { user, savedCart } = state;
   const [selectedCity, setSelectedCity] = useState("Toate orașele");
   const [allRestaurants, setAllRestaurants] = useState([]);
   const [loadingRests, setLoadingRests] = useState(true);
@@ -743,6 +743,114 @@ function HomeClient() {
       </div>
 
       <div className="inner" style={{ paddingTop: 16, paddingBottom: 100 }}>
+        {/* ── Coș Salvat ── */}
+        {savedCart && savedCart.items?.length > 0 && !activeOrder && (
+          <div
+            style={{
+              background: "rgba(192,98,47,.1)",
+              border: "1px solid rgba(192,98,47,.3)",
+              borderRadius: 16,
+              padding: "14px 16px",
+              marginBottom: 16,
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "flex-start",
+                marginBottom: 10,
+              }}
+            >
+              <div>
+                <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 2 }}>
+                  🛒 Coș salvat — {savedCart.restaurant_name}
+                </div>
+                <div style={{ fontSize: 11, color: "var(--muted)" }}>
+                  {savedCart.items.length} produse
+                  {savedCart.table_label
+                    ? ` • Masa ${savedCart.table_label}`
+                    : ""}
+                  {" • "}
+                  {savedCart.items
+                    .reduce((s, i) => s + i.price * (i.qty || 1), 0)
+                    .toFixed(2)}{" "}
+                  lei
+                </div>
+              </div>
+            </div>
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "1fr 1fr",
+                gap: 8,
+              }}
+            >
+              <button
+                onClick={async () => {
+                  // Încarcă restaurantul și coșul
+                  const { data: rest } = await supabase
+                    .from("restaurants")
+                    .select("*")
+                    .eq("id", savedCart.restaurant_id)
+                    .single();
+                  if (rest) {
+                    dispatch({ type: "SET_REST", payload: rest });
+                    dispatch({ type: "CART_CLEAR" });
+                    savedCart.items.forEach((item) => {
+                      for (let i = 0; i < (item.qty || 1); i++) {
+                        dispatch({ type: "CART_ADD", payload: item });
+                      }
+                    });
+                    if (savedCart.table_label) {
+                      dispatch({
+                        type: "SET_ORDER_TABLE",
+                        payload: savedCart.table_label,
+                      });
+                    }
+                    navigate("menu");
+                  }
+                }}
+                style={{
+                  padding: "10px",
+                  borderRadius: 12,
+                  background: "var(--terra)",
+                  border: "none",
+                  color: "#fff",
+                  fontSize: 12,
+                  fontWeight: 700,
+                  cursor: "pointer",
+                }}
+              >
+                ✅ Continuă comanda
+              </button>
+              <button
+                onClick={async () => {
+                  await supabase
+                    .from("cart_sessions")
+                    .delete()
+                    .eq("user_id", user.id);
+                  dispatch({ type: "SET_SAVED_CART", payload: null });
+                  dispatch({ type: "CART_CLEAR" });
+                  showToast("🗑️ Coș anulat.");
+                }}
+                style={{
+                  padding: "10px",
+                  borderRadius: 12,
+                  background: "rgba(192,57,43,.15)",
+                  border: "1px solid rgba(192,57,43,.3)",
+                  color: "#e05050",
+                  fontSize: 12,
+                  fontWeight: 700,
+                  cursor: "pointer",
+                }}
+              >
+                ❌ Anulează
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* ── Comandă Activă ── */}
         {activeOrder && (
           <div
