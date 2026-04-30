@@ -244,8 +244,37 @@ function ProgramEditor({ program, onSave, onClose }) {
 function LiveTablesModal({ restaurant, onClose }) {
   const { tableStates } = useTable();
   const [activeFloor, setActiveFloor] = useState(0);
+  const [dbFloors, setDbFloors] = useState([]);
+  const [zoom, setZoom] = useState(60);
 
-  const floors = restaurant?.floors || [];
+  useEffect(() => {
+    if (!restaurant?.id) return;
+    const load = async () => {
+      const { data: floorsData } = await supabase
+        .from("floors")
+        .select("*")
+        .eq("restaurant_id", restaurant.id)
+        .order("floor_order");
+      if (!floorsData || floorsData.length === 0) return;
+      const floorsWithData = await Promise.all(
+        floorsData.map(async (fl) => {
+          const { data: tables } = await supabase
+            .from("tables")
+            .select("*")
+            .eq("floor_id", fl.id);
+          const { data: elements } = await supabase
+            .from("floor_elements")
+            .select("*")
+            .eq("floor_id", fl.id);
+          return { ...fl, tables: tables || [], elements: elements || [] };
+        }),
+      );
+      setDbFloors(floorsWithData);
+    };
+    load();
+  }, [restaurant?.id]);
+
+  const floors = dbFloors.length > 0 ? dbFloors : restaurant?.floors || [];
   const floor = floors[activeFloor];
   const tables = floor?.tables || [];
   const allTables = floors.flatMap((f) => f.tables || []);
@@ -434,6 +463,7 @@ function LiveTablesModal({ restaurant, onClose }) {
           </div>
         </div>
 
+        {/* Selector etaj */}
         {floors.length > 1 && (
           <div
             style={{
@@ -464,67 +494,215 @@ function LiveTablesModal({ restaurant, onClose }) {
           </div>
         )}
 
+        {/* Planșeu vizual */}
         <div style={{ padding: "0 20px 32px" }}>
-          <div
-            style={{
-              fontSize: 10,
-              letterSpacing: 2,
-              textTransform: "uppercase",
-              color: "#6b6050",
-              marginBottom: 12,
-            }}
-          >
-            {floor?.name} — {tables.length} mese
-          </div>
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(4,1fr)",
-              gap: 8,
-            }}
-          >
-            {tables.map((table) => {
-              const status = tableStates[table.id] || "free";
-              const cfg = TABLE_STATUS[status];
-              return (
-                <div
-                  key={table.id}
+          {floors.length === 0 ? (
+            <div
+              style={{
+                textAlign: "center",
+                padding: "30px 0",
+                color: "#6b6050",
+                fontSize: 13,
+              }}
+            >
+              Se încarcă planșeul...
+            </div>
+          ) : (
+            <>
+              {/* Zoom controls */}
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "flex-end",
+                  gap: 6,
+                  marginBottom: 8,
+                }}
+              >
+                <button
+                  onClick={() => setZoom((z) => Math.min(z + 10, 130))}
                   style={{
-                    background: cfg.bg,
-                    border: `2px solid ${cfg.border}`,
-                    borderRadius: 12,
-                    padding: "10px 4px",
-                    textAlign: "center",
+                    width: 28,
+                    height: 28,
+                    borderRadius: 8,
+                    background: "#1e1a14",
+                    border: "1px solid #2a2218",
+                    color: "#c8a97e",
+                    fontSize: 16,
+                    cursor: "pointer",
                   }}
                 >
-                  <div style={{ fontSize: 14, marginBottom: 2 }}>🪑</div>
+                  +
+                </button>
+                <span
+                  style={{
+                    fontSize: 11,
+                    color: "#6b6050",
+                    display: "flex",
+                    alignItems: "center",
+                  }}
+                >
+                  {zoom}%
+                </span>
+                <button
+                  onClick={() => setZoom((z) => Math.max(z - 10, 40))}
+                  style={{
+                    width: 28,
+                    height: 28,
+                    borderRadius: 8,
+                    background: "#1e1a14",
+                    border: "1px solid #2a2218",
+                    color: "#c8a97e",
+                    fontSize: 16,
+                    cursor: "pointer",
+                  }}
+                >
+                  −
+                </button>
+              </div>
+              {/* Canvas planșeu */}
+              <div
+                style={{
+                  position: "relative",
+                  width: "100%",
+                  overflowX: "auto",
+                  background: "#0d0a07",
+                  borderRadius: 14,
+                  border: "1px solid #2a2218",
+                }}
+              >
+                <div
+                  style={{
+                    position: "relative",
+                    height: Math.max(300, (700 * zoom) / 100),
+                  }}
+                >
                   <div
                     style={{
-                      fontFamily: "'Fraunces',serif",
-                      fontSize: 13,
-                      fontWeight: 700,
-                      color: cfg.color,
+                      position: "absolute",
+                      inset: 0,
+                      transform: `scale(${zoom / 100})`,
+                      transformOrigin: "top left",
+                      width: `${100 / (zoom / 100)}%`,
                     }}
                   >
-                    {table.label}
-                  </div>
-                  <div
-                    style={{
-                      fontSize: 8,
-                      color: cfg.color,
-                      opacity: 0.7,
-                      marginTop: 1,
-                    }}
-                  >
-                    {table.seats}p
-                  </div>
-                  <div style={{ fontSize: 8, color: cfg.color, marginTop: 2 }}>
-                    {cfg.icon}
+                    {/* Eticheta etaj */}
+                    <div
+                      style={{
+                        position: "absolute",
+                        top: 6,
+                        left: 8,
+                        fontSize: 9,
+                        color: "#6b6050",
+                        letterSpacing: 1,
+                        textTransform: "uppercase",
+                      }}
+                    >
+                      {floor?.name}
+                    </div>
+                    {/* Elemente decorative */}
+                    {(floor?.elements || []).map((el) => (
+                      <div
+                        key={el.id}
+                        style={{
+                          position: "absolute",
+                          left: el.x,
+                          top: el.y,
+                          width: el.w || 60,
+                          height: el.h || 60,
+                          borderRadius: 10,
+                          background: `${el.color || "#2a2218"}22`,
+                          border: `1px solid ${el.color || "#2a2218"}55`,
+                          display: "flex",
+                          flexDirection: "column",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          pointerEvents: "none",
+                        }}
+                      >
+                        <span style={{ fontSize: 18 }}>{el.icon}</span>
+                        <span
+                          style={{
+                            fontSize: 8,
+                            color: el.color || "#6b6050",
+                            fontWeight: 700,
+                          }}
+                        >
+                          {el.label}
+                        </span>
+                      </div>
+                    ))}
+                    {/* Mese */}
+                    {tables.map((table) => {
+                      const status = tableStates[table.id] || "free";
+                      const colors = {
+                        free: "#4a6e4a",
+                        occupied: "#c0622f",
+                        reserved: "#c8a97e",
+                        paid: "#5b8dd9",
+                      };
+                      const bgs = {
+                        free: "rgba(74,110,74,.15)",
+                        occupied: "rgba(192,98,47,.2)",
+                        reserved: "rgba(200,169,126,.15)",
+                        paid: "rgba(91,141,217,.15)",
+                      };
+                      const icons = {
+                        free: "",
+                        occupied: "🍽️",
+                        reserved: "📅",
+                        paid: "💳",
+                      };
+                      const w =
+                        table.seats <= 2 ? 52 : table.seats <= 4 ? 64 : 80;
+                      return (
+                        <div
+                          key={table.id}
+                          style={{
+                            position: "absolute",
+                            left: table.x,
+                            top: table.y,
+                            width: w,
+                            height: w * 0.85,
+                            borderRadius: 12,
+                            background: bgs[status],
+                            border: `2px solid ${colors[status]}`,
+                            display: "flex",
+                            flexDirection: "column",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            gap: 1,
+                          }}
+                        >
+                          <div
+                            style={{
+                              fontFamily: "'Fraunces',serif",
+                              fontSize: 13,
+                              fontWeight: 700,
+                              color: colors[status],
+                            }}
+                          >
+                            {table.label}
+                          </div>
+                          <div
+                            style={{
+                              fontSize: 8,
+                              color: colors[status],
+                              opacity: 0.7,
+                            }}
+                          >
+                            {table.seats}p
+                          </div>
+                          {icons[status] && (
+                            <div style={{ fontSize: 10 }}>{icons[status]}</div>
+                          )}
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
-              );
-            })}
-          </div>
+              </div>
+            </>
+          )}
         </div>
       </div>
     </div>
