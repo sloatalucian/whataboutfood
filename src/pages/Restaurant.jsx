@@ -250,11 +250,19 @@ function LiveTablesModal({ restaurant, onClose }) {
   useEffect(() => {
     if (!restaurant?.id) return;
     const load = async () => {
-      const { data: floorsData } = await supabase
+      const { data: floorsData, error: floorsError } = await supabase
         .from("floors")
         .select("*")
         .eq("restaurant_id", restaurant.id)
         .order("floor_order");
+      console.log(
+        "LiveTablesModal floors:",
+        floorsData,
+        "error:",
+        floorsError,
+        "restId:",
+        restaurant.id,
+      );
       if (!floorsData || floorsData.length === 0) return;
       const floorsWithData = await Promise.all(
         floorsData.map(async (fl) => {
