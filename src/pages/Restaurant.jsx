@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { supabase } from "../supabase";
 import { useApp } from "../context/AppContext";
 import { useTable, TABLE_STATUS } from "../context/TableContext";
 import { PLANS } from "../data/constants";
@@ -538,10 +539,22 @@ export default function Restaurant() {
 
   const [showLive, setShowLive] = useState(false);
   const [showProgram, setShowProgram] = useState(false);
-  // Programul e stocat local — în producție va fi în Supabase
   const [program, setProgram] = useState(
     selectedRest?.program || DEFAULT_PROGRAM,
   );
+
+  // Încarcă programul din Supabase
+  useEffect(() => {
+    if (!selectedRest?.id) return;
+    supabase
+      .from("restaurants")
+      .select("program")
+      .eq("id", selectedRest.id)
+      .single()
+      .then(({ data }) => {
+        if (data?.program) setProgram(data.program);
+      });
+  }, [selectedRest?.id]);
 
   if (!selectedRest) {
     navigate("home");
@@ -557,9 +570,19 @@ export default function Restaurant() {
   ).length;
   const isOwner = user?.role === "owner";
 
-  const handleSaveProgram = (newProg) => {
+  const handleSaveProgram = async (newProg) => {
     setProgram(newProg);
     setShowProgram(false);
+    if (selectedRest?.id) {
+      const { error } = await supabase
+        .from("restaurants")
+        .update({ program: newProg })
+        .eq("id", selectedRest.id);
+      if (error) {
+        showToast("❌ Eroare la salvarea programului.");
+        return;
+      }
+    }
     showToast("✅ Programul a fost salvat!");
   };
 

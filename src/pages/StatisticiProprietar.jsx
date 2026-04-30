@@ -100,6 +100,8 @@ export default function StatisticiProprietar() {
   const [period, setPeriod] = useState("saptamana");
   const [loading, setLoading] = useState(true);
   const [exportLoading, setExportLoading] = useState(false);
+  const [myRestaurants, setMyRestaurants] = useState([]);
+  const [selectedRestId, setSelectedRestId] = useState(null);
 
   // Date reale
   const [monthStats, setMonthStats] = useState({
@@ -114,26 +116,35 @@ export default function StatisticiProprietar() {
   const [heatmapData, setHeatmapData] = useState([]);
   const [restaurantName, setRestaurantName] = useState("");
 
+  // Încarcă lista restaurante
   useEffect(() => {
     if (!user?.id) return;
+    supabase
+      .from("restaurants")
+      .select("id, name")
+      .eq("owner_id", user.id)
+      .then(({ data }) => {
+        if (data && data.length > 0) {
+          setMyRestaurants(data);
+          setSelectedRestId(data[0].id);
+          setRestaurantName(data[0].name);
+        }
+      });
+  }, [user?.id]);
+
+  useEffect(() => {
+    if (!selectedRestId) return;
     loadStats();
-  }, [user?.id, period]);
+  }, [selectedRestId, period]);
 
   const loadStats = async () => {
     setLoading(true);
     try {
-      // Găsim restaurantul proprietarului
-      const { data: rests } = await supabase
-        .from("restaurants")
-        .select("id, name")
-        .eq("owner_id", user.id)
-        .limit(1);
-      if (!rests || rests.length === 0) {
+      const restId = selectedRestId;
+      if (!restId) {
         setLoading(false);
         return;
       }
-      const restId = rests[0].id;
-      setRestaurantName(rests[0].name);
 
       // Interval de timp
       const now = new Date();
@@ -428,6 +439,36 @@ export default function StatisticiProprietar() {
             </div>
           </div>
         </div>
+        {/* Selector restaurant - apare doar dacă are mai multe */}
+        {myRestaurants.length > 1 && (
+          <div style={{ marginBottom: 12 }}>
+            <select
+              value={selectedRestId || ""}
+              onChange={(e) => {
+                const r = myRestaurants.find((r) => r.id === e.target.value);
+                setSelectedRestId(e.target.value);
+                setRestaurantName(r?.name || "");
+              }}
+              style={{
+                width: "100%",
+                background: "#1e1a14",
+                border: "1px solid #2a2218",
+                borderRadius: 10,
+                color: "#f0ebe3",
+                padding: "10px 12px",
+                fontSize: 13,
+                fontFamily: "inherit",
+              }}
+            >
+              {myRestaurants.map((r) => (
+                <option key={r.id} value={r.id}>
+                  {r.name}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
+
         <div style={{ display: "flex", gap: 8 }}>
           <button
             onClick={exportCSV}
