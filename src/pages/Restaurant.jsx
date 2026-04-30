@@ -792,20 +792,13 @@ export default function Restaurant() {
               </div>
             </div>
             <div
-              onClick={() => {
-                if (isLocked("orders")) {
-                  showToast("🔒 Necesită plan Pro!");
-                  return;
-                }
-                navigate("selectTable");
-              }}
+              onClick={() => navigate("selectTable")}
               style={{
                 padding: "16px 14px",
                 borderRadius: 16,
                 textAlign: "center",
                 cursor: "pointer",
                 background: "linear-gradient(135deg,var(--sage),#2d4a2d)",
-                opacity: isLocked("orders") ? 0.6 : 1,
               }}
             >
               <div style={{ fontSize: 22, marginBottom: 4 }}>🪑</div>
