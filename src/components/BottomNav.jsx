@@ -99,7 +99,7 @@ export default function BottomNav({
       id: "notifications",
       icon: "🔔",
       label: "Notificări",
-      badge: state.unreadCount,
+      badge: localUnread,
     },
     { id: "auth", icon: "👤", label: "Cont" },
   ];
