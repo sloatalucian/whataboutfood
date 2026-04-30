@@ -1185,7 +1185,12 @@ function HomeOwner({ onLogout }) {
 
   const [myRestaurants, setMyRestaurants] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [deleteModal, setDeleteModal] = useState(null); // restaurantul de șters
+  const [deleteModal, setDeleteModal] = useState(null);
+  const [todayStats, setTodayStats] = useState({
+    orders: "—",
+    reservations: "—",
+    revenue: "—",
+  });
 
   // Încarcă restaurantele proprietarului din Supabase
   const loadRestaurants = useCallback(async () => {
@@ -1216,6 +1221,47 @@ function HomeOwner({ onLogout }) {
   useEffect(() => {
     loadRestaurants();
   }, [loadRestaurants]);
+
+  // Încarcă statisticile de azi
+  useEffect(() => {
+    if (!user?.id) return;
+    const loadToday = async () => {
+      const { data: rests } = await supabase
+        .from("restaurants")
+        .select("id")
+        .eq("owner_id", user.id)
+        .limit(1);
+      if (!rests || rests.length === 0) return;
+      const restId = rests[0].id;
+      const startOfDay = new Date();
+      startOfDay.setHours(0, 0, 0, 0);
+
+      const { data: orders } = await supabase
+        .from("orders")
+        .select("total, status")
+        .eq("restaurant_id", restId)
+        .gte("created_at", startOfDay.toISOString());
+
+      const todayStr = new Date().toISOString().split("T")[0];
+      const { count: resCount } = await supabase
+        .from("reservations")
+        .select("id", { count: "exact", head: true })
+        .eq("restaurant_id", restId)
+        .eq("date", todayStr)
+        .eq("status", "confirmed");
+
+      const revenue = (orders || [])
+        .filter((o) => o.status === "paid" || o.status === "completed")
+        .reduce((s, o) => s + Number(o.total || 0), 0);
+
+      setTodayStats({
+        orders: (orders || []).length,
+        reservations: resCount || 0,
+        revenue: revenue.toFixed(0),
+      });
+    };
+    loadToday();
+  }, [user?.id]);
 
   // Șterge restaurant din Supabase
   const handleDeleteRestaurant = async (restaurantId) => {
@@ -1415,6 +1461,14 @@ function HomeOwner({ onLogout }) {
                 screen: "adminFloor",
                 color: "rgba(192,98,47,.2)",
                 border: "rgba(192,98,47,.3)",
+              },
+              {
+                icon: "📡",
+                label: "Dashboard Live",
+                desc: "Activitate în timp real",
+                screen: "dashboardLive",
+                color: "rgba(107,158,107,.2)",
+                border: "rgba(107,158,107,.3)",
               },
               {
                 icon: "📊",

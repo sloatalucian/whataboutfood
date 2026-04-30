@@ -6,6 +6,7 @@ import Home from "./pages/Home";
 import Restaurant from "./pages/Restaurant";
 import { Rezervare, Meniu, Auth } from "./pages/pages";
 import { SelectTable, WaiterTablet } from "./pages/SelectTable";
+import DashboardLive from "./pages/DashboardLive";
 import { WaiterLogin, WaiterManagement } from "./pages/WaiterManagement";
 import StatisticiProprietar from "./pages/StatisticiProprietar";
 import SplashScreen from "./pages/SplashScreen";
@@ -268,6 +269,7 @@ function Router() {
     admin: <AdminDashboard />,
     adminFloor: <FloorEditor />,
     statistici: <StatisticiProprietar />,
+    dashboardLive: <DashboardLive />,
     menuEditor: <MenuEditor />,
     newRestaurant: <NewRestaurant />,
     notifications: <Notifications />,
