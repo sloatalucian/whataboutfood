@@ -9,7 +9,85 @@ export function Rezervare() {
   const { state, dispatch, navigate, showToast } = useApp();
   const { selectedRest, resForm, reservations, user } = state;
   const [dbFloors, setDbFloors] = useState([]);
-  const [reservedTables, setReservedTables] = useState([]); // label-urile meselor rezervate
+  const [reservedTables, setReservedTables] = useState([]);
+  const [restProgram, setRestProgram] = useState(null);
+
+  // Încarcă programul restaurantului din Supabase
+  useEffect(() => {
+    if (!selectedRest?.id) return;
+    supabase
+      .from("restaurants")
+      .select("program")
+      .eq("id", selectedRest.id)
+      .single()
+      .then(({ data }) => {
+        if (data?.program) setRestProgram(data.program);
+      });
+  }, [selectedRest?.id]);
+
+  // Generează orele disponibile bazat pe ziua selectată și program
+  const getAvailableSlots = () => {
+    if (!resForm.date || !restProgram) return [];
+
+    const date = new Date(resForm.date);
+    const dayIndex = date.getDay(); // 0=Duminică, 1=Luni...
+    const ZILE_MAP = [
+      "Duminică",
+      "Luni",
+      "Marți",
+      "Miercuri",
+      "Joi",
+      "Vineri",
+      "Sâmbătă",
+    ];
+    const zi = ZILE_MAP[dayIndex];
+    const dayProg = restProgram[zi];
+
+    if (!dayProg || !dayProg.deschis) return [];
+
+    const start = dayProg.start || "10:00";
+    const end = dayProg.end || "22:00";
+
+    const [startH, startM] = start.split(":").map(Number);
+    const [endH, endM] = end.split(":").map(Number);
+
+    // Ultima rezervare cu 1 oră înainte de închidere
+    let lastH = endH - 1;
+    let lastM = endM;
+    if (lastM < 0) {
+      lastH--;
+      lastM += 60;
+    }
+
+    const slots = [];
+    let h = startH;
+    let m = startM;
+
+    while (h < lastH || (h === lastH && m <= lastM)) {
+      slots.push(`${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`);
+      h++;
+    }
+
+    return slots;
+  };
+
+  const isDayClosed = () => {
+    if (!resForm.date || !restProgram) return false;
+    const date = new Date(resForm.date);
+    const dayIndex = date.getDay();
+    const ZILE_MAP = [
+      "Duminică",
+      "Luni",
+      "Marți",
+      "Miercuri",
+      "Joi",
+      "Vineri",
+      "Sâmbătă",
+    ];
+    const zi = ZILE_MAP[dayIndex];
+    const dayProg = restProgram[zi];
+    return !dayProg || !dayProg.deschis;
+  };
 
   // Încarcă rezervările confirmate pentru data+ora selectată
   useEffect(() => {
@@ -261,34 +339,80 @@ export function Rezervare() {
         </div>
         <div className="form-group">
           <label className="form-label">Interval orar</label>
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(3,1fr)",
-              gap: 8,
-            }}
-          >
-            {TIME_SLOTS.map((t) => (
-              <div
-                key={t}
-                onClick={() => set({ time: t, tableId: null })}
-                style={{
-                  background:
-                    resForm.time === t ? "var(--terra)" : "var(--card2)",
-                  border: `1px solid ${resForm.time === t ? "var(--terra)" : "var(--border)"}`,
-                  borderRadius: 12,
-                  padding: "11px 4px",
-                  textAlign: "center",
-                  fontSize: 13,
-                  cursor: "pointer",
-                  color: resForm.time === t ? "#fff" : "var(--muted)",
-                  fontWeight: resForm.time === t ? 700 : 400,
-                }}
-              >
-                {t}
+          {!resForm.date ? (
+            <div
+              style={{
+                fontSize: 13,
+                color: "var(--muted)",
+                fontStyle: "italic",
+                padding: "8px 0",
+              }}
+            >
+              Selectează mai întâi o dată
+            </div>
+          ) : isDayClosed() ? (
+            <div
+              style={{
+                background: "rgba(192,57,43,.1)",
+                border: "1px solid rgba(192,57,43,.2)",
+                borderRadius: 12,
+                padding: "14px 16px",
+                textAlign: "center",
+              }}
+            >
+              <div style={{ fontSize: 20, marginBottom: 6 }}>🚫</div>
+              <div style={{ fontSize: 13, fontWeight: 700, color: "#e05050" }}>
+                Restaurant închis
               </div>
-            ))}
-          </div>
+              <div
+                style={{ fontSize: 11, color: "var(--muted)", marginTop: 4 }}
+              >
+                Restaurantul nu funcționează în această zi. Alege altă dată.
+              </div>
+            </div>
+          ) : getAvailableSlots().length === 0 ? (
+            <div
+              style={{
+                fontSize: 13,
+                color: "var(--muted)",
+                fontStyle: "italic",
+                padding: "8px 0",
+              }}
+            >
+              {restProgram
+                ? "Nicio oră disponibilă pentru această zi."
+                : "Se încarcă programul..."}
+            </div>
+          ) : (
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(3,1fr)",
+                gap: 8,
+              }}
+            >
+              {getAvailableSlots().map((t) => (
+                <div
+                  key={t}
+                  onClick={() => set({ time: t, tableId: null })}
+                  style={{
+                    background:
+                      resForm.time === t ? "var(--terra)" : "var(--card2)",
+                    border: `1px solid ${resForm.time === t ? "var(--terra)" : "var(--border)"}`,
+                    borderRadius: 12,
+                    padding: "11px 4px",
+                    textAlign: "center",
+                    fontSize: 13,
+                    cursor: "pointer",
+                    color: resForm.time === t ? "#fff" : "var(--muted)",
+                    fontWeight: resForm.time === t ? 700 : 400,
+                  }}
+                >
+                  {t}
+                </div>
+              ))}
+            </div>
+          )}
         </div>
         {resForm.time && (
           <div className="form-group">
