@@ -80,13 +80,20 @@ export default function Notifications() {
   const formatTime = (date) => {
     if (!date) return "";
     const now = new Date();
-    const then = new Date(date);
+    // Asigurăm că e tratat ca UTC adăugând Z dacă lipsește
+    const dateStr =
+      date.endsWith("Z") || date.includes("+") ? date : date + "Z";
+    const then = new Date(dateStr);
     const diff = Math.floor((now - then) / 1000);
     if (diff < 60) return "acum";
     if (diff < 3600) return `${Math.floor(diff / 60)} min`;
     if (diff < 86400) return `${Math.floor(diff / 3600)}h`;
     if (diff < 86400 * 2) return "ieri";
-    return then.toLocaleDateString("ro-RO", { day: "numeric", month: "short" });
+    return then.toLocaleDateString("ro-RO", {
+      day: "numeric",
+      month: "short",
+      timeZone: "Europe/Bucharest",
+    });
   };
 
   return (
