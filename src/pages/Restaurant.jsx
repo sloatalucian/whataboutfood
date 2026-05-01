@@ -1203,3 +1203,275 @@ export default function Restaurant() {
     </>
   );
 }
+
+// ─── PROGRAM EDITOR MODAL (exportat pentru Home.jsx) ──────────────────────────
+export function ProgramEditorModal({
+  restaurants,
+  initialRestId,
+  initialProgram,
+  onClose,
+  onSave,
+}) {
+  const ZILE = [
+    "Luni",
+    "Marți",
+    "Miercuri",
+    "Joi",
+    "Vineri",
+    "Sâmbătă",
+    "Duminică",
+  ];
+  const DEFAULT = Object.fromEntries(
+    ZILE.map((z) => [z, { deschis: true, start: "10:00", end: "22:00" }]),
+  );
+
+  const [selectedRestId, setSelectedRestId] = useState(
+    initialRestId || restaurants[0]?.id || null,
+  );
+  const [prog, setProg] = useState(initialProgram || DEFAULT);
+  const [loading, setLoading] = useState(false);
+
+  // Când schimbă restaurantul, încarcă programul lui
+  useEffect(() => {
+    if (!selectedRestId) return;
+    setLoading(true);
+    supabase
+      .from("restaurants")
+      .select("program")
+      .eq("id", selectedRestId)
+      .single()
+      .then(({ data }) => {
+        setProg(data?.program || DEFAULT);
+        setLoading(false);
+      });
+  }, [selectedRestId]);
+
+  const update = (zi, key, value) => {
+    setProg((prev) => ({ ...prev, [zi]: { ...prev[zi], [key]: value } }));
+  };
+
+  return (
+    <div
+      style={{
+        position: "fixed",
+        inset: 0,
+        zIndex: 300,
+        background: "rgba(0,0,0,.8)",
+        backdropFilter: "blur(8px)",
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "flex-end",
+      }}
+      onClick={onClose}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          background: "#161210",
+          borderRadius: "24px 24px 0 0",
+          border: "1px solid #2a2218",
+          width: "100%",
+          maxWidth: 430,
+          maxHeight: "90vh",
+          overflowY: "auto",
+          padding: "24px 20px 40px",
+        }}
+      >
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            marginBottom: 20,
+          }}
+        >
+          <div
+            style={{
+              fontFamily: "'Fraunces',serif",
+              fontSize: 20,
+              fontWeight: 700,
+            }}
+          >
+            🕐 Program restaurant
+          </div>
+          <button
+            onClick={onClose}
+            style={{
+              width: 32,
+              height: 32,
+              borderRadius: 8,
+              background: "#1e1a14",
+              border: "1px solid #2a2218",
+              color: "#6b6050",
+              fontSize: 16,
+              cursor: "pointer",
+            }}
+          >
+            ✕
+          </button>
+        </div>
+
+        {/* Selector restaurant dacă are mai multe */}
+        {restaurants.length > 1 && (
+          <div style={{ marginBottom: 16 }}>
+            <select
+              value={selectedRestId || ""}
+              onChange={(e) => setSelectedRestId(e.target.value)}
+              style={{
+                width: "100%",
+                background: "#1e1a14",
+                border: "1px solid #2a2218",
+                borderRadius: 10,
+                color: "#f0ebe3",
+                padding: "10px 12px",
+                fontSize: 13,
+                fontFamily: "inherit",
+              }}
+            >
+              {restaurants.map((r) => (
+                <option key={r.id} value={r.id}>
+                  {r.name}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
+
+        {loading ? (
+          <div
+            style={{ textAlign: "center", padding: "20px 0", color: "#6b6050" }}
+          >
+            Se încarcă...
+          </div>
+        ) : (
+          ZILE.map((zi) => (
+            <div
+              key={zi}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 10,
+                padding: "12px 0",
+                borderBottom: "1px solid #1e1a14",
+              }}
+            >
+              {/* Toggle */}
+              <div
+                onClick={() => update(zi, "deschis", !prog[zi]?.deschis)}
+                style={{
+                  width: 36,
+                  height: 20,
+                  borderRadius: 10,
+                  cursor: "pointer",
+                  background: prog[zi]?.deschis ? "#c0622f" : "#2a2218",
+                  position: "relative",
+                  transition: "background .2s",
+                  flexShrink: 0,
+                }}
+              >
+                <div
+                  style={{
+                    position: "absolute",
+                    top: 2,
+                    width: 16,
+                    height: 16,
+                    borderRadius: "50%",
+                    background: "#fff",
+                    transition: "left .2s",
+                    left: prog[zi]?.deschis ? 18 : 2,
+                  }}
+                />
+              </div>
+              {/* Zi */}
+              <div
+                style={{
+                  width: 72,
+                  fontSize: 13,
+                  fontWeight: 600,
+                  color: prog[zi]?.deschis ? "#f0ebe3" : "#6b6050",
+                }}
+              >
+                {zi}
+              </div>
+              {prog[zi]?.deschis ? (
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 6,
+                    flex: 1,
+                  }}
+                >
+                  <input
+                    type="time"
+                    value={prog[zi]?.start || "10:00"}
+                    onChange={(e) => update(zi, "start", e.target.value)}
+                    style={{
+                      flex: 1,
+                      background: "#1e1a14",
+                      border: "1px solid #2a2218",
+                      borderRadius: 8,
+                      padding: "6px 8px",
+                      color: "#f0ebe3",
+                      fontFamily: "inherit",
+                      fontSize: 12,
+                      outline: "none",
+                    }}
+                  />
+                  <span style={{ fontSize: 12, color: "#6b6050" }}>—</span>
+                  <input
+                    type="time"
+                    value={prog[zi]?.end || "22:00"}
+                    onChange={(e) => update(zi, "end", e.target.value)}
+                    style={{
+                      flex: 1,
+                      background: "#1e1a14",
+                      border: "1px solid #2a2218",
+                      borderRadius: 8,
+                      padding: "6px 8px",
+                      color: "#f0ebe3",
+                      fontFamily: "inherit",
+                      fontSize: 12,
+                      outline: "none",
+                    }}
+                  />
+                </div>
+              ) : (
+                <div
+                  style={{
+                    flex: 1,
+                    fontSize: 12,
+                    color: "#6b6050",
+                    fontStyle: "italic",
+                  }}
+                >
+                  Închis
+                </div>
+              )}
+            </div>
+          ))
+        )}
+
+        <button
+          onClick={() => onSave(selectedRestId, prog)}
+          style={{
+            width: "100%",
+            marginTop: 20,
+            padding: 14,
+            background: "linear-gradient(135deg,#c0622f,#8b3a18)",
+            border: "none",
+            borderRadius: 14,
+            color: "#fff",
+            fontFamily: "'Fraunces',serif",
+            fontSize: 16,
+            fontWeight: 700,
+            cursor: "pointer",
+          }}
+        >
+          ✅ Salvează programul
+        </button>
+      </div>
+    </div>
+  );
+}

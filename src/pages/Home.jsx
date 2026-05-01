@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from "react";
+import { ProgramEditorModal } from "./Restaurant";
 import { useApp } from "../context/AppContext";
 import RestaurantCard from "../components/RestaurantCard";
 import { RESTAURANTS } from "../data/restaurants";
@@ -1191,6 +1192,9 @@ function HomeOwner({ onLogout }) {
     reservations: "—",
     revenue: "—",
   });
+  const [showProgramModal, setShowProgramModal] = useState(false);
+  const [programRestId, setProgramRestId] = useState(null);
+  const [currentProgram, setCurrentProgram] = useState(null);
 
   // Încarcă restaurantele proprietarului din Supabase
   const loadRestaurants = useCallback(async () => {
@@ -1487,6 +1491,14 @@ function HomeOwner({ onLogout }) {
                 border: "rgba(74,110,74,.3)",
               },
               {
+                icon: "🕐",
+                label: "Program",
+                desc: "Ore funcționare",
+                screen: "programEditor",
+                color: "rgba(91,141,217,.2)",
+                border: "rgba(91,141,217,.3)",
+              },
+              {
                 icon: "🤵",
                 label: "Gestionare Ospătari",
                 desc: "Adaugă / modifică",
@@ -1497,7 +1509,27 @@ function HomeOwner({ onLogout }) {
             ].map((btn) => (
               <div
                 key={btn.screen}
-                onClick={() => navigate(btn.screen)}
+                onClick={() => {
+                  if (btn.screen === "programEditor") {
+                    // Dacă are un singur restaurant, îl selectăm automat
+                    if (myRestaurants.length === 1) {
+                      setProgramRestId(myRestaurants[0].id);
+                      supabase
+                        .from("restaurants")
+                        .select("program")
+                        .eq("id", myRestaurants[0].id)
+                        .single()
+                        .then(({ data }) => {
+                          setCurrentProgram(data?.program || null);
+                          setShowProgramModal(true);
+                        });
+                    } else {
+                      setShowProgramModal(true);
+                    }
+                    return;
+                  }
+                  navigate(btn.screen);
+                }}
                 style={{
                   background: `linear-gradient(135deg,${btn.color},transparent)`,
                   border: `1px solid ${btn.border}`,
@@ -1694,6 +1726,28 @@ function HomeOwner({ onLogout }) {
           </div>
         </div>
       </div>
+
+      {/* Modal Editor Program */}
+      {showProgramModal && (
+        <ProgramEditorModal
+          restaurants={myRestaurants}
+          initialRestId={programRestId}
+          initialProgram={currentProgram}
+          onClose={() => setShowProgramModal(false)}
+          onSave={async (restId, newProgram) => {
+            const { error } = await supabase
+              .from("restaurants")
+              .update({ program: newProgram })
+              .eq("id", restId);
+            if (!error) {
+              showToast("✅ Programul a fost salvat!");
+              setShowProgramModal(false);
+            } else {
+              showToast("❌ Eroare la salvare.");
+            }
+          }}
+        />
+      )}
     </>
   );
 }
