@@ -368,7 +368,7 @@ export function SelectTable({ restaurant, onSelected, onBack }) {
                 </div>
               ))}
               {tables.map((table) => {
-                const status = getStatus(table.id);
+                const status = getStatus(table.label);
                 const cfg = TABLE_STATUS[status] || TABLE_STATUS.free;
                 const isFree = status === "free";
                 const isSel = confirming?.id === table.id;
@@ -912,15 +912,9 @@ export function WaiterTablet({
       setOrders((prev) => prev.filter((o) => o.id !== orderId));
 
       // Eliberează masa direct după table_label și restaurant_id
-      if (order?.table_label && restaurantId) {
-        await supabase
-          .from("table_sessions")
-          .update({ status: "closed", closed_at: new Date().toISOString() })
-          .eq("restaurant_id", restaurantId)
-          .eq("table_label", order.table_label)
-          .in("status", ["occupied", "paid", "reserved"]);
-        // Reîncarcă imediat statusurile meselor
-        reload();
+      // Eliberează masa instant via context
+      if (order?.table_label) {
+        await freeTable(order.table_label);
       }
 
       showToast("💳 Plată confirmată! Masa eliberată.");
@@ -969,6 +963,7 @@ export function WaiterTablet({
           is_read: false,
         });
       }
+      reload(); // Actualizează instant culoarea mesei
       showToast("✅ Rezervare confirmată! Masa marcată ca rezervată.");
     } catch (err) {
       showToast("❌ Eroare la confirmare.");
@@ -2052,8 +2047,8 @@ export function WaiterTablet({
                                 : "default",
                           }}
                           onClick={() => {
-                            if (status === "occupied") markPaid(table.id);
-                            else if (status === "paid") freeTable(table.id);
+                            if (status === "occupied") markPaid(table.label);
+                            else if (status === "paid") freeTable(table.label);
                           }}
                         >
                           <div
