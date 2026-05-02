@@ -675,10 +675,21 @@ export function Meniu() {
         .eq("user_id", user.id)
         .eq("restaurant_id", selectedRest.id)
         .in("status", ["pending", "cooking", "ready", "paying"])
-        .order("created_at", { ascending: false })
-        .limit(1);
-      if (data && data.length > 0) setActiveOrder(data[0]);
-      else setActiveOrder(null);
+        .order("created_at", { ascending: false });
+
+      if (data && data.length > 0) {
+        // Grupăm toate comenzile active - luăm statusul celei mai recente
+        // și calculăm totalul tuturor
+        const latestOrder = data[0];
+        const totalAll = data.reduce((s, o) => s + Number(o.total || 0), 0);
+        const allItems = data.flatMap((o) => o.items || []);
+        setActiveOrder({
+          ...latestOrder,
+          total: totalAll,
+          items: allItems,
+          orderCount: data.length,
+        });
+      } else setActiveOrder(null);
     };
     loadActiveOrder();
 
@@ -691,27 +702,23 @@ export function Meniu() {
     if (!activeOrder) return;
     setPayNoteLoading(true);
     try {
+      // Actualizează TOATE comenzile active de la masa respectivă
       const { error } = await supabase
         .from("orders")
         .update({ status: "paying", payment_method: method })
-        .eq("id", activeOrder.id);
+        .eq("restaurant_id", selectedRest.id)
+        .eq("table_label", activeOrder.table_label)
+        .in("status", ["pending", "cooking", "ready"]);
       if (error) throw error;
 
-      // Actualizează statusul mesei la "paid" (albastru) în table_sessions
+      // Actualizează statusul mesei la "paid" (albastru)
       if (activeOrder.table_label && selectedRest?.id) {
-        const { data: tableData } = await supabase
-          .from("tables")
-          .select("id, floor_id, floors!inner(restaurant_id)")
-          .eq("label", activeOrder.table_label)
-          .eq("floors.restaurant_id", selectedRest.id)
-          .single();
-        if (tableData?.id) {
-          await supabase
-            .from("table_sessions")
-            .update({ status: "paid", paid_at: new Date().toISOString() })
-            .eq("table_id", tableData.id)
-            .eq("status", "occupied");
-        }
+        await supabase
+          .from("table_sessions")
+          .update({ status: "paid", paid_at: new Date().toISOString() })
+          .eq("restaurant_id", selectedRest.id)
+          .eq("table_label", activeOrder.table_label)
+          .eq("status", "occupied");
       }
 
       setActiveOrder((prev) => ({

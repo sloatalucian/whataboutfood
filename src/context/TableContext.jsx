@@ -57,8 +57,15 @@ export function TableProvider({ children, restaurantId }) {
       const states = {};
       const sessions = {};
       (data || []).forEach((s) => {
-        states[s.table_id] = s.status;
-        sessions[s.table_id] = s;
+        // Folosim atât table_id cât și table_label ca chei
+        if (s.table_id) {
+          states[s.table_id] = s.status;
+          sessions[s.table_id] = s;
+        }
+        if (s.table_label) {
+          states[s.table_label] = s.status;
+          sessions[s.table_label] = s;
+        }
       });
       setTableStates(states);
       setActiveSessions(sessions);

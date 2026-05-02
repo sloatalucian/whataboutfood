@@ -88,7 +88,7 @@ function reducer(state, { type, payload }) {
       };
     }
     case "CART_CLEAR":
-      return { ...state, cart: [], orderTableNum: null };
+      return { ...state, cart: [] }; // păstrăm orderTableNum pentru comenzi multiple
     case "SET_SAVED_CART":
       return { ...state, savedCart: payload };
 

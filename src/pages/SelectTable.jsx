@@ -816,24 +816,14 @@ export function WaiterTablet({
       if (error) throw error;
       setOrders((prev) => prev.filter((o) => o.id !== orderId));
 
-      // Eliberează masa direct din Supabase după restaurant_id și table_label
+      // Eliberează masa direct după table_label și restaurant_id
       if (order?.table_label && restaurantId) {
-        // Găsim table_id din Supabase direct
-        const { data: tableData } = await supabase
-          .from("tables")
-          .select("id, floor_id, floors!inner(restaurant_id)")
-          .eq("label", order.table_label)
-          .eq("floors.restaurant_id", restaurantId)
-          .single();
-
-        if (tableData?.id) {
-          await supabase
-            .from("table_sessions")
-            .update({ status: "closed", closed_at: new Date().toISOString() })
-            .eq("table_id", tableData.id)
-            .in("status", ["occupied", "paid", "reserved"]);
-          freeTable(tableData.id);
-        }
+        await supabase
+          .from("table_sessions")
+          .update({ status: "closed", closed_at: new Date().toISOString() })
+          .eq("restaurant_id", restaurantId)
+          .eq("table_label", order.table_label)
+          .in("status", ["occupied", "paid", "reserved"]);
       }
 
       showToast("💳 Plată confirmată! Masa eliberată.");
@@ -853,6 +843,25 @@ export function WaiterTablet({
       setDisplayReservations((prev) =>
         prev.map((r) => (r.id === resId ? { ...r, status: "confirmed" } : r)),
       );
+
+      // Marchează masa ca rezervată (galben) în table_sessions
+      if (reservation?.table_label && restaurantId) {
+        // Închide sesiuni existente pe masa asta
+        await supabase
+          .from("table_sessions")
+          .update({ status: "closed", closed_at: new Date().toISOString() })
+          .eq("restaurant_id", restaurantId)
+          .eq("table_label", reservation.table_label)
+          .in("status", ["occupied", "paid", "reserved"]);
+        // Inserează sesiune nouă ca rezervată
+        await supabase.from("table_sessions").insert({
+          restaurant_id: restaurantId,
+          table_label: reservation.table_label,
+          status: "reserved",
+          started_at: new Date().toISOString(),
+        });
+      }
+
       // Notificare client
       if (reservation?.user_id) {
         await supabase.from("notifications").insert({
@@ -863,7 +872,7 @@ export function WaiterTablet({
           is_read: false,
         });
       }
-      showToast("✅ Rezervare confirmată!");
+      showToast("✅ Rezervare confirmată! Masa marcată ca rezervată.");
     } catch (err) {
       showToast("❌ Eroare la confirmare.");
     }
