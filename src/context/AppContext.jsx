@@ -15,6 +15,7 @@ const initialState = {
   selectedRest: null,
   cart: [],
   orderTableNum: null,
+  tableSessionId: null,
   activeMenuCat: null,
   showPayment: false,
   paid: false,
@@ -62,6 +63,8 @@ function reducer(state, { type, payload }) {
       return { ...state, paid: payload.paid, payMethod: payload.method };
     case "SET_ORDER_TABLE":
       return { ...state, orderTableNum: payload };
+    case "SET_TABLE_SESSION":
+      return { ...state, tableSessionId: payload };
 
     // ── Coș ──
     case "CART_ADD": {
@@ -88,7 +91,7 @@ function reducer(state, { type, payload }) {
       };
     }
     case "CART_CLEAR":
-      return { ...state, cart: [] }; // păstrăm orderTableNum pentru comenzi multiple
+      return { ...state, cart: [] }; // păstrăm orderTableNum și tableSessionId pentru comenzi multiple
     case "SET_SAVED_CART":
       return { ...state, savedCart: payload };
 

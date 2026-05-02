@@ -110,8 +110,9 @@ function Router() {
     dispatch({ type: "ORDER_UPDATE", payload: { id, status, ...extra } });
   const handleOrderClose = (id) =>
     dispatch({ type: "ORDER_REMOVE", payload: id });
-  const handleTableSelected = ({ table }) => {
+  const handleTableSelected = ({ table, sessionId }) => {
     dispatch({ type: "SET_ORDER_TABLE", payload: table.label });
+    dispatch({ type: "SET_TABLE_SESSION", payload: sessionId });
     dispatch({ type: "SET_MENU_CAT", payload: null });
     navigate("menu");
     showToast(`✅ Masa ${table.label} selectată!`);

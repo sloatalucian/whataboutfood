@@ -83,10 +83,10 @@ export function SelectTable({ restaurant, onSelected, onBack }) {
     if (!confirming) return;
     setLoading(true);
     try {
-      const session = await occupyTable(confirming.id, confirming.label);
-      if (onSelected) onSelected({ table: confirming, session });
+      const sessionId = await occupyTable(confirming.id, confirming.label);
+      if (onSelected) onSelected({ table: confirming, sessionId });
     } catch {
-      if (onSelected) onSelected({ table: confirming, session: null });
+      if (onSelected) onSelected({ table: confirming, sessionId: null });
     }
     setLoading(false);
   };
@@ -901,13 +901,14 @@ export function WaiterTablet({
   };
 
   // ── Confirmă plata ──
-  // Confirmă plata pentru o notă grupată (una sau mai multe comenzi per masă)
+  // Confirmă plata pentru toate comenzile din sesiunea mesei
   const confirmPayment = async (groupedOrder) => {
     try {
       const orderIds = groupedOrder._orderIds || [groupedOrder.id];
       const tableLabel = groupedOrder.table_label;
+      const sessionId = groupedOrder.table_session_id;
 
-      // Marchează TOATE comenzile grupate ca plătite
+      // Marchează TOATE comenzile sesiunii ca plătite
       const { error } = await supabase
         .from("orders")
         .update({ status: "paid", paid_at: new Date().toISOString() })
@@ -916,8 +917,14 @@ export function WaiterTablet({
 
       setOrders((prev) => prev.filter((o) => !orderIds.includes(o.id)));
 
-      // Eliberează masa - toate comenzile grupate au fost confirmate
-      if (tableLabel) {
+      // Eliberează masa după table_session_id (cel mai precis)
+      if (sessionId) {
+        await supabase
+          .from("table_sessions")
+          .update({ status: "closed", closed_at: new Date().toISOString() })
+          .eq("table_session_id", sessionId);
+        await freeTable(tableLabel);
+      } else if (tableLabel) {
         await freeTable(tableLabel);
       }
 
@@ -1011,12 +1018,12 @@ export function WaiterTablet({
     }
   };
 
-  // Grupare comenzi paying per masă - notă unică per sesiune
+  // Grupare comenzi paying per sesiune masă (table_session_id = cheie unică)
   const payingOrders = Object.values(
     orders
       .filter((o) => o.status === "paying")
       .reduce((groups, order) => {
-        const key = order.table_label || order.table || order.id;
+        const key = order.table_session_id || order.table_label || order.id;
         if (!groups[key]) {
           groups[key] = {
             ...order,

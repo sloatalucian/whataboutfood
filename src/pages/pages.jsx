@@ -617,6 +617,7 @@ export function Meniu() {
     selectedRest,
     cart,
     orderTableNum,
+    tableSessionId,
     activeMenuCat,
     showPayment,
     paid,
@@ -713,13 +714,13 @@ export function Meniu() {
         .in("status", ["pending", "cooking", "ready"]);
       if (error) throw error;
 
-      // Actualizează statusul mesei la "paid" (albastru)
-      if (activeOrder.table_label && selectedRest?.id) {
+      // Actualizează statusul mesei la "paid" (albastru) — după table_session_id
+      if (tableSessionId && selectedRest?.id) {
         await supabase
           .from("table_sessions")
           .update({ status: "paid", paid_at: new Date().toISOString() })
           .eq("restaurant_id", selectedRest.id)
-          .eq("table_label", activeOrder.table_label)
+          .eq("table_session_id", tableSessionId)
           .eq("status", "occupied");
       }
 
@@ -768,6 +769,7 @@ export function Meniu() {
           restaurant_id: selectedRest.id,
           user_id: user?.id || null,
           table_label: orderTableNum,
+          table_session_id: tableSessionId || null,
           items: cart,
           observations: observations || null,
           status: "pending",
