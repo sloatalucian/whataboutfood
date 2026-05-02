@@ -3,10 +3,10 @@ import {
   useContext,
   useState,
   useCallback,
-  useRef,
+  useEffect,
 } from "react";
+import { supabase } from "../supabase";
 
-// ─── STĂRILE MESEI ────────────────────────────────────────────────────────────
 export const TABLE_STATUS = {
   free: {
     label: "Liberă",
@@ -38,135 +38,165 @@ export const TABLE_STATUS = {
   },
 };
 
-// ─── STORE GLOBAL (în afara componentelor — persiste între re-render-uri) ────
-// Acesta este "creierul" — un singur obiect partajat în toată aplicația
-const globalTableStates = {}; // { tableId: "free"|"occupied"|"reserved"|"paid" }
-const globalSessions = {}; // { tableId: { id, tableLabel, startedAt } }
-const listeners = new Set(); // componente care ascultă schimbările
-
-const notifyAll = () => {
-  listeners.forEach((fn) => fn({})); // forțează re-render la toți abonații
-};
-
-// ─── CONTEXT ─────────────────────────────────────────────────────────────────
 const TableContext = createContext(null);
 
 export function TableProvider({ children, restaurantId }) {
-  // State local doar pentru a forța re-render când globalTableStates se schimbă
-  const [, forceUpdate] = useState({});
+  const [tableStates, setTableStates] = useState({});
+  const [activeSessions, setActiveSessions] = useState({});
 
-  // Abonare la schimbări globale
-  const forceUpdateRef = useRef(null);
-  if (!forceUpdateRef.current) {
-    forceUpdateRef.current = () => forceUpdate({});
-    listeners.add(forceUpdateRef.current);
-  }
+  // ── Încarcă statusurile din Supabase ──
+  const loadTableStates = useCallback(async () => {
+    if (!restaurantId) return;
+    try {
+      const { data } = await supabase
+        .from("table_sessions")
+        .select("*")
+        .eq("restaurant_id", restaurantId)
+        .in("status", ["occupied", "paid", "reserved"]);
 
-  // Cleanup la unmount
-  const cleanup = useCallback(() => {
-    if (forceUpdateRef.current) {
-      listeners.delete(forceUpdateRef.current);
-    }
-  }, []);
+      const states = {};
+      const sessions = {};
+      (data || []).forEach((s) => {
+        states[s.table_id] = s.status;
+        sessions[s.table_id] = s;
+      });
+      setTableStates(states);
+      setActiveSessions(sessions);
+    } catch (err) {}
+  }, [restaurantId]);
+
+  // Încarcă la mount și ascultă schimbări Realtime
+  useEffect(() => {
+    if (!restaurantId) return;
+    loadTableStates();
+
+    const channel = supabase
+      .channel(`table_sessions_${restaurantId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "table_sessions",
+          filter: `restaurant_id=eq.${restaurantId}`,
+        },
+        () => loadTableStates(),
+      )
+      .subscribe();
+
+    return () => supabase.removeChannel(channel);
+  }, [restaurantId, loadTableStates]);
 
   // ── Ocupă masă ──
   const occupyTable = useCallback(
     async (tableId, tableLabel) => {
-      const session = {
-        id: Date.now(),
-        tableId,
-        tableLabel,
-        restaurantId,
-        status: "occupied",
-        started_at: new Date().toISOString(),
-      };
-      globalTableStates[tableId] = "occupied";
-      globalSessions[tableId] = session;
-      notifyAll();
-
-      // Încearcă și Supabase în background (nu blochează UI)
+      if (!restaurantId) return;
       try {
-        const { supabase } = await import("../supabase");
-        await supabase.from("table_sessions").insert({
-          restaurant_id: restaurantId,
-          table_id: String(tableId),
-          table_label: tableLabel,
-          status: "occupied",
-          started_at: session.started_at,
-        });
-      } catch (err) {
-        // Ignoră — starea locală e deja setată
-      }
-
-      return session;
-    },
-    [restaurantId],
-  );
-
-  // ── Marchează achitat ──
-  const markPaid = useCallback(async (tableId) => {
-    globalTableStates[tableId] = "paid";
-    notifyAll();
-
-    try {
-      const { supabase } = await import("../supabase");
-      const session = globalSessions[tableId];
-      if (session?.id) {
-        await supabase
-          .from("table_sessions")
-          .update({ status: "paid", paid_at: new Date().toISOString() })
-          .eq("id", session.id);
-      }
-    } catch (err) {}
-  }, []);
-
-  // ── Eliberează masă ──
-  const freeTable = useCallback(async (tableId) => {
-    // Salvăm sesiunea înainte să o ștergem
-    const session = globalSessions[tableId];
-    delete globalTableStates[tableId];
-    delete globalSessions[tableId];
-    notifyAll();
-
-    try {
-      const { supabase } = await import("../supabase");
-      if (session?.id) {
-        await supabase
-          .from("table_sessions")
-          .update({ status: "closed", closed_at: new Date().toISOString() })
-          .eq("id", session.id);
-      } else {
-        // Dacă nu avem sesiune, ștergem după table_id și status activ
+        // Închide sesiunile active existente pentru această masă
         await supabase
           .from("table_sessions")
           .update({ status: "closed", closed_at: new Date().toISOString() })
           .eq("table_id", tableId)
-          .in("status", ["occupied", "paid"]);
-      }
+          .in("status", ["occupied", "paid", "reserved"]);
+
+        // Creează sesiune nouă
+        const { data } = await supabase
+          .from("table_sessions")
+          .insert({
+            restaurant_id: restaurantId,
+            table_id: tableId,
+            status: "occupied",
+            started_at: new Date().toISOString(),
+          })
+          .select()
+          .single();
+
+        if (data) {
+          setTableStates((prev) => ({ ...prev, [tableId]: "occupied" }));
+          setActiveSessions((prev) => ({ ...prev, [tableId]: data }));
+        }
+      } catch (err) {}
+    },
+    [restaurantId],
+  );
+
+  // ── Marchează plătită ──
+  const markPaid = useCallback(
+    async (tableId) => {
+      try {
+        const session = activeSessions[tableId];
+        if (session?.id) {
+          await supabase
+            .from("table_sessions")
+            .update({ status: "paid", paid_at: new Date().toISOString() })
+            .eq("id", session.id);
+        } else {
+          await supabase
+            .from("table_sessions")
+            .update({ status: "paid", paid_at: new Date().toISOString() })
+            .eq("table_id", tableId)
+            .eq("status", "occupied");
+        }
+        setTableStates((prev) => ({ ...prev, [tableId]: "paid" }));
+      } catch (err) {}
+    },
+    [activeSessions],
+  );
+
+  // ── Eliberează masă ──
+  const freeTable = useCallback(async (tableId) => {
+    try {
+      await supabase
+        .from("table_sessions")
+        .update({ status: "closed", closed_at: new Date().toISOString() })
+        .eq("table_id", tableId)
+        .in("status", ["occupied", "paid", "reserved"]);
+
+      setTableStates((prev) => {
+        const next = { ...prev };
+        delete next[tableId];
+        return next;
+      });
+      setActiveSessions((prev) => {
+        const next = { ...prev };
+        delete next[tableId];
+        return next;
+      });
     } catch (err) {}
   }, []);
 
-  // ── Setează rezervată ──
-  const reserveTable = useCallback((tableId) => {
-    globalTableStates[tableId] = "reserved";
-    notifyAll();
-  }, []);
+  // ── Rezervă masă ──
+  const reserveTable = useCallback(
+    async (tableId) => {
+      try {
+        await supabase.from("table_sessions").insert({
+          restaurant_id: restaurantId,
+          table_id: tableId,
+          status: "reserved",
+          started_at: new Date().toISOString(),
+        });
+        setTableStates((prev) => ({ ...prev, [tableId]: "reserved" }));
+      } catch (err) {}
+    },
+    [restaurantId],
+  );
 
-  // ── Obține status ──
-  const getStatus = useCallback((tableId) => {
-    return globalTableStates[tableId] || "free";
-  }, []);
+  const getStatus = useCallback(
+    (tableId) => {
+      return tableStates[tableId] || "free";
+    },
+    [tableStates],
+  );
 
-  // ── Reload (pentru butonul 🔄) ──
   const reload = useCallback(() => {
-    notifyAll();
-  }, []);
+    loadTableStates();
+  }, [loadTableStates]);
 
   return (
     <TableContext.Provider
       value={{
-        tableStates: { ...globalTableStates },
-        activeSessions: { ...globalSessions },
+        tableStates,
+        activeSessions,
         occupyTable,
         markPaid,
         freeTable,
@@ -180,4 +210,18 @@ export function TableProvider({ children, restaurantId }) {
   );
 }
 
-export const useTable = () => useContext(TableContext);
+export function useTable() {
+  const ctx = useContext(TableContext);
+  if (!ctx)
+    return {
+      tableStates: {},
+      activeSessions: {},
+      occupyTable: async () => {},
+      markPaid: async () => {},
+      freeTable: async () => {},
+      reserveTable: async () => {},
+      getStatus: () => "free",
+      reload: () => {},
+    };
+  return ctx;
+}
