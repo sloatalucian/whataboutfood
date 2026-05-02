@@ -672,7 +672,8 @@ export function Meniu() {
   useEffect(() => {
     if (!user?.id || !selectedRest?.id) return;
     const loadActiveOrder = async () => {
-      const { data } = await supabase
+      // Filtrăm strict după tableSessionId - doar comenzile sesiunii curente
+      let query = supabase
         .from("orders")
         .select("*")
         .eq("user_id", user.id)
@@ -680,10 +681,22 @@ export function Meniu() {
         .in("status", ["pending", "cooking", "ready", "paying"])
         .order("created_at", { ascending: false });
 
+      if (tableSessionId) {
+        query = query.eq("table_session_id", tableSessionId);
+      }
+
+      const { data } = await query;
+
       if (data && data.length > 0) {
-        // Grupăm toate comenzile active - luăm statusul celei mai recente
-        // și calculăm totalul tuturor
-        const latestOrder = data[0];
+        // Grupăm toate comenzile sesiunii - status = cel mai avansat
+        const statusPriority = { paying: 4, ready: 3, cooking: 2, pending: 1 };
+        const latestOrder = data.reduce(
+          (best, o) =>
+            (statusPriority[o.status] || 0) > (statusPriority[best.status] || 0)
+              ? o
+              : best,
+          data[0],
+        );
         const totalAll = data.reduce((s, o) => s + Number(o.total || 0), 0);
         const allItems = data.flatMap((o) => o.items || []);
         setActiveOrder({
@@ -691,6 +704,7 @@ export function Meniu() {
           total: totalAll,
           items: allItems,
           orderCount: data.length,
+          _allOrderIds: data.map((o) => o.id),
         });
       } else setActiveOrder(null);
     };
@@ -699,7 +713,7 @@ export function Meniu() {
     // Polling la fiecare 5 secunde
     const interval = setInterval(loadActiveOrder, 5000);
     return () => clearInterval(interval);
-  }, [user?.id, selectedRest?.id]);
+  }, [user?.id, selectedRest?.id, tableSessionId]);
 
   const requestBill = async (method) => {
     if (!activeOrder) return;
@@ -2240,14 +2254,55 @@ export function Auth() {
         .limit(30);
       if (rez) setRezervari(rez);
 
-      // Comenzi ale clientului (după session_id sau table_session_id)
+      // Comenzi ale clientului - grupate după table_session_id
       const { data: ord } = await supabase
         .from("orders")
         .select("*, restaurants(name, emoji)")
         .eq("user_id", user.id)
         .order("created_at", { ascending: false })
-        .limit(30);
-      if (ord) getComenzi(ord);
+        .limit(50);
+      if (ord) {
+        // Grupăm comenzile după table_session_id (sau id individual dacă lipsește)
+        const grouped = Object.values(
+          ord.reduce((acc, order) => {
+            const key = order.table_session_id || order.id;
+            if (!acc[key]) {
+              acc[key] = {
+                ...order,
+                items: [...(order.items || [])],
+                total: Number(order.total || 0),
+                _orderIds: [order.id],
+              };
+            } else {
+              // Adaugă produsele
+              (order.items || []).forEach((newItem) => {
+                const ex = acc[key].items.find((i) => i.name === newItem.name);
+                if (ex) ex.qty = (ex.qty || 1) + (newItem.qty || 1);
+                else acc[key].items.push({ ...newItem });
+              });
+              acc[key].total += Number(order.total || 0);
+              acc[key]._orderIds.push(order.id);
+              // Păstrăm statusul cel mai avansat
+              const priority = {
+                paid: 4,
+                paying: 3,
+                ready: 2,
+                cooking: 1,
+                pending: 0,
+              };
+              if (
+                (priority[order.status] || 0) > (priority[acc[key].status] || 0)
+              ) {
+                acc[key].status = order.status;
+              }
+            }
+            return acc;
+          }, {}),
+        );
+        // Sortăm după data celei mai recente comenzi
+        grouped.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+        getComenzi(grouped);
+      }
 
       setLoading(false);
     };
