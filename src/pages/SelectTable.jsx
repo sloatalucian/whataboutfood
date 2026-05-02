@@ -901,20 +901,24 @@ export function WaiterTablet({
   };
 
   // ── Confirmă plata ──
-  const confirmPayment = async (orderId) => {
+  // Confirmă plata pentru o notă grupată (una sau mai multe comenzi per masă)
+  const confirmPayment = async (groupedOrder) => {
     try {
-      const order = orders.find((o) => o.id === orderId);
+      const orderIds = groupedOrder._orderIds || [groupedOrder.id];
+      const tableLabel = groupedOrder.table_label;
+
+      // Marchează TOATE comenzile grupate ca plătite
       const { error } = await supabase
         .from("orders")
         .update({ status: "paid", paid_at: new Date().toISOString() })
-        .eq("id", orderId);
+        .in("id", orderIds);
       if (error) throw error;
-      setOrders((prev) => prev.filter((o) => o.id !== orderId));
 
-      // Eliberează masa direct după table_label și restaurant_id
-      // Eliberează masa instant via context
-      if (order?.table_label) {
-        await freeTable(order.table_label);
+      setOrders((prev) => prev.filter((o) => !orderIds.includes(o.id)));
+
+      // Eliberează masa - toate comenzile grupate au fost confirmate
+      if (tableLabel) {
+        await freeTable(tableLabel);
       }
 
       showToast("💳 Plată confirmată! Masa eliberată.");
@@ -1007,7 +1011,36 @@ export function WaiterTablet({
     }
   };
 
-  const payingOrders = orders.filter((o) => o.status === "paying");
+  // Grupare comenzi paying per masă - notă unică per sesiune
+  const payingOrders = Object.values(
+    orders
+      .filter((o) => o.status === "paying")
+      .reduce((groups, order) => {
+        const key = order.table_label || order.table || order.id;
+        if (!groups[key]) {
+          groups[key] = {
+            ...order,
+            _orderIds: [order.id],
+            items: [...(order.items || [])],
+            total: Number(order.total || 0),
+          };
+        } else {
+          groups[key]._orderIds.push(order.id);
+          (order.items || []).forEach((newItem) => {
+            const existing = groups[key].items.find(
+              (i) => i.name === newItem.name,
+            );
+            if (existing) {
+              existing.qty = (existing.qty || 1) + (newItem.qty || 1);
+            } else {
+              groups[key].items.push({ ...newItem });
+            }
+          });
+          groups[key].total += Number(order.total || 0);
+        }
+        return groups;
+      }, {}),
+  );
   const pendingOrders = orders.filter((o) => o.status === "pending");
   const cookingOrders = orders.filter((o) => o.status === "cooking");
   const readyOrders = orders.filter((o) => o.status === "ready");
@@ -1384,10 +1417,10 @@ export function WaiterTablet({
                           color: "#c8a97e",
                         }}
                       >
-                        Total: {o.total} lei
+                        Total: {Number(o.total).toFixed(2)} lei
                       </span>
                       <button
-                        onClick={() => confirmPayment(o.id)}
+                        onClick={() => confirmPayment(o)}
                         style={{
                           padding: "10px 18px",
                           borderRadius: 12,
