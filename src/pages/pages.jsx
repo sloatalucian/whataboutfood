@@ -705,13 +705,19 @@ export function Meniu() {
     if (!activeOrder) return;
     setPayNoteLoading(true);
     try {
-      // Actualizează TOATE comenzile active de la masa respectivă
-      const { error } = await supabase
+      // Actualizează TOATE comenzile sesiunii curente la "paying"
+      // Folosim table_session_id dacă există, altfel table_label
+      let orderQuery = supabase
         .from("orders")
         .update({ status: "paying", payment_method: method })
         .eq("restaurant_id", selectedRest.id)
-        .eq("table_label", activeOrder.table_label)
         .in("status", ["pending", "cooking", "ready"]);
+      if (tableSessionId) {
+        orderQuery = orderQuery.eq("table_session_id", tableSessionId);
+      } else {
+        orderQuery = orderQuery.eq("table_label", activeOrder.table_label);
+      }
+      const { error } = await orderQuery;
       if (error) throw error;
 
       // Actualizează statusul mesei la "paid" (albastru) — după table_session_id

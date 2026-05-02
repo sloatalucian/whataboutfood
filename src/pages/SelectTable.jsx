@@ -2082,13 +2082,11 @@ export function WaiterTablet({
                             justifyContent: "center",
                             gap: 1,
                             cursor:
-                              status === "occupied" || status === "paid"
-                                ? "pointer"
-                                : "default",
+                              status === "occupied" ? "pointer" : "default",
                           }}
                           onClick={() => {
+                            // Masa se eliberează DOAR prin "Confirmă plata", nu din hartă
                             if (status === "occupied") markPaid(table.label);
-                            else if (status === "paid") freeTable(table.label);
                           }}
                         >
                           <div
