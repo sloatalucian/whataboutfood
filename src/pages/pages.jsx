@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { useApp } from "../context/AppContext";
+import { useTable } from "../context/TableContext";
 import { TIME_SLOTS, tableClass, PLANS } from "../data/constants";
 import { MENUS } from "../data/menu";
 import CartBar from "../components/CartBar";
@@ -611,6 +612,7 @@ export function Rezervare() {
 // ─── MENIU ────────────────────────────────────────────────────────────────────
 export function Meniu() {
   const { state, dispatch, navigate, showToast } = useApp();
+  const { reload: reloadTables } = useTable();
   const {
     selectedRest,
     cart,
@@ -727,6 +729,7 @@ export function Meniu() {
         payment_method: method,
       }));
       setShowPayNote(false);
+      reloadTables(); // Reîncarcă statusurile meselor
       showToast("🧾 Nota cerută! Ospătarul vine în curând.");
     } catch (err) {
       showToast("❌ Eroare. Încearcă din nou.");

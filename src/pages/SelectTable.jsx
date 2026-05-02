@@ -555,6 +555,7 @@ export function WaiterTablet({
 
   const restaurantId = restaurantIdProp || restaurant?.id;
   const [mapZoom, setMapZoom] = useState(60);
+  const [cancellingOrders, setCancellingOrders] = useState({}); // { orderId: { items: [...], note: "" } }
   const [dbFloors, setDbFloors] = useState([]);
   const [mapDate, setMapDate] = useState(
     () => new Date().toISOString().split("T")[0],
@@ -721,6 +722,100 @@ export function WaiterTablet({
   }, [restaurantId]);
 
   // ── Acceptă comanda ──
+  // Inițializează anularea pentru o comandă
+  const initCancellation = (order) => {
+    setCancellingOrders((prev) => ({
+      ...prev,
+      [order.id]: { items: [...(order.items || [])], note: "" },
+    }));
+  };
+
+  // Anulează un produs din comandă
+  const cancelItem = (orderId, itemName, itemQty) => {
+    setCancellingOrders((prev) => {
+      const current = prev[orderId];
+      if (!current) return prev;
+      // Găsim și eliminăm primul item cu același name+qty
+      let removed = false;
+      const newItems = current.items.filter((item) => {
+        if (!removed && item.name === itemName && item.qty === itemQty) {
+          removed = true;
+          return false;
+        }
+        return true;
+      });
+      return { ...prev, [orderId]: { ...current, items: newItems } };
+    });
+  };
+
+  // Confirmă comanda cu produsele rămase
+  const acceptOrderWithItems = async (orderId, originalOrder) => {
+    const cancelling = cancellingOrders[orderId];
+    if (!cancelling) return acceptOrder(orderId);
+
+    const remainingItems = cancelling.items;
+    const cancelledItems = (originalOrder.items || []).filter(
+      (item, i) =>
+        !remainingItems.find((r) => r.name === item.name && r.qty === item.qty),
+    );
+    const newTotal = remainingItems.reduce(
+      (s, i) => s + (i.price || 0) * (i.qty || 1),
+      0,
+    );
+
+    try {
+      const { error } = await supabase
+        .from("orders")
+        .update({
+          status: "cooking",
+          items: remainingItems,
+          total: newTotal,
+          cancelled_items: cancelledItems,
+          cancellation_notes: cancelling.note || null,
+          waiter_id: waiterId || null,
+        })
+        .eq("id", orderId);
+      if (error) throw error;
+
+      setOrders((prev) =>
+        prev.map((o) =>
+          o.id === orderId
+            ? {
+                ...o,
+                status: "cooking",
+                items: remainingItems,
+                total: newTotal,
+              }
+            : o,
+        ),
+      );
+      setCancellingOrders((prev) => {
+        const n = { ...prev };
+        delete n[orderId];
+        return n;
+      });
+
+      // Notificare client dacă s-au anulat produse
+      if (cancelledItems.length > 0 && originalOrder.user_id) {
+        const cancelledNames = cancelledItems.map((i) => i.name).join(", ");
+        const message = cancelling.note
+          ? `${cancelledNames} nu ${cancelledItems.length === 1 ? "a putut fi adăugat" : "au putut fi adăugate"}. Motiv: ${cancelling.note}`
+          : `${cancelledNames} nu ${cancelledItems.length === 1 ? "a putut fi adăugat" : "au putut fi adăugate"} la comandă.`;
+        await supabase.from("notifications").insert({
+          user_id: originalOrder.user_id,
+          restaurant_id: restaurantId,
+          type: "item_cancelled",
+          message,
+          is_read: false,
+        });
+      }
+
+      showToast("✅ Comanda acceptată!");
+    } catch (err) {
+      showToast("❌ Eroare la acceptare.");
+    }
+  };
+
   const acceptOrder = async (orderId) => {
     try {
       const { error } = await supabase
@@ -1330,126 +1425,264 @@ export function WaiterTablet({
                 >
                   🆕 Comenzi noi — necesită acceptare
                 </div>
-                {pendingOrders.map((o) => (
-                  <div
-                    key={o.id}
-                    style={{
-                      background: "rgba(224,122,71,.08)",
-                      border: "1px solid rgba(224,122,71,.3)",
-                      borderRadius: 16,
-                      padding: 16,
-                      marginBottom: 10,
-                    }}
-                  >
+                {pendingOrders.map((o) => {
+                  const isCancelling = !!cancellingOrders[o.id];
+                  const displayItems = isCancelling
+                    ? cancellingOrders[o.id].items
+                    : o.items || [];
+                  const displayTotal = isCancelling
+                    ? displayItems.reduce(
+                        (s, i) => s + (i.price || 0) * (i.qty || 1),
+                        0,
+                      )
+                    : o.total;
+                  return (
                     <div
+                      key={o.id}
                       style={{
-                        display: "flex",
-                        justifyContent: "space-between",
+                        background: "rgba(224,122,71,.08)",
+                        border: "1px solid rgba(224,122,71,.3)",
+                        borderRadius: 16,
+                        padding: 16,
                         marginBottom: 10,
                       }}
                     >
-                      <div>
-                        <div
-                          style={{
-                            fontFamily: "'Fraunces',serif",
-                            fontSize: 18,
-                            fontWeight: 900,
-                          }}
-                        >
-                          🪑 Masa {o.table_label || o.table}
-                        </div>
-                        <div style={{ fontSize: 11, color: "#6b6050" }}>
-                          {new Date(o.created_at).toLocaleTimeString("ro-RO", {
-                            hour: "2-digit",
-                            minute: "2-digit",
-                          })}
-                        </div>
-                      </div>
+                      {/* Header */}
                       <div
-                        style={{
-                          fontSize: 10,
-                          fontWeight: 800,
-                          padding: "4px 10px",
-                          borderRadius: 20,
-                          background: "rgba(224,122,71,.2)",
-                          color: "#e07a47",
-                        }}
-                      >
-                        🆕 Nouă
-                      </div>
-                    </div>
-                    {(o.items || []).map((item, i) => (
-                      <div
-                        key={i}
                         style={{
                           display: "flex",
                           justifyContent: "space-between",
-                          fontSize: 13,
-                          marginBottom: 4,
+                          marginBottom: 10,
                         }}
                       >
-                        <span style={{ color: "rgba(240,235,227,.7)" }}>
-                          {item.emoji} {item.name}
-                        </span>
-                        <span style={{ color: "#c8a97e", fontWeight: 700 }}>
-                          ×{item.qty}
-                        </span>
+                        <div>
+                          <div
+                            style={{
+                              fontFamily: "'Fraunces',serif",
+                              fontSize: 18,
+                              fontWeight: 900,
+                            }}
+                          >
+                            🪑 Masa {o.table_label || o.table}
+                          </div>
+                          <div style={{ fontSize: 11, color: "#6b6050" }}>
+                            {new Date(o.created_at).toLocaleTimeString(
+                              "ro-RO",
+                              {
+                                hour: "2-digit",
+                                minute: "2-digit",
+                                timeZone: "Europe/Bucharest",
+                              },
+                            )}
+                          </div>
+                        </div>
+                        <div
+                          style={{
+                            fontSize: 10,
+                            fontWeight: 800,
+                            padding: "4px 10px",
+                            borderRadius: 20,
+                            background: "rgba(224,122,71,.2)",
+                            color: "#e07a47",
+                          }}
+                        >
+                          🆕 Nouă
+                        </div>
                       </div>
-                    ))}
-                    {o.observations && (
+
+                      {/* Produse cu buton anulare */}
+                      {displayItems.map((item, i) => (
+                        <div
+                          key={i}
+                          style={{
+                            display: "flex",
+                            justifyContent: "space-between",
+                            alignItems: "center",
+                            fontSize: 13,
+                            marginBottom: 6,
+                            padding: "6px 8px",
+                            borderRadius: 8,
+                            background: "rgba(255,255,255,.03)",
+                          }}
+                        >
+                          <span
+                            style={{ color: "rgba(240,235,227,.7)", flex: 1 }}
+                          >
+                            {item.emoji} {item.name}
+                          </span>
+                          <span
+                            style={{
+                              color: "#c8a97e",
+                              fontWeight: 700,
+                              marginRight: 8,
+                            }}
+                          >
+                            ×{item.qty}
+                          </span>
+                          <button
+                            onClick={() => {
+                              if (!isCancelling) {
+                                initCancellation(o);
+                                setTimeout(
+                                  () => cancelItem(o.id, item.name, item.qty),
+                                  50,
+                                );
+                              } else {
+                                cancelItem(o.id, item.name, item.qty);
+                              }
+                            }}
+                            style={{
+                              width: 22,
+                              height: 22,
+                              borderRadius: 6,
+                              background: "rgba(192,57,43,.2)",
+                              border: "1px solid rgba(192,57,43,.3)",
+                              color: "#e05050",
+                              fontSize: 12,
+                              cursor: "pointer",
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                            }}
+                          >
+                            ✕
+                          </button>
+                        </div>
+                      ))}
+
+                      {/* Produse anulate */}
+                      {isCancelling &&
+                        (o.items || [])
+                          .filter(
+                            (item) =>
+                              !displayItems.find(
+                                (r) =>
+                                  r.name === item.name && r.qty === item.qty,
+                              ),
+                          )
+                          .map((item, i) => (
+                            <div
+                              key={i}
+                              style={{
+                                display: "flex",
+                                justifyContent: "space-between",
+                                fontSize: 12,
+                                marginBottom: 4,
+                                padding: "4px 8px",
+                                opacity: 0.4,
+                                textDecoration: "line-through",
+                                color: "#e05050",
+                              }}
+                            >
+                              <span>
+                                {item.emoji} {item.name}
+                              </span>
+                              <span>×{item.qty}</span>
+                            </div>
+                          ))}
+
+                      {/* Câmp motiv anulare */}
+                      {isCancelling &&
+                        (o.items || []).length > displayItems.length && (
+                          <div style={{ marginTop: 10 }}>
+                            <textarea
+                              placeholder="Motivul anulării (ex: Nu avem cola)"
+                              value={cancellingOrders[o.id]?.note || ""}
+                              onChange={(e) =>
+                                setCancellingOrders((prev) => ({
+                                  ...prev,
+                                  [o.id]: {
+                                    ...prev[o.id],
+                                    note: e.target.value,
+                                  },
+                                }))
+                              }
+                              rows={2}
+                              style={{
+                                width: "100%",
+                                background: "#1e1a14",
+                                border: "1px solid rgba(192,57,43,.3)",
+                                borderRadius: 10,
+                                color: "#f0ebe3",
+                                padding: "8px 10px",
+                                fontSize: 12,
+                                fontFamily: "inherit",
+                                resize: "none",
+                                boxSizing: "border-box",
+                              }}
+                            />
+                          </div>
+                        )}
+
+                      {o.observations && (
+                        <div
+                          style={{
+                            background: "rgba(200,169,126,.08)",
+                            border: "1px solid rgba(200,169,126,.2)",
+                            borderRadius: 10,
+                            padding: "8px 12px",
+                            margin: "8px 0",
+                            fontSize: 12,
+                            color: "#c8a97e",
+                          }}
+                        >
+                          💬 {o.observations}
+                        </div>
+                      )}
+
+                      {/* Footer */}
                       <div
                         style={{
-                          background: "rgba(200,169,126,.08)",
-                          border: "1px solid rgba(200,169,126,.2)",
-                          borderRadius: 10,
-                          padding: "8px 12px",
-                          margin: "8px 0",
-                          fontSize: 12,
-                          color: "#c8a97e",
+                          display: "flex",
+                          justifyContent: "space-between",
+                          alignItems: "center",
+                          marginTop: 8,
+                          paddingTop: 8,
+                          borderTop: "1px solid rgba(255,255,255,.06)",
                         }}
                       >
-                        💬 {o.observations}
+                        <span
+                          style={{
+                            fontFamily: "'Fraunces',serif",
+                            fontSize: 16,
+                            fontWeight: 700,
+                            color: "#c8a97e",
+                          }}
+                        >
+                          Total: {Number(displayTotal).toFixed(2)} lei
+                        </span>
+                        <button
+                          onClick={() =>
+                            isCancelling
+                              ? acceptOrderWithItems(o.id, o)
+                              : acceptOrder(o.id)
+                          }
+                          disabled={isCancelling && displayItems.length === 0}
+                          style={{
+                            padding: "10px 18px",
+                            borderRadius: 12,
+                            background:
+                              displayItems.length === 0
+                                ? "#2a2218"
+                                : "linear-gradient(135deg,#4a6e4a,#2d4a2d)",
+                            border: "none",
+                            color:
+                              displayItems.length === 0 ? "#6b6050" : "#fff",
+                            fontFamily: "'Fraunces',serif",
+                            fontSize: 14,
+                            fontWeight: 700,
+                            cursor:
+                              displayItems.length === 0
+                                ? "not-allowed"
+                                : "pointer",
+                          }}
+                        >
+                          ✅ Confirmă comanda
+                        </button>
                       </div>
-                    )}
-                    <div
-                      style={{
-                        display: "flex",
-                        justifyContent: "space-between",
-                        alignItems: "center",
-                        marginTop: 8,
-                        paddingTop: 8,
-                        borderTop: "1px solid rgba(255,255,255,.06)",
-                      }}
-                    >
-                      <span
-                        style={{
-                          fontFamily: "'Fraunces',serif",
-                          fontSize: 16,
-                          fontWeight: 700,
-                          color: "#c8a97e",
-                        }}
-                      >
-                        Total: {o.total} lei
-                      </span>
-                      <button
-                        onClick={() => acceptOrder(o.id)}
-                        style={{
-                          padding: "10px 18px",
-                          borderRadius: 12,
-                          background: "linear-gradient(135deg,#4a6e4a,#2d4a2d)",
-                          border: "none",
-                          color: "#fff",
-                          fontFamily: "'Fraunces',serif",
-                          fontSize: 14,
-                          fontWeight: 700,
-                          cursor: "pointer",
-                        }}
-                      >
-                        ✅ Acceptă
-                      </button>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
 
@@ -1765,7 +1998,10 @@ export function WaiterTablet({
                     ))}
                     {/* Mese */}
                     {(dbFloors[activeMapFloor]?.tables || []).map((table) => {
-                      const rtStatus = tableStates[table.id] || "free";
+                      const rtStatus =
+                        tableStates[table.label] ||
+                        tableStates[table.id] ||
+                        "free";
                       const isMapReserved = mapReservedTables.includes(
                         table.label,
                       );
