@@ -808,13 +808,22 @@ export function WaiterTablet({
   // ── Confirmă plata ──
   const confirmPayment = async (orderId) => {
     try {
+      const order = orders.find((o) => o.id === orderId);
       const { error } = await supabase
         .from("orders")
         .update({ status: "paid", paid_at: new Date().toISOString() })
         .eq("id", orderId);
       if (error) throw error;
       setOrders((prev) => prev.filter((o) => o.id !== orderId));
-      showToast("💳 Plată confirmată!");
+
+      // Eliberează masa din TableContext
+      if (order?.table_label) {
+        const allTables = dbFloors.flatMap((f) => f.tables || []);
+        const table = allTables.find((t) => t.label === order.table_label);
+        if (table) freeTable(table.id);
+      }
+
+      showToast("💳 Plată confirmată! Masa eliberată.");
     } catch (err) {
       showToast("❌ Eroare la confirmare plată.");
     }
