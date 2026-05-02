@@ -919,6 +919,8 @@ export function WaiterTablet({
           .eq("restaurant_id", restaurantId)
           .eq("table_label", order.table_label)
           .in("status", ["occupied", "paid", "reserved"]);
+        // Reîncarcă imediat statusurile meselor
+        reload();
       }
 
       showToast("💳 Plată confirmată! Masa eliberată.");

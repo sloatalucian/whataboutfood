@@ -57,14 +57,11 @@ export function TableProvider({ children, restaurantId }) {
       const states = {};
       const sessions = {};
       (data || []).forEach((s) => {
-        // Folosim atât table_id cât și table_label ca chei
-        if (s.table_id) {
-          states[s.table_id] = s.status;
-          sessions[s.table_id] = s;
-        }
-        if (s.table_label) {
-          states[s.table_label] = s.status;
-          sessions[s.table_label] = s;
+        // Folosim table_label ca cheie principală
+        const key = s.table_label || s.table_id;
+        if (key) {
+          states[key] = s.status;
+          sessions[key] = s;
         }
       });
       setTableStates(states);
@@ -72,11 +69,15 @@ export function TableProvider({ children, restaurantId }) {
     } catch (err) {}
   }, [restaurantId]);
 
-  // Încarcă la mount și ascultă schimbări Realtime
+  // Încarcă la mount + polling 8 secunde + Realtime
   useEffect(() => {
     if (!restaurantId) return;
     loadTableStates();
 
+    // Polling la fiecare 8 secunde
+    const interval = setInterval(loadTableStates, 8000);
+
+    // Realtime ca backup
     const channel = supabase
       .channel(`table_sessions_${restaurantId}`)
       .on(
@@ -91,7 +92,10 @@ export function TableProvider({ children, restaurantId }) {
       )
       .subscribe();
 
-    return () => supabase.removeChannel(channel);
+    return () => {
+      clearInterval(interval);
+      supabase.removeChannel(channel);
+    };
   }, [restaurantId, loadTableStates]);
 
   // ── Ocupă masă ──
