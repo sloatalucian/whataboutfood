@@ -816,11 +816,24 @@ export function WaiterTablet({
       if (error) throw error;
       setOrders((prev) => prev.filter((o) => o.id !== orderId));
 
-      // Eliberează masa din TableContext
-      if (order?.table_label) {
-        const allTables = dbFloors.flatMap((f) => f.tables || []);
-        const table = allTables.find((t) => t.label === order.table_label);
-        if (table) freeTable(table.id);
+      // Eliberează masa direct din Supabase după restaurant_id și table_label
+      if (order?.table_label && restaurantId) {
+        // Găsim table_id din Supabase direct
+        const { data: tableData } = await supabase
+          .from("tables")
+          .select("id, floor_id, floors!inner(restaurant_id)")
+          .eq("label", order.table_label)
+          .eq("floors.restaurant_id", restaurantId)
+          .single();
+
+        if (tableData?.id) {
+          await supabase
+            .from("table_sessions")
+            .update({ status: "closed", closed_at: new Date().toISOString() })
+            .eq("table_id", tableData.id)
+            .in("status", ["occupied", "paid", "reserved"]);
+          freeTable(tableData.id);
+        }
       }
 
       showToast("💳 Plată confirmată! Masa eliberată.");
