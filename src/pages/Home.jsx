@@ -641,6 +641,24 @@ function HomeClient() {
         .update({ status: "paying", payment_method: method })
         .eq("id", activeOrder.id);
       if (error) throw error;
+
+      // Actualizează statusul mesei la "paid" (albastru)
+      if (activeOrder.table_label && activeOrder.restaurant_id) {
+        const { data: tableData } = await supabase
+          .from("tables")
+          .select("id, floor_id, floors!inner(restaurant_id)")
+          .eq("label", activeOrder.table_label)
+          .eq("floors.restaurant_id", activeOrder.restaurant_id)
+          .single();
+        if (tableData?.id) {
+          await supabase
+            .from("table_sessions")
+            .update({ status: "paid", paid_at: new Date().toISOString() })
+            .eq("table_id", tableData.id)
+            .eq("status", "occupied");
+        }
+      }
+
       setActiveOrder((prev) => ({
         ...prev,
         status: "paying",

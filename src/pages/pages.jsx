@@ -676,9 +676,9 @@ export function Meniu() {
         .eq("restaurant_id", selectedRest.id)
         .in("status", ["pending", "cooking", "ready", "paying"])
         .order("created_at", { ascending: false })
-        .limit(1)
-        .single();
-      if (data) setActiveOrder(data);
+        .limit(1);
+      if (data && data.length > 0) setActiveOrder(data[0]);
+      else setActiveOrder(null);
     };
     loadActiveOrder();
 
@@ -696,6 +696,24 @@ export function Meniu() {
         .update({ status: "paying", payment_method: method })
         .eq("id", activeOrder.id);
       if (error) throw error;
+
+      // Actualizează statusul mesei la "paid" (albastru) în table_sessions
+      if (activeOrder.table_label && selectedRest?.id) {
+        const { data: tableData } = await supabase
+          .from("tables")
+          .select("id, floor_id, floors!inner(restaurant_id)")
+          .eq("label", activeOrder.table_label)
+          .eq("floors.restaurant_id", selectedRest.id)
+          .single();
+        if (tableData?.id) {
+          await supabase
+            .from("table_sessions")
+            .update({ status: "paid", paid_at: new Date().toISOString() })
+            .eq("table_id", tableData.id)
+            .eq("status", "occupied");
+        }
+      }
+
       setActiveOrder((prev) => ({
         ...prev,
         status: "paying",
