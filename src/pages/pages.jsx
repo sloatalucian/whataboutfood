@@ -719,6 +719,8 @@ export function Meniu() {
   const cartQty = (id) => cart.find((i) => i.id === id)?.qty || 0;
   const hasTable = orderTableNum && orderTableNum !== 1;
 
+  const [orderLoading, setOrderLoading] = useState(false);
+
   const placeOrder = async (observations = "") => {
     if (!cart.length) return;
     if (!hasTable) {
@@ -726,6 +728,8 @@ export function Meniu() {
       navigate("selectTable");
       return;
     }
+    if (orderLoading) return; // Previne dublu click
+    setOrderLoading(true);
 
     const total = cart.reduce((s, i) => s + i.price * i.qty, 0);
 
@@ -749,25 +753,9 @@ export function Meniu() {
       dispatch({ type: "CART_CLEAR" });
       showToast("✅ Comanda trimisă!");
     } catch (err) {
-      dispatch({
-        type: "PLACE_ORDER",
-        payload: {
-          id: Date.now(),
-          table: orderTableNum,
-          tableLabel: orderTableNum,
-          restId: selectedRest.id,
-          items: [...cart],
-          observations,
-          status: "pending",
-          time: new Date().toLocaleTimeString("ro-RO", {
-            timeZone: "Europe/Bucharest",
-            timeZone: "Europe/Bucharest",
-            hour: "2-digit",
-            minute: "2-digit",
-          }),
-        },
-      });
-      showToast("✅ Comanda trimisă!");
+      showToast("❌ Eroare la trimiterea comenzii. Încearcă din nou.");
+    } finally {
+      setOrderLoading(false);
     }
   };
 
@@ -1527,7 +1515,7 @@ export function Meniu() {
           </button>
         )}
       </div>
-      <CartBar onOrder={placeOrder} />
+      <CartBar onOrder={placeOrder} loading={orderLoading} />
     </div>
   );
 }

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useApp } from "../context/AppContext";
 
-export default function CartBar({ onOrder }) {
+export default function CartBar({ onOrder, loading = false }) {
   const { state, cartTotal, cartCount } = useApp();
   const { cart, orderTableNum } = state;
   const [showSummary, setShowSummary] = useState(false);
@@ -168,21 +168,25 @@ export default function CartBar({ onOrder }) {
           {/* Buton trimitere */}
           <button
             onClick={handleOrder}
+            disabled={loading}
             style={{
               width: "100%",
               padding: 15,
-              background: "linear-gradient(135deg,#c0622f,#8b3a18)",
+              background: loading
+                ? "#4a3020"
+                : "linear-gradient(135deg,#c0622f,#8b3a18)",
               border: "none",
               borderRadius: 14,
-              color: "#fff",
+              color: loading ? "#6b6050" : "#fff",
               fontFamily: "'Fraunces',serif",
               fontSize: 16,
               fontWeight: 700,
-              cursor: "pointer",
+              cursor: loading ? "not-allowed" : "pointer",
               letterSpacing: 0.5,
+              opacity: loading ? 0.7 : 1,
             }}
           >
-            Trimite comanda la bucătărie 👨‍🍳
+            {loading ? "Se trimite..." : "Trimite comanda la bucătărie 👨‍🍳"}
           </button>
         </div>
       )}
