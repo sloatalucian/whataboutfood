@@ -122,18 +122,26 @@ export function TableProvider({ children, restaurantId }) {
 
   // ── Eliberează masă ──
   const freeTable = useCallback(async (tableId) => {
+    // Salvăm sesiunea înainte să o ștergem
+    const session = globalSessions[tableId];
     delete globalTableStates[tableId];
     delete globalSessions[tableId];
     notifyAll();
 
     try {
       const { supabase } = await import("../supabase");
-      const session = globalSessions[tableId];
       if (session?.id) {
         await supabase
           .from("table_sessions")
           .update({ status: "closed", closed_at: new Date().toISOString() })
           .eq("id", session.id);
+      } else {
+        // Dacă nu avem sesiune, ștergem după table_id și status activ
+        await supabase
+          .from("table_sessions")
+          .update({ status: "closed", closed_at: new Date().toISOString() })
+          .eq("table_id", tableId)
+          .in("status", ["occupied", "paid"]);
       }
     } catch (err) {}
   }, []);
