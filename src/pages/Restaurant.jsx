@@ -748,12 +748,16 @@ export default function Restaurant() {
   }
 
   const allTables = (selectedRest.floors || []).flatMap((f) => f.tables || []);
-  const freeCount = allTables.filter(
-    (t) => !tableStates[t.id] || tableStates[t.id] === "free",
+  // Numaram direct din tableStates (cheie = table_label)
+  const occCount = Object.values(tableStates).filter(
+    (s) => s === "occupied" || s === "reserved" || s === "paid",
   ).length;
-  const occCount = allTables.filter(
-    (t) => tableStates[t.id] === "occupied" || tableStates[t.id] === "reserved",
-  ).length;
+  const freeCount =
+    allTables.length > 0
+      ? allTables.filter(
+          (t) => !tableStates[t.label] || tableStates[t.label] === "free",
+        ).length
+      : 0;
   const isOwner = user?.role === "owner";
 
   const handleSaveProgram = async (newProg) => {
@@ -931,15 +935,7 @@ export default function Restaurant() {
                 Mese ocupate live
               </span>
             </div>
-            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-              <span style={{ fontSize: 12, color: "#6b9e6b", fontWeight: 600 }}>
-                {freeCount} libere
-              </span>
-              <span style={{ fontSize: 12, color: "#c0622f", fontWeight: 600 }}>
-                {occCount} ocupate
-              </span>
-              <span style={{ fontSize: 14, color: "#6b6050" }}>›</span>
-            </div>
+            <span style={{ fontSize: 14, color: "#6b6050" }}>›</span>
           </button>
         </div>
 
