@@ -68,6 +68,8 @@ export default function SuperAdmin() {
   const [statistici, setStatistici] = useState(null);
   const [loading, setLoading] = useState(true);
   const [viewAsOwner, setViewAsOwner] = useState(null);
+  const [viewStats, setViewStats] = useState(null);
+  const [viewStatsLoading, setViewStatsLoading] = useState(false);
 
   // ── Verifică acces admin ──
   if (!user || user?.email !== ADMIN_EMAIL) {
@@ -143,7 +145,7 @@ export default function SuperAdmin() {
           .order("created_at", { ascending: false }),
         supabase
           .from("restaurants")
-          .select("*, profiles(full_name,email)")
+          .select("*, profiles!restaurants_owner_id_fkey(full_name,email)")
           .order("created_at", { ascending: false }),
         supabase
           .from("subscriptions")
@@ -299,6 +301,46 @@ export default function SuperAdmin() {
     }
   };
 
+  // ── Încarcă statistici restaurant pentru vizualizare ──
+  const loadViewStats = async (restaurant) => {
+    setViewAsOwner(restaurant);
+    setViewStats(null);
+    setViewStatsLoading(true);
+    try {
+      const [
+        { count: ordersCount },
+        { data: ordersData },
+        { count: rezCount },
+      ] = await Promise.all([
+        supabase
+          .from("orders")
+          .select("*", { count: "exact", head: true })
+          .eq("restaurant_id", restaurant.id)
+          .eq("status", "paid"),
+        supabase
+          .from("orders")
+          .select("total")
+          .eq("restaurant_id", restaurant.id)
+          .eq("status", "paid"),
+        supabase
+          .from("reservations")
+          .select("*", { count: "exact", head: true })
+          .eq("restaurant_id", restaurant.id)
+          .eq("status", "confirmed"),
+      ]);
+      const totalVenituri = (ordersData || []).reduce(
+        (s, o) => s + Number(o.total || 0),
+        0,
+      );
+      setViewStats({
+        ordersCount: ordersCount || 0,
+        totalVenituri,
+        rezCount: rezCount || 0,
+      });
+    } catch {}
+    setViewStatsLoading(false);
+  };
+
   // ── Vizualizare ca proprietar ──
   if (viewAsOwner) {
     return (
@@ -358,52 +400,67 @@ export default function SuperAdmin() {
               marginBottom: 20,
             }}
           >
-            {[
-              {
-                icon: "🍽️",
-                label: "Comenzi total",
-                value: "—",
-                color: "#c0622f",
-              },
-              {
-                icon: "📅",
-                label: "Rezervări total",
-                value: "—",
-                color: "#c8a97e",
-              },
-              {
-                icon: "💰",
-                label: "Venituri total",
-                value: "—",
-                color: "#6b9e6b",
-              },
-            ].map((s) => (
+            {viewStatsLoading && (
               <div
-                key={s.label}
                 style={{
-                  background: "#161210",
-                  border: "1px solid #2a2218",
-                  borderRadius: 14,
-                  padding: "14px 10px",
+                  gridColumn: "1/-1",
                   textAlign: "center",
+                  color: "#6b6050",
+                  padding: 20,
                 }}
               >
-                <div style={{ fontSize: 20, marginBottom: 4 }}>{s.icon}</div>
+                Se încarcă...
+              </div>
+            )}
+            {!viewStatsLoading &&
+              [
+                {
+                  icon: "🍽️",
+                  label: "Comenzi plătite",
+                  value: viewStats?.ordersCount ?? "—",
+                  color: "#c0622f",
+                },
+                {
+                  icon: "📅",
+                  label: "Rezervări confirmate",
+                  value: viewStats?.rezCount ?? "—",
+                  color: "#c8a97e",
+                },
+                {
+                  icon: "💰",
+                  label: "Venituri totale",
+                  value: viewStats
+                    ? `${viewStats.totalVenituri.toFixed(0)} lei`
+                    : "—",
+                  color: "#6b9e6b",
+                },
+              ].map((s) => (
                 <div
+                  key={s.label}
                   style={{
-                    fontFamily: "'Fraunces',serif",
-                    fontSize: 18,
-                    fontWeight: 900,
-                    color: s.color,
+                    background: "#161210",
+                    border: "1px solid #2a2218",
+                    borderRadius: 14,
+                    padding: "14px 10px",
+                    textAlign: "center",
                   }}
                 >
-                  {s.value}
+                  <div style={{ fontSize: 20, marginBottom: 4 }}>{s.icon}</div>
+                  <div
+                    style={{
+                      fontFamily: "'Fraunces',serif",
+                      fontSize: 18,
+                      fontWeight: 900,
+                      color: s.color,
+                    }}
+                  >
+                    {s.value}
+                  </div>
+                  <div style={{ fontSize: 9, color: "#6b6050", marginTop: 2 }}>
+                    {s.label}
+                  </div>
                 </div>
-                <div style={{ fontSize: 9, color: "#6b6050", marginTop: 2 }}>
-                  {s.label}
-                </div>
-              </div>
-            ))}
+              ))}
           </div>
 
           <div
@@ -1022,7 +1079,7 @@ export default function SuperAdmin() {
                     <option value="business">BUSINESS — 800 lei/lună</option>
                   </select>
                   <button
-                    onClick={() => setViewAsOwner(r)}
+                    onClick={() => loadViewStats(r)}
                     style={{
                       padding: "7px 12px",
                       borderRadius: 8,
