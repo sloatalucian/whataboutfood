@@ -145,7 +145,7 @@ export default function SuperAdmin() {
           .order("created_at", { ascending: false }),
         supabase
           .from("restaurants")
-          .select("*, profiles!restaurants_owner_id_fkey(full_name,email)")
+          .select("*")
           .order("created_at", { ascending: false }),
         supabase
           .from("subscriptions")
@@ -169,7 +169,16 @@ export default function SuperAdmin() {
 
       setCereri(cereriData || []);
       setProprietari(propData || []);
-      setRestaurante(restData || []);
+      // Mapam proprietarii pe restaurante dupa owner_id
+      const propMap = {};
+      (propData || []).forEach((p) => {
+        propMap[p.id] = p;
+      });
+      const restWithOwner = (restData || []).map((r) => ({
+        ...r,
+        profiles: propMap[r.owner_id] || null,
+      }));
+      setRestaurante(restWithOwner);
       setAbonamente(aboData || []);
 
       const totalVenituri = (venituriData || []).reduce(
