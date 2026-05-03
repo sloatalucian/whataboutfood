@@ -414,7 +414,7 @@ function OwnerRegisterModal({ onClose, onSuccess }) {
     const { data, error: authError } = await supabase.auth.signUp({
       email: form.email,
       password: form.password,
-      options: { data: { full_name: form.name } },
+      options: { data: { full_name: form.name, role: "owner" } },
     });
 
     if (authError) {
@@ -713,15 +713,13 @@ export default function SplashScreen({ onComplete, onWaiterLogin }) {
       return;
     }
     if (data.user) {
-      await supabase
-        .from("profiles")
-        .upsert({
-          id: data.user.id,
-          full_name: form.name,
-          role: "client",
-          plan: "free",
-          status: "approved",
-        });
+      await supabase.from("profiles").upsert({
+        id: data.user.id,
+        full_name: form.name,
+        role: "client",
+        plan: "free",
+        status: "approved",
+      });
     }
     dispatch({
       type: "SET_USER",

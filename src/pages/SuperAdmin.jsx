@@ -748,7 +748,7 @@ export default function SuperAdmin() {
                           marginBottom: 2,
                         }}
                       >
-                        📧 {c.email}
+                        📧 {c.phone || "—"}
                       </div>
                       {c.phone && (
                         <div
@@ -806,7 +806,9 @@ export default function SuperAdmin() {
                       ❌ Respinge
                     </button>
                     <button
-                      onClick={() => approveOwner(c.id, c.email, c.full_name)}
+                      onClick={() =>
+                        approveOwner(c.id, c.phone || "—", c.full_name)
+                      }
                       style={{
                         padding: 10,
                         borderRadius: 10,
@@ -853,7 +855,7 @@ export default function SuperAdmin() {
                   exportToCSV(
                     proprietari.map((p) => ({
                       Nume: p.full_name,
-                      Email: p.email,
+                      Email: p.phone || "—",
                       Status: p.status || "approved",
                       "Data inregistrarii": new Date(
                         p.created_at,
@@ -922,7 +924,7 @@ export default function SuperAdmin() {
                         whiteSpace: "nowrap",
                       }}
                     >
-                      {p.email}
+                      {p.phone || "—"}
                     </div>
                     <div
                       style={{ fontSize: 10, color: "#6b6050", marginTop: 2 }}
@@ -1321,7 +1323,7 @@ export default function SuperAdmin() {
                       exportToCSV(
                         proprietari.map((p) => ({
                           Nume: p.full_name,
-                          Email: p.email,
+                          Email: p.phone || "—",
                           Status: p.status || "approved",
                           "Data inregistrarii": new Date(
                             p.created_at,
