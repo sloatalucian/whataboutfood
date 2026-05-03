@@ -773,6 +773,7 @@ export function WaiterTablet({
           cancelled_items: cancelledItems,
           cancellation_notes: cancelling.note || null,
           waiter_id: waiterId || null,
+          has_new_items: false,
         })
         .eq("id", orderId);
       if (error) throw error;
@@ -824,6 +825,7 @@ export function WaiterTablet({
           status: "cooking",
           waiter_id: waiterId || null,
           accepted_at: new Date().toISOString(),
+          has_new_items: false,
         })
         .eq("id", orderId);
       if (error) throw error;
@@ -831,7 +833,12 @@ export function WaiterTablet({
       setOrders((prev) =>
         prev.map((o) =>
           o.id === orderId
-            ? { ...o, status: "cooking", waiter_name: waiterName }
+            ? {
+                ...o,
+                status: "cooking",
+                has_new_items: false,
+                waiter_name: waiterName,
+              }
             : o,
         ),
       );
@@ -1048,7 +1055,9 @@ export function WaiterTablet({
         return groups;
       }, {}),
   );
-  const pendingOrders = orders.filter((o) => o.status === "pending");
+  const pendingOrders = orders.filter(
+    (o) => o.status === "pending" || o.has_new_items === true,
+  );
   const cookingOrders = orders.filter((o) => o.status === "cooking");
   const readyOrders = orders.filter((o) => o.status === "ready");
   const pendingRes = displayReservations.filter(
@@ -1495,12 +1504,35 @@ export function WaiterTablet({
                         <div>
                           <div
                             style={{
-                              fontFamily: "'Fraunces',serif",
-                              fontSize: 18,
-                              fontWeight: 900,
+                              display: "flex",
+                              alignItems: "center",
+                              gap: 8,
                             }}
                           >
-                            🪑 Masa {o.table_label || o.table}
+                            <div
+                              style={{
+                                fontFamily: "'Fraunces',serif",
+                                fontSize: 18,
+                                fontWeight: 900,
+                              }}
+                            >
+                              🪑 Masa {o.table_label || o.table}
+                            </div>
+                            {o.has_new_items && (
+                              <span
+                                style={{
+                                  fontSize: 10,
+                                  fontWeight: 700,
+                                  padding: "3px 8px",
+                                  borderRadius: 20,
+                                  background: "#c8a97e22",
+                                  color: "#c8a97e",
+                                  border: "1px solid #c8a97e44",
+                                }}
+                              >
+                                🆕 Produse noi
+                              </span>
+                            )}
                           </div>
                           <div style={{ fontSize: 11, color: "#6b6050" }}>
                             {new Date(o.created_at).toLocaleTimeString(

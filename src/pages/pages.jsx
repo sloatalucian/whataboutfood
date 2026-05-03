@@ -777,31 +777,59 @@ export function Meniu() {
       navigate("selectTable");
       return;
     }
-    if (orderLoading) return; // Previne dublu click
+    if (orderLoading) return;
     setOrderLoading(true);
 
-    const total = cart.reduce((s, i) => s + i.price * i.qty, 0);
+    const newTotal = cart.reduce((s, i) => s + i.price * i.qty, 0);
 
     try {
-      const { data, error } = await supabase
-        .from("orders")
-        .insert({
-          restaurant_id: selectedRest.id,
-          user_id: user?.id || null,
-          table_label: orderTableNum,
-          table_session_id: tableSessionId || null,
-          items: cart,
-          observations: observations || null,
-          status: "pending",
-          total: total,
-          payment_method: null,
-        })
-        .select()
-        .single();
-
-      if (error) throw error;
-      dispatch({ type: "CART_CLEAR" });
-      showToast("✅ Comanda trimisă!");
+      // Dacă există comandă activă pe aceeași sesiune — adaugăm produsele la ea
+      if (activeOrder?.id && tableSessionId) {
+        const existingItems = activeOrder.items || [];
+        const mergedItems = [...existingItems];
+        cart.forEach((newItem) => {
+          const ex = mergedItems.find((i) => i.name === newItem.name);
+          if (ex) ex.qty = (ex.qty || 1) + (newItem.qty || 1);
+          else mergedItems.push({ ...newItem });
+        });
+        const mergedTotal = Number(activeOrder.total || 0) + newTotal;
+        const isConfirmed = ["cooking", "ready"].includes(activeOrder.status);
+        const updatePayload = {
+          items: mergedItems,
+          total: mergedTotal,
+          observations: observations || activeOrder.observations || null,
+        };
+        if (isConfirmed) updatePayload.has_new_items = true;
+        const { error } = await supabase
+          .from("orders")
+          .update(updatePayload)
+          .eq("id", activeOrder.id);
+        if (error) throw error;
+        dispatch({ type: "CART_CLEAR" });
+        showToast(
+          isConfirmed ? "🆕 Produse noi trimise!" : "✅ Produse adaugate!",
+        );
+      } else {
+        // Prima comandă a sesiunii — INSERT
+        const { data, error } = await supabase
+          .from("orders")
+          .insert({
+            restaurant_id: selectedRest.id,
+            user_id: user?.id || null,
+            table_label: orderTableNum,
+            table_session_id: tableSessionId || null,
+            items: cart,
+            observations: observations || null,
+            status: "pending",
+            total: newTotal,
+            payment_method: null,
+          })
+          .select()
+          .single();
+        if (error) throw error;
+        dispatch({ type: "CART_CLEAR" });
+        showToast("✅ Comanda trimisă!");
+      }
     } catch (err) {
       showToast("❌ Eroare la trimiterea comenzii. Încearcă din nou.");
     } finally {
@@ -1159,8 +1187,8 @@ export function Meniu() {
                 );
               })}
             </div>
-            {/* Buton Cere Nota - doar când e ready */}
-            {activeOrder.status === "ready" && (
+            {/* Buton Cere Nota - doar cand e ready si nu are produse noi neconfirmate */}
+            {activeOrder.status === "ready" && !activeOrder.has_new_items && (
               <button
                 onClick={() => setShowPayNote(true)}
                 style={{
@@ -1178,6 +1206,25 @@ export function Meniu() {
               >
                 🧾 Cere nota de plată
               </button>
+            )}
+            {/* Mesaj cand are produse noi neconfirmate */}
+            {activeOrder.has_new_items && (
+              <div
+                style={{
+                  width: "100%",
+                  padding: "12px",
+                  borderRadius: 14,
+                  background: "#1e1a14",
+                  border: "1px solid #c8a97e44",
+                  color: "#c8a97e",
+                  fontFamily: "'Fraunces',serif",
+                  fontSize: 13,
+                  fontWeight: 600,
+                  textAlign: "center",
+                }}
+              >
+                🆕 Produse noi in asteptare...
+              </div>
             )}
             {activeOrder.status === "paying" && (
               <div
@@ -1565,7 +1612,11 @@ export function Meniu() {
           </button>
         )}
       </div>
-      <CartBar onOrder={placeOrder} loading={orderLoading} />
+      <CartBar
+        onOrder={placeOrder}
+        loading={orderLoading}
+        hasActiveOrder={!!activeOrder?.id}
+      />
     </div>
   );
 }
@@ -2261,48 +2312,7 @@ export function Auth() {
         .eq("user_id", user.id)
         .order("created_at", { ascending: false })
         .limit(50);
-      if (ord) {
-        // Grupăm comenzile după table_session_id (sau id individual dacă lipsește)
-        const grouped = Object.values(
-          ord.reduce((acc, order) => {
-            const key = order.table_session_id || order.id;
-            if (!acc[key]) {
-              acc[key] = {
-                ...order,
-                items: [...(order.items || [])],
-                total: Number(order.total || 0),
-                _orderIds: [order.id],
-              };
-            } else {
-              // Adaugă produsele
-              (order.items || []).forEach((newItem) => {
-                const ex = acc[key].items.find((i) => i.name === newItem.name);
-                if (ex) ex.qty = (ex.qty || 1) + (newItem.qty || 1);
-                else acc[key].items.push({ ...newItem });
-              });
-              acc[key].total += Number(order.total || 0);
-              acc[key]._orderIds.push(order.id);
-              // Păstrăm statusul cel mai avansat
-              const priority = {
-                paid: 4,
-                paying: 3,
-                ready: 2,
-                cooking: 1,
-                pending: 0,
-              };
-              if (
-                (priority[order.status] || 0) > (priority[acc[key].status] || 0)
-              ) {
-                acc[key].status = order.status;
-              }
-            }
-            return acc;
-          }, {}),
-        );
-        // Sortăm după data celei mai recente comenzi
-        grouped.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
-        getComenzi(grouped);
-      }
+      if (ord) getComenzi(ord);
 
       setLoading(false);
     };

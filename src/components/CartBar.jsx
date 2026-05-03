@@ -1,7 +1,11 @@
 import { useState } from "react";
 import { useApp } from "../context/AppContext";
 
-export default function CartBar({ onOrder, loading = false }) {
+export default function CartBar({
+  onOrder,
+  loading = false,
+  hasActiveOrder = false,
+}) {
   const { state, cartTotal, cartCount } = useApp();
   const { cart, orderTableNum } = state;
   const [showSummary, setShowSummary] = useState(false);
@@ -186,7 +190,11 @@ export default function CartBar({ onOrder, loading = false }) {
               opacity: loading ? 0.7 : 1,
             }}
           >
-            {loading ? "Se trimite..." : "Trimite comanda la bucătărie 👨‍🍳"}
+            {loading
+              ? "Se trimite..."
+              : hasActiveOrder
+                ? "Adaugă la comandă ✅"
+                : "Trimite comanda la bucătărie 👨‍🍳"}
           </button>
         </div>
       )}
