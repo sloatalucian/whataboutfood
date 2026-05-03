@@ -314,7 +314,17 @@ export default function FloorEditor() {
   const addTable = (seats) => {
     const floor = floors[floorIdx];
     const tableNum = (floor.tables?.length || 0) + 1;
-    const prefix = floor.type === "terrace" ? "E" : "T";
+    // Prefix: TP = Parter, TE1/TE2 = Etaj, TT = Terasa
+    let prefix;
+    if (floor.type === "terrace") {
+      const terraceIdx =
+        floors.filter((f) => f.type === "terrace").indexOf(floor) + 1;
+      prefix = terraceIdx <= 1 ? "TT" : `TT${terraceIdx}`;
+    } else {
+      const indoorFloors = floors.filter((f) => f.type !== "terrace");
+      const floorNum = indoorFloors.indexOf(floor);
+      prefix = floorNum === 0 ? "TP" : `TE${floorNum}-`;
+    }
     const newTable = {
       id: `local_t_${Date.now()}`,
       label: `${prefix}${tableNum}`,
