@@ -1071,29 +1071,14 @@ export function WaiterTablet({
     (r) => r.status === "confirmed",
   );
 
-  const FLOORS =
-    restaurant?.floors?.length > 0
-      ? restaurant.floors
-      : [
-          {
-            id: 1,
-            name: "Parter",
-            tables: [
-              { id: 1, label: "T1", seats: 4 },
-              { id: 2, label: "T2", seats: 4 },
-              { id: 3, label: "T3", seats: 2 },
-              { id: 4, label: "T4", seats: 8 },
-              { id: 5, label: "T5", seats: 8 },
-              { id: 6, label: "T6", seats: 4 },
-            ],
-          },
-        ];
+  // Folosim dbFloors (date reale din DB) - acelasi sistem ca LiveTablesModal
+  const FLOORS = dbFloors.length > 0 ? dbFloors : [];
   const allTables = FLOORS.flatMap((f) => f.tables || []);
   const freeCount = allTables.filter(
-    (t) => !tableStates[t.id] || tableStates[t.id] === "free",
+    (t) => !tableStates[t.label] || tableStates[t.label] === "free",
   ).length;
   const occCount = allTables.filter(
-    (t) => tableStates[t.id] === "occupied",
+    (t) => tableStates[t.label] === "occupied",
   ).length;
 
   return (
@@ -2094,10 +2079,7 @@ export function WaiterTablet({
                     ))}
                     {/* Mese */}
                     {(dbFloors[activeMapFloor]?.tables || []).map((table) => {
-                      const rtStatus =
-                        tableStates[table.label] ||
-                        tableStates[table.id] ||
-                        "free";
+                      const rtStatus = tableStates[table.label] || "free";
                       const isMapReserved = mapReservedTables.includes(
                         table.label,
                       );
