@@ -785,15 +785,15 @@ export function Meniu() {
     try {
       // Dacă există comandă activă pe aceeași sesiune — adaugăm produsele la ea
       if (activeOrder?.id && tableSessionId) {
-        const existingItems = activeOrder.items || [];
-        const mergedItems = [...existingItems];
-        cart.forEach((newItem) => {
-          const ex = mergedItems.find((i) => i.name === newItem.name);
-          if (ex) ex.qty = (ex.qty || 1) + (newItem.qty || 1);
-          else mergedItems.push({ ...newItem });
-        });
-        const mergedTotal = Number(activeOrder.total || 0) + newTotal;
+        const existingItems = (activeOrder.items || []).map((i) => ({
+          ...i,
+          is_new: false,
+        }));
         const isConfirmed = ["cooking", "ready"].includes(activeOrder.status);
+        // Produsele noi apar DISTINCT cu is_new: true - ospatarul vede clar ce e nou
+        const newItems = cart.map((i) => ({ ...i, is_new: isConfirmed }));
+        const mergedItems = [...existingItems, ...newItems];
+        const mergedTotal = Number(activeOrder.total || 0) + newTotal;
         const updatePayload = {
           items: mergedItems,
           total: mergedTotal,

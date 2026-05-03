@@ -768,7 +768,7 @@ export function WaiterTablet({
         .from("orders")
         .update({
           status: "cooking",
-          items: remainingItems,
+          items: remainingItems.map((i) => ({ ...i, is_new: false })),
           total: newTotal,
           cancelled_items: cancelledItems,
           cancellation_notes: cancelling.note || null,
@@ -826,6 +826,9 @@ export function WaiterTablet({
           waiter_id: waiterId || null,
           accepted_at: new Date().toISOString(),
           has_new_items: false,
+          items: (orders.find((o) => o.id === orderId)?.items || []).map(
+            (i) => ({ ...i, is_new: false }),
+          ),
         })
         .eq("id", orderId);
       if (error) throw error;
@@ -838,6 +841,7 @@ export function WaiterTablet({
                 status: "cooking",
                 has_new_items: false,
                 waiter_name: waiterName,
+                items: (o.items || []).map((i) => ({ ...i, is_new: false })),
               }
             : o,
         ),
@@ -1575,9 +1579,32 @@ export function WaiterTablet({
                           }}
                         >
                           <span
-                            style={{ color: "rgba(240,235,227,.7)", flex: 1 }}
+                            style={{
+                              flex: 1,
+                              display: "flex",
+                              alignItems: "center",
+                              gap: 6,
+                            }}
                           >
-                            {item.emoji} {item.name}
+                            <span style={{ color: "rgba(240,235,227,.7)" }}>
+                              {item.emoji} {item.name}
+                            </span>
+                            {item.is_new && (
+                              <span
+                                style={{
+                                  fontSize: 9,
+                                  fontWeight: 700,
+                                  padding: "2px 6px",
+                                  borderRadius: 10,
+                                  background: "#c8a97e22",
+                                  color: "#c8a97e",
+                                  border: "1px solid #c8a97e44",
+                                  whiteSpace: "nowrap",
+                                }}
+                              >
+                                Comandat acum
+                              </span>
+                            )}
                           </span>
                           <span
                             style={{

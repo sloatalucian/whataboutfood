@@ -287,16 +287,16 @@ function LiveTablesModal({ restaurant, onClose }) {
   const tables = floor?.tables || [];
   const allTables = floors.flatMap((f) => f.tables || []);
   const freeCount = allTables.filter(
-    (t) => !tableStates[t.id] || tableStates[t.id] === "free",
+    (t) => !tableStates[t.label] || tableStates[t.label] === "free",
   ).length;
   const occCount = allTables.filter(
-    (t) => tableStates[t.id] === "occupied",
+    (t) => tableStates[t.label] === "occupied",
   ).length;
   const resCount = allTables.filter(
-    (t) => tableStates[t.id] === "reserved",
+    (t) => tableStates[t.label] === "reserved",
   ).length;
   const paidCount = allTables.filter(
-    (t) => tableStates[t.id] === "paid",
+    (t) => tableStates[t.label] === "paid",
   ).length;
   const total = allTables.length;
 
@@ -641,7 +641,7 @@ function LiveTablesModal({ restaurant, onClose }) {
                     ))}
                     {/* Mese */}
                     {tables.map((table) => {
-                      const status = tableStates[table.id] || "free";
+                      const status = tableStates[table.label] || "free";
                       const colors = {
                         free: "#4a6e4a",
                         occupied: "#c0622f",
