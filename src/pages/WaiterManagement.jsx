@@ -259,9 +259,11 @@ export function WaiterLogin({ onLogin, onBack }) {
 // ═══════════════════════════════════════════════════════════════════════════
 // GESTIONARE OSPĂTARI — conectat la Supabase
 // ═══════════════════════════════════════════════════════════════════════════
-export function WaiterManagement() {
+export function WaiterManagement({ onBack, onLogout }) {
   const { state, navigate, showToast } = useApp();
   const { user } = state;
+  const handleBack = onBack || (() => navigate("home"));
+  const handleLogout = onLogout || (() => {});
 
   // ── Restaurante ──
   const [restaurants, setRestaurants] = useState([]);
@@ -296,7 +298,8 @@ export function WaiterManagement() {
           .order("created_at");
         if (data && data.length > 0) {
           setRestaurants(data);
-          setSelectedRestId(data[0].id);
+          // Setam restaurantul doar daca nu e deja selectat
+          setSelectedRestId((prev) => prev || data[0].id);
         }
       } catch (err) {
         console.log(err);
@@ -434,7 +437,7 @@ export function WaiterManagement() {
           }}
         >
           <button
-            onClick={() => navigate("home")}
+            onClick={handleBack}
             style={{
               width: 38,
               height: 38,

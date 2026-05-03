@@ -200,74 +200,18 @@ function Router() {
     );
   }
 
-  const AdminDashboard = () => (
-    <div className="page fade-in">
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          padding: "20px 20px 0",
-        }}
-      >
-        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <button
-            onClick={() => navigate("home")}
-            style={{
-              width: 38,
-              height: 38,
-              borderRadius: 12,
-              background: "var(--card2)",
-              border: "1px solid var(--border)",
-              color: "var(--cream)",
-              fontSize: 17,
-              cursor: "pointer",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-            }}
-          >
-            ←
-          </button>
-          <span
-            style={{
-              fontFamily: "'Fraunces',serif",
-              fontSize: 21,
-              fontWeight: 700,
-            }}
-          >
-            🤵 Ospătari
-          </span>
-        </div>
-        <button
-          onClick={handleLogout}
-          style={{
-            padding: "7px 14px",
-            borderRadius: 10,
-            background: "rgba(192,57,43,.15)",
-            border: "1px solid rgba(192,57,43,.3)",
-            color: "#e05050",
-            fontSize: 12,
-            cursor: "pointer",
-            fontWeight: 600,
-          }}
-        >
-          Ieși din cont
-        </button>
-      </div>
-      <div style={{ padding: 20 }}>
-        <WaiterManagement />
-      </div>
-    </div>
-  );
-
   const pages = {
     home: <Home onLogout={handleLogout} />,
     restaurant: <Restaurant />,
     reserve: <Rezervare />,
     menu: <Meniu />,
     auth: <Auth />,
-    admin: <AdminDashboard />,
+    admin: (
+      <WaiterManagement
+        onBack={() => navigate("home")}
+        onLogout={handleLogout}
+      />
+    ),
     adminFloor: <FloorEditor />,
     statistici: <StatisticiProprietar />,
     dashboardLive: <DashboardLive />,
