@@ -5,7 +5,24 @@ import { supabase } from "../supabase";
 const fmt = (n) => Number(n || 0).toLocaleString("ro-RO") + " lei";
 
 const ZILE = ["Lun", "Mar", "Mie", "Joi", "Vin", "Sam", "Dum"];
-const ORE = ["12:00", "13:00", "14:00", "18:00", "19:00", "20:00", "21:00"];
+const ORE = [
+  "08:00",
+  "09:00",
+  "10:00",
+  "11:00",
+  "12:00",
+  "13:00",
+  "14:00",
+  "15:00",
+  "16:00",
+  "17:00",
+  "18:00",
+  "19:00",
+  "20:00",
+  "21:00",
+  "22:00",
+  "23:00",
+];
 
 function BarChart({ data, color = "#c0622f", height = 140 }) {
   const max = Math.max(...data.map((d) => d.value), 1);
@@ -148,23 +165,26 @@ export default function StatisticiProprietar() {
 
       // Interval de timp
       const now = new Date();
+      // Offset timezone Romania (UTC+2 iarna, UTC+3 vara)
+      const offsetMin = -now.getTimezoneOffset();
+      const sign = offsetMin >= 0 ? "+" : "-";
+      const tzHH = String(Math.floor(Math.abs(offsetMin) / 60)).padStart(
+        2,
+        "0",
+      );
+      const tzMM = String(Math.abs(offsetMin) % 60).padStart(2, "0");
+      const tz = `${sign}${tzHH}:${tzMM}`;
+      const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
       let startDate;
       if (period === "zi") {
-        startDate = new Date(
-          now.getFullYear(),
-          now.getMonth(),
-          now.getDate(),
-        ).toISOString();
+        startDate = `${todayStr}T00:00:00${tz}`;
       } else if (period === "saptamana") {
-        startDate = new Date(
-          now.getTime() - 7 * 24 * 60 * 60 * 1000,
-        ).toISOString();
+        const d7 = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+        const d7Str = `${d7.getFullYear()}-${String(d7.getMonth() + 1).padStart(2, "0")}-${String(d7.getDate()).padStart(2, "0")}`;
+        startDate = `${d7Str}T00:00:00${tz}`;
       } else {
-        startDate = new Date(
-          now.getFullYear(),
-          now.getMonth(),
-          1,
-        ).toISOString();
+        const monthStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-01`;
+        startDate = `${monthStr}T00:00:00${tz}`;
       }
 
       // Toate comenzile plătite din perioada selectată
@@ -187,11 +207,7 @@ export default function StatisticiProprietar() {
       const avgOrderValue = totalOrders > 0 ? totalRevenue / totalOrders : 0;
 
       // Rezervări confirmate luna curentă
-      const monthStart = new Date(
-        now.getFullYear(),
-        now.getMonth(),
-        1,
-      ).toISOString();
+      const monthStart = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-01T00:00:00${tz}`;
       const { count: resCount } = await supabase
         .from("reservations")
         .select("id", { count: "exact", head: true })
@@ -254,17 +270,23 @@ export default function StatisticiProprietar() {
       // ── Top produse ──
       const productMap = {};
       allOrders.forEach((o) => {
+        // Deduplicam produsele - acelasi produs poate aparea de mai multe ori
+        const seenItems = {};
         (o.items || []).forEach((item) => {
           const key = item.name;
-          if (!productMap[key])
-            productMap[key] = {
+          if (!seenItems[key]) seenItems[key] = { ...item, qty: item.qty || 1 };
+          else seenItems[key].qty += item.qty || 1;
+        });
+        Object.values(seenItems).forEach((item) => {
+          if (!productMap[item.name])
+            productMap[item.name] = {
               name: item.name,
               emoji: item.emoji || "🍴",
               orders: 0,
               revenue: 0,
             };
-          productMap[key].orders += item.qty || 1;
-          productMap[key].revenue += (item.price || 0) * (item.qty || 1);
+          productMap[item.name].orders += item.qty;
+          productMap[item.name].revenue += (item.price || 0) * item.qty;
         });
       });
       const products = Object.values(productMap)
