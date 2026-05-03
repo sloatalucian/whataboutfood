@@ -424,15 +424,18 @@ function OwnerRegisterModal({ onClose, onSuccess }) {
     }
 
     if (data.user) {
-      await supabase.from("profiles").upsert({
-        id: data.user.id,
-        full_name: form.name,
-        phone: form.phone || null,
-        role: "owner",
-        plan: "free",
-        status: "pending",
-        requested_at: new Date().toISOString(),
-      });
+      // Update explicit - suprascrie ce a creat handle_new_user
+      await supabase
+        .from("profiles")
+        .update({
+          full_name: form.name,
+          phone: form.phone || null,
+          role: "owner",
+          plan: "free",
+          status: "pending",
+          requested_at: new Date().toISOString(),
+        })
+        .eq("id", data.user.id);
     }
 
     setLoading(false);
