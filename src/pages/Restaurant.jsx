@@ -242,11 +242,16 @@ function ProgramEditor({ program, onSave, onClose }) {
 
 // ─── MODAL MESE LIVE ──────────────────────────────────────────────────────────
 function LiveTablesModal({ restaurant, onClose }) {
-  const { tableStates } = useTable();
+  const { tableStates, reload } = useTable();
   const [activeFloor, setActiveFloor] = useState(0);
   const [dbFloors, setDbFloors] = useState([]);
   const [zoom, setZoom] = useState(60);
   const [loadingFloors, setLoadingFloors] = useState(true);
+
+  // Refresh tableStates la montare modal
+  useEffect(() => {
+    reload();
+  }, []);
 
   useEffect(() => {
     if (!restaurant?.id) return;
@@ -278,6 +283,8 @@ function LiveTablesModal({ restaurant, onClose }) {
       setLoadingFloors(false);
     };
     load();
+    const interval = setInterval(load, 10000);
+    return () => clearInterval(interval);
   }, [restaurant?.id]);
 
   // Folosim DOAR dbFloors (date reale din DB) pentru statistici
