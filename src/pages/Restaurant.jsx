@@ -246,24 +246,21 @@ function LiveTablesModal({ restaurant, onClose }) {
   const [activeFloor, setActiveFloor] = useState(0);
   const [dbFloors, setDbFloors] = useState([]);
   const [zoom, setZoom] = useState(60);
+  const [loadingFloors, setLoadingFloors] = useState(true);
 
   useEffect(() => {
     if (!restaurant?.id) return;
     const load = async () => {
-      const { data: floorsData, error: floorsError } = await supabase
+      setLoadingFloors(true);
+      const { data: floorsData } = await supabase
         .from("floors")
         .select("*")
         .eq("restaurant_id", restaurant.id)
         .order("floor_order");
-      console.log(
-        "LiveTablesModal floors:",
-        floorsData,
-        "error:",
-        floorsError,
-        "restId:",
-        restaurant.id,
-      );
-      if (!floorsData || floorsData.length === 0) return;
+      if (!floorsData || floorsData.length === 0) {
+        setLoadingFloors(false);
+        return;
+      }
       const floorsWithData = await Promise.all(
         floorsData.map(async (fl) => {
           const { data: tables } = await supabase
@@ -278,11 +275,14 @@ function LiveTablesModal({ restaurant, onClose }) {
         }),
       );
       setDbFloors(floorsWithData);
+      setLoadingFloors(false);
     };
     load();
   }, [restaurant?.id]);
 
-  const floors = dbFloors.length > 0 ? dbFloors : restaurant?.floors || [];
+  // Folosim DOAR dbFloors (date reale din DB) pentru statistici
+  // Nu facem fallback pe restaurant?.floors care poate avea date incorecte
+  const floors = dbFloors.length > 0 ? dbFloors : [];
   const floor = floors[activeFloor];
   const tables = floor?.tables || [];
   const allTables = floors.flatMap((f) => f.tables || []);
@@ -417,7 +417,7 @@ function LiveTablesModal({ restaurant, onClose }) {
                   color: s.color,
                 }}
               >
-                {s.value}
+                {loadingFloors ? "..." : s.value}
               </div>
               <div
                 style={{
