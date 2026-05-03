@@ -688,7 +688,6 @@ export function Meniu() {
       const { data } = await query;
 
       if (data && data.length > 0) {
-        // Grupăm toate comenzile sesiunii - status = cel mai avansat
         const statusPriority = { paying: 4, ready: 3, cooking: 2, pending: 1 };
         const latestOrder = data.reduce(
           (best, o) =>
@@ -697,16 +696,21 @@ export function Meniu() {
               : best,
           data[0],
         );
-        const totalAll = data.reduce((s, o) => s + Number(o.total || 0), 0);
-        const allItems = data.flatMap((o) => o.items || []);
-        setActiveOrder({
-          ...latestOrder,
-          total: totalAll,
-          items: allItems,
-          orderCount: data.length,
-          _allOrderIds: data.map((o) => o.id),
+        setActiveOrder(latestOrder);
+      } else {
+        // Comanda a disparut (ospatar a confirmat plata) -> resetam sesiunea
+        setActiveOrder((prev) => {
+          if (prev?.status === "paying") {
+            // Plata confirmata de ospatar - resetam masa si sesiunea
+            dispatch({
+              type: "SET_PAID",
+              payload: { paid: true, method: prev.payment_method },
+            });
+            dispatch({ type: "RESET_TABLE_SESSION" });
+          }
+          return null;
         });
-      } else setActiveOrder(null);
+      }
     };
     loadActiveOrder();
 
@@ -865,7 +869,6 @@ export function Meniu() {
                 type: "SET_PAID",
                 payload: { paid: false, method: null },
               });
-              dispatch({ type: "CART_CLEAR" });
               dispatch({ type: "SET_PAYMENT", payload: false });
               navigate("home");
             }}

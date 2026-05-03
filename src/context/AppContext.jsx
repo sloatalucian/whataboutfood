@@ -61,6 +61,9 @@ function reducer(state, { type, payload }) {
       return { ...state, showPayment: payload };
     case "SET_PAID":
       return { ...state, paid: payload.paid, payMethod: payload.method };
+    case "RESET_TABLE_SESSION":
+      // Resetare completa dupa plata - clientul trebuie sa selecteze din nou masa
+      return { ...state, orderTableNum: null, tableSessionId: null, cart: [] };
     case "SET_ORDER_TABLE":
       return { ...state, orderTableNum: payload };
     case "SET_TABLE_SESSION":
