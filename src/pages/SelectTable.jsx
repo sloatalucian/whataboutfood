@@ -638,8 +638,14 @@ export function WaiterTablet({
     if (!restaurantId) return;
     setIstoricLoading(true);
     try {
-      const startOfDay = `${date}T00:00:00`;
-      const endOfDay = `${date}T23:59:59`;
+      // Calculam offset-ul local dinamic (Romania: +02:00 iarna, +03:00 vara)
+      const offsetMin = -new Date().getTimezoneOffset();
+      const sign = offsetMin >= 0 ? "+" : "-";
+      const hh = String(Math.floor(Math.abs(offsetMin) / 60)).padStart(2, "0");
+      const mm = String(Math.abs(offsetMin) % 60).padStart(2, "0");
+      const tz = `${sign}${hh}:${mm}`;
+      const startOfDay = `${date}T00:00:00${tz}`;
+      const endOfDay = `${date}T23:59:59${tz}`;
       const { data, error } = await supabase
         .from("orders")
         .select("*")
