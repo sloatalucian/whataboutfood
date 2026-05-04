@@ -185,7 +185,7 @@ function Router() {
       });
       if (!error) {
         await supabase.rpc("update_restaurant_rating", {
-          restaurant_id_input: restId,
+          p_restaurant_id: restId,
         });
         // Reincarcam rating-ul restaurantului in state
         const { data: updatedRest } = await supabase
