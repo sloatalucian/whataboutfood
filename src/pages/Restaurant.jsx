@@ -761,6 +761,15 @@ export default function Restaurant() {
   const loadReviews = async () => {
     if (!selectedRest?.id) return;
     setReviewsLoading(true);
+    // Reincarcam rating-ul din DB (poate fi actualizat dupa review-uri noi)
+    const { data: restData } = await supabase
+      .from("restaurants")
+      .select("rating")
+      .eq("id", selectedRest.id)
+      .single();
+    if (restData) {
+      dispatch({ type: "UPDATE_REST_RATING", payload: restData.rating });
+    }
     const { data } = await supabase
       .from("restaurant_reviews")
       .select("*")

@@ -187,6 +187,15 @@ function Router() {
         await supabase.rpc("update_restaurant_rating", {
           restaurant_id_input: restId,
         });
+        // Reincarcam rating-ul restaurantului in state
+        const { data: updatedRest } = await supabase
+          .from("restaurants")
+          .select("rating")
+          .eq("id", restId)
+          .single();
+        if (updatedRest) {
+          dispatch({ type: "UPDATE_REST_RATING", payload: updatedRest.rating });
+        }
       }
     } catch {}
     setReviewSent(true);

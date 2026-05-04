@@ -53,6 +53,13 @@ function reducer(state, { type, payload }) {
       return { ...state, screen: payload };
     case "SET_REST":
       return { ...state, selectedRest: payload, screen: "restaurant" };
+    case "UPDATE_REST_RATING":
+      return {
+        ...state,
+        selectedRest: state.selectedRest
+          ? { ...state.selectedRest, rating: payload }
+          : state.selectedRest,
+      };
     case "SET_USER":
       return { ...state, user: payload };
     case "SET_TOAST":
