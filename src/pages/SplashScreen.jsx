@@ -638,7 +638,14 @@ export default function SplashScreen({ onComplete, onWaiterLogin }) {
   const [showOwnerRegister, setShowOwnerRegister] = useState(false);
   const [showOwnerPending, setShowOwnerPending] = useState(false);
   const [loginMode, setLoginMode] = useState("login");
-  const [form, setForm] = useState({ email: "", password: "", name: "" });
+  const [form, setForm] = useState({
+    email: localStorage.getItem("waf_email") || "",
+    password: localStorage.getItem("waf_pass") || "",
+    name: "",
+  });
+  const [rememberMe, setRememberMe] = useState(
+    localStorage.getItem("waf_remember") === "true",
+  );
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
@@ -650,6 +657,16 @@ export default function SplashScreen({ onComplete, onWaiterLogin }) {
     }
     setLoading(true);
     setError("");
+    // Salvam sau stergem credentialele din localStorage
+    if (rememberMe) {
+      localStorage.setItem("waf_email", form.email);
+      localStorage.setItem("waf_pass", form.password);
+      localStorage.setItem("waf_remember", "true");
+    } else {
+      localStorage.removeItem("waf_email");
+      localStorage.removeItem("waf_pass");
+      localStorage.setItem("waf_remember", "false");
+    }
     const { data, error: authError } = await supabase.auth.signInWithPassword({
       email: form.email,
       password: form.password,
@@ -1016,6 +1033,43 @@ export default function SplashScreen({ onComplete, onWaiterLogin }) {
                     boxSizing: "border-box",
                   }}
                 />
+              </div>
+              {/* Checkbox Tine-ma minte */}
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 8,
+                  marginBottom: 16,
+                  cursor: "pointer",
+                }}
+                onClick={() => setRememberMe((prev) => !prev)}
+              >
+                <div
+                  style={{
+                    width: 18,
+                    height: 18,
+                    borderRadius: 5,
+                    border: `2px solid ${rememberMe ? "#c0622f" : "#3a2e22"}`,
+                    background: rememberMe ? "#c0622f" : "transparent",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    flexShrink: 0,
+                    transition: "all .2s",
+                  }}
+                >
+                  {rememberMe && (
+                    <span
+                      style={{ color: "#fff", fontSize: 11, fontWeight: 700 }}
+                    >
+                      ✓
+                    </span>
+                  )}
+                </div>
+                <span style={{ fontSize: 13, color: "#a09070" }}>
+                  Ține-mă minte
+                </span>
               </div>
               <button
                 onClick={handleLogin}
