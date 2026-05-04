@@ -171,37 +171,24 @@ function Router() {
     const restId =
       state.reviewRestId || state.selectedRest?.id || selectedRest?.id;
     const sessId = state.reviewSessionId;
-    console.log("DEBUG review:", {
-      restId,
-      sessId,
-      reviewRating,
-      userId: user?.id,
-      stateReviewRestId: state.reviewRestId,
-    });
     if (!restId) {
       setReviewSent(true);
       return;
     }
     try {
-      const { data, error } = await supabase
-        .from("restaurant_reviews")
-        .insert({
-          restaurant_id: restId,
-          user_id: user.id,
-          table_session_id: sessId || null,
-          rating: reviewRating,
-          comment: reviewComment.trim() || null,
-        })
-        .select();
-      console.log("DEBUG insert result:", { data, error });
+      const { error } = await supabase.from("restaurant_reviews").insert({
+        restaurant_id: restId,
+        user_id: user.id,
+        table_session_id: sessId || null,
+        rating: reviewRating,
+        comment: reviewComment.trim() || null,
+      });
       if (!error) {
         await supabase.rpc("update_restaurant_rating", {
           restaurant_id_input: restId,
         });
       }
-    } catch (e) {
-      console.log("DEBUG catch:", e);
-    }
+    } catch {}
     setReviewSent(true);
   };
 
