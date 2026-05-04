@@ -168,27 +168,41 @@ function Router() {
 
   const handleSendReview = async () => {
     if (!reviewRating || !user?.id) return;
-    // Luam restaurantId din state (salvat la SET_PAID) sau fallback pe selectedRest
     const restId =
       state.reviewRestId || state.selectedRest?.id || selectedRest?.id;
     const sessId = state.reviewSessionId;
+    console.log("DEBUG review:", {
+      restId,
+      sessId,
+      reviewRating,
+      userId: user?.id,
+      stateReviewRestId: state.reviewRestId,
+    });
     if (!restId) {
       setReviewSent(true);
       return;
-    } // Daca lipseste restaurantul, marcam ca trimis
+    }
     try {
-      await supabase.from("restaurant_reviews").insert({
-        restaurant_id: restId,
-        user_id: user.id,
-        table_session_id: sessId || null,
-        rating: reviewRating,
-        comment: reviewComment.trim() || null,
-      });
-      await supabase.rpc("update_restaurant_rating", {
-        restaurant_id_input: restId,
-      });
-    } catch {}
-    setReviewSent(true); // Marcam ca trimis indiferent de eroare
+      const { data, error } = await supabase
+        .from("restaurant_reviews")
+        .insert({
+          restaurant_id: restId,
+          user_id: user.id,
+          table_session_id: sessId || null,
+          rating: reviewRating,
+          comment: reviewComment.trim() || null,
+        })
+        .select();
+      console.log("DEBUG insert result:", { data, error });
+      if (!error) {
+        await supabase.rpc("update_restaurant_rating", {
+          restaurant_id_input: restId,
+        });
+      }
+    } catch (e) {
+      console.log("DEBUG catch:", e);
+    }
+    setReviewSent(true);
   };
 
   // Reset review state cand paid devine false
