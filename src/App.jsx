@@ -22,7 +22,16 @@ const ADMIN_EMAIL = "sloatalucian@yahoo.com";
 
 function Router() {
   const { state, dispatch, navigate, showToast } = useApp();
-  const { screen, selectedRest, orders, toast, user } = state;
+  const {
+    screen,
+    selectedRest,
+    orders,
+    toast,
+    user,
+    paid,
+    payMethod,
+    tableSessionId,
+  } = state;
 
   const [splashDone, setSplashDone] = useState(false);
   const [waiterUser, setWaiterUser] = useState(null);
