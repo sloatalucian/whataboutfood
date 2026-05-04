@@ -705,12 +705,22 @@ export function Meniu() {
         // Comanda a disparut (ospatar a confirmat plata) -> resetam sesiunea
         setActiveOrder((prev) => {
           if (prev?.status === "paying") {
-            // Plata confirmata de ospatar - resetam masa si sesiunea
-            dispatch({
-              type: "SET_PAID",
-              payload: { paid: true, method: prev.payment_method },
-            });
-            dispatch({ type: "RESET_TABLE_SESSION" });
+            // Plata confirmata - dispatch in setTimeout ca sa avem acces la prev
+            const method = prev.payment_method;
+            const restId = selectedRest?.id || null;
+            const sessId = tableSessionId || null;
+            setTimeout(() => {
+              dispatch({
+                type: "SET_PAID",
+                payload: {
+                  paid: true,
+                  method,
+                  restaurantId: restId,
+                  sessionId: sessId,
+                },
+              });
+              dispatch({ type: "RESET_TABLE_SESSION" });
+            }, 0);
           }
           return null;
         });

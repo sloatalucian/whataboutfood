@@ -31,6 +31,8 @@ function Router() {
     paid,
     payMethod,
     tableSessionId,
+    reviewRestId: stateReviewRestId,
+    reviewSessionId: stateReviewSessionId,
   } = state;
 
   const [splashDone, setSplashDone] = useState(false);
@@ -163,39 +165,34 @@ function Router() {
   const [reviewRating, setReviewRating] = useState(0);
   const [reviewComment, setReviewComment] = useState("");
   const [reviewSent, setReviewSent] = useState(false);
-  // Retinem datele restaurantului la momentul platii (inainte de RESET)
-  const [reviewRestId, setReviewRestId] = useState(null);
-  const [reviewSessionId, setReviewSessionId] = useState(null);
 
   const handleSendReview = async () => {
-    if (!reviewRating || !reviewRestId || !user?.id) return;
+    const restId = state.reviewRestId || selectedRest?.id;
+    const sessId = state.reviewSessionId;
+    if (!reviewRating || !restId || !user?.id) return;
     try {
-      await supabase.from("restaurant_reviews").insert({
-        restaurant_id: reviewRestId,
+      const { error } = await supabase.from("restaurant_reviews").insert({
+        restaurant_id: restId,
         user_id: user.id,
-        table_session_id: reviewSessionId || null,
+        table_session_id: sessId || null,
         rating: reviewRating,
         comment: reviewComment.trim() || null,
       });
-      await supabase.rpc("update_restaurant_rating", {
-        restaurant_id_input: reviewRestId,
-      });
-      setReviewSent(true);
+      if (!error) {
+        await supabase.rpc("update_restaurant_rating", {
+          restaurant_id_input: restId,
+        });
+        setReviewSent(true);
+      }
     } catch {}
   };
 
-  // Salvam datele pentru review cand paid devine true, resetam cand devine false
+  // Reset review state cand paid devine false
   useEffect(() => {
-    if (paid) {
-      // Salvam datele INAINTE ca RESET_TABLE_SESSION sa le stearga
-      setReviewRestId(selectedRest?.id || null);
-      setReviewSessionId(tableSessionId || null);
-    } else {
+    if (!paid) {
       setReviewRating(0);
       setReviewComment("");
       setReviewSent(false);
-      setReviewRestId(null);
-      setReviewSessionId(null);
     }
   }, [paid]);
 
@@ -229,7 +226,12 @@ function Router() {
         if (paidOrders && paidOrders.length > 0 && !paid) {
           dispatch({
             type: "SET_PAID",
-            payload: { paid: true, method: paidOrders[0].payment_method },
+            payload: {
+              paid: true,
+              method: paidOrders[0].payment_method,
+              restaurantId: selectedRest?.id || null,
+              sessionId: tableSessionId || null,
+            },
           });
           dispatch({ type: "RESET_TABLE_SESSION" });
         }

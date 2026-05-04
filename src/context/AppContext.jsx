@@ -20,6 +20,8 @@ const initialState = {
   showPayment: false,
   paid: false,
   payMethod: null,
+  reviewRestId: null,
+  reviewSessionId: null,
   orders: [],
   reservations: {},
   resForm: {
@@ -60,9 +62,15 @@ function reducer(state, { type, payload }) {
     case "SET_PAYMENT":
       return { ...state, showPayment: payload };
     case "SET_PAID":
-      return { ...state, paid: payload.paid, payMethod: payload.method };
+      return {
+        ...state,
+        paid: payload.paid,
+        payMethod: payload.method,
+        reviewRestId: payload.restaurantId || state.selectedRest?.id || null,
+        reviewSessionId: payload.sessionId || null,
+      };
     case "RESET_TABLE_SESSION":
-      // Resetare completa dupa plata - clientul trebuie sa selecteze din nou masa
+      // Resetare completa dupa plata - pastreaza datele pentru review
       return { ...state, orderTableNum: null, tableSessionId: null, cart: [] };
     case "SET_ORDER_TABLE":
       return { ...state, orderTableNum: payload };
