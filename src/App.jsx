@@ -181,6 +181,15 @@ function Router() {
     } catch {}
   };
 
+  // Reset review state cand paid devine false - TREBUIE inainte de orice return conditional
+  useEffect(() => {
+    if (!paid) {
+      setReviewRating(0);
+      setReviewComment("");
+      setReviewSent(false);
+    }
+  }, [paid]);
+
   const handleLogout = async () => {
     await supabase.auth.signOut();
     dispatch({ type: "SET_USER", payload: null });
@@ -278,15 +287,6 @@ function Router() {
       />
     ),
   };
-
-  // Reset review state cand paid devine false
-  useEffect(() => {
-    if (!paid) {
-      setReviewRating(0);
-      setReviewComment("");
-      setReviewSent(false);
-    }
-  }, [paid]);
 
   return (
     <TableProvider restaurantId={selectedRest?.id}>
