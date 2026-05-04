@@ -181,7 +181,7 @@ function Router() {
     } catch {}
   };
 
-  // Reset review state cand paid devine false - TREBUIE inainte de orice return conditional
+  // Reset review state cand paid devine false
   useEffect(() => {
     if (!paid) {
       setReviewRating(0);
@@ -189,6 +189,48 @@ function Router() {
       setReviewSent(false);
     }
   }, [paid]);
+
+  // Polling global - detecteaza cand ospatarul confirma plata indiferent de ecran
+  useEffect(() => {
+    if (!user?.id || !selectedRest?.id || !tableSessionId) return;
+    // Evitam dublu polling cu Meniu - rulam doar cand nu suntem pe ecranul menu
+    if (screen === "menu") return;
+
+    const checkPayment = async () => {
+      const { data } = await supabase
+        .from("orders")
+        .select("id, status, payment_method")
+        .eq("user_id", user.id)
+        .eq("restaurant_id", selectedRest.id)
+        .eq("table_session_id", tableSessionId)
+        .in("status", ["paying"])
+        .limit(1);
+
+      if (!data || data.length === 0) {
+        // Verificam daca exista comenzi paid (ospatarul a confirmat)
+        const { data: paidOrders } = await supabase
+          .from("orders")
+          .select("id, status, payment_method")
+          .eq("user_id", user.id)
+          .eq("restaurant_id", selectedRest.id)
+          .eq("table_session_id", tableSessionId)
+          .eq("status", "paid")
+          .limit(1);
+
+        if (paidOrders && paidOrders.length > 0 && !paid) {
+          dispatch({
+            type: "SET_PAID",
+            payload: { paid: true, method: paidOrders[0].payment_method },
+          });
+          dispatch({ type: "RESET_TABLE_SESSION" });
+        }
+      }
+    };
+
+    const interval = setInterval(checkPayment, 5000);
+    checkPayment();
+    return () => clearInterval(interval);
+  }, [user?.id, selectedRest?.id, tableSessionId, screen, paid]);
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -295,16 +337,31 @@ function Router() {
         {/* Overlay global Grazie mille + Review */}
         {paid && (
           <div
-            className="page fade-in"
             style={{
               position: "fixed",
               inset: 0,
               zIndex: 8888,
-              background: "#0d0a07",
-              overflowY: "auto",
+              background: "rgba(0,0,0,.75)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              padding: 20,
             }}
           >
-            <div style={{ textAlign: "center", padding: "60px 24px" }}>
+            <div
+              className="fade-in"
+              style={{
+                background: "#1a1510",
+                border: "1px solid #2a2218",
+                borderRadius: 24,
+                padding: "32px 24px",
+                width: "100%",
+                maxWidth: 380,
+                maxHeight: "85vh",
+                overflowY: "auto",
+                textAlign: "center",
+              }}
+            >
               <div style={{ fontSize: 68, marginBottom: 16 }}>
                 {payMethod === "cash" ? "💵" : "💳"}
               </div>
