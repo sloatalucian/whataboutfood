@@ -630,6 +630,10 @@ export function Meniu() {
   const [menuLoading, setMenuLoading] = useState(true);
   const [activeOrder, setActiveOrder] = useState(null);
   const [showPayNote, setShowPayNote] = useState(false);
+  const [showReview, setShowReview] = useState(false);
+  const [reviewRating, setReviewRating] = useState(0);
+  const [reviewComment, setReviewComment] = useState("");
+  const [reviewSent, setReviewSent] = useState(false);
   const [payNoteLoading, setPayNoteLoading] = useState(false);
 
   useEffect(() => {
@@ -841,6 +845,23 @@ export function Meniu() {
     }
   };
 
+  const handleSendReview = async () => {
+    if (!reviewRating || !selectedRest?.id || !user?.id) return;
+    try {
+      await supabase.from("restaurant_reviews").insert({
+        restaurant_id: selectedRest.id,
+        user_id: user.id,
+        table_session_id: state.tableSessionId || null,
+        rating: reviewRating,
+        comment: reviewComment.trim() || null,
+      });
+      await supabase.rpc("update_restaurant_rating", {
+        restaurant_id_input: selectedRest.id,
+      });
+      setReviewSent(true);
+    } catch {}
+  };
+
   if (paid)
     return (
       <div className="page fade-in">
@@ -858,12 +879,107 @@ export function Meniu() {
           >
             Grazie mille!
           </div>
-          <div style={{ fontSize: 14, color: "var(--muted)", lineHeight: 1.6 }}>
+          <div
+            style={{
+              fontSize: 14,
+              color: "var(--muted)",
+              lineHeight: 1.6,
+              marginBottom: 24,
+            }}
+          >
             Plata confirmată. Vă așteptăm din nou! 🍝
           </div>
+          {!reviewSent ? (
+            <div
+              style={{
+                background: "var(--card)",
+                borderRadius: 16,
+                padding: 20,
+                marginBottom: 20,
+                textAlign: "left",
+              }}
+            >
+              <div
+                style={{
+                  fontFamily: "'Fraunces',serif",
+                  fontSize: 16,
+                  fontWeight: 700,
+                  marginBottom: 12,
+                  textAlign: "center",
+                }}
+              >
+                Cum a fost experiența la {selectedRest?.name}?
+              </div>
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "center",
+                  gap: 8,
+                  marginBottom: 16,
+                }}
+              >
+                {[1, 2, 3, 4, 5].map((star) => (
+                  <button
+                    key={star}
+                    onClick={() => setReviewRating(star)}
+                    style={{
+                      fontSize: 32,
+                      background: "none",
+                      border: "none",
+                      cursor: "pointer",
+                      opacity: star <= reviewRating ? 1 : 0.3,
+                      transition: "opacity .2s",
+                    }}
+                  >
+                    ★
+                  </button>
+                ))}
+              </div>
+              <textarea
+                placeholder="Comentariu optional..."
+                value={reviewComment}
+                onChange={(e) => setReviewComment(e.target.value)}
+                style={{
+                  width: "100%",
+                  background: "var(--card2)",
+                  border: "1px solid var(--border)",
+                  borderRadius: 10,
+                  padding: 12,
+                  color: "var(--cream)",
+                  fontSize: 13,
+                  minHeight: 80,
+                  resize: "none",
+                  boxSizing: "border-box",
+                  marginBottom: 12,
+                }}
+              />
+              <button
+                onClick={handleSendReview}
+                disabled={!reviewRating}
+                style={{
+                  width: "100%",
+                  padding: 12,
+                  borderRadius: 12,
+                  background: reviewRating
+                    ? "linear-gradient(135deg,#c0622f,#8b3a18)"
+                    : "#2a2218",
+                  border: "none",
+                  color: reviewRating ? "#fff" : "#6b6050",
+                  fontWeight: 700,
+                  cursor: reviewRating ? "pointer" : "not-allowed",
+                  fontSize: 14,
+                }}
+              >
+                Trimite recenzia
+              </button>
+            </div>
+          ) : (
+            <div style={{ color: "#6b9e6b", fontSize: 14, marginBottom: 20 }}>
+              ✅ Recenzie trimisă! Mulțumim!
+            </div>
+          )}
           <button
             className="btn-primary"
-            style={{ marginTop: 32 }}
             onClick={() => {
               dispatch({
                 type: "SET_PAID",

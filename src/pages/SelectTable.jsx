@@ -675,7 +675,30 @@ export function WaiterTablet({
         .gte("date", today)
         .order("date", { ascending: true })
         .order("time", { ascending: true });
-      if (data) setDisplayReservations(data);
+      if (data) {
+        // Incarcam ratingul clientului din profiles
+        const userIds = [
+          ...new Set(data.filter((r) => r.user_id).map((r) => r.user_id)),
+        ];
+        let ratingsMap = {};
+        if (userIds.length > 0) {
+          const { data: profiles } = await supabase
+            .from("profiles")
+            .select("id, rating, no_shows, total_visits")
+            .in("id", userIds);
+          (profiles || []).forEach((p) => {
+            ratingsMap[p.id] = p;
+          });
+        }
+        setDisplayReservations(
+          data.map((r) => ({
+            ...r,
+            clientRating: ratingsMap[r.user_id]?.rating ?? 5.0,
+            clientNoShows: ratingsMap[r.user_id]?.no_shows ?? 0,
+            clientVisits: ratingsMap[r.user_id]?.total_visits ?? 0,
+          })),
+        );
+      }
     };
     loadReservations();
 
@@ -1018,9 +1041,13 @@ export function WaiterTablet({
       setSuggestionModal(null);
       // Notificare client
       if (reservation?.user_id) {
-        const message = suggestionText
-          ? `Rezervarea ta a fost refuzată. Sugestie: ${suggestionText}`
-          : "Rezervarea ta a fost refuzată.";
+        // Verificam daca refuzul e din cauza istoricului de prezenta
+        const isRatingRefusal = reservation?.clientRating < 3;
+        const message = isRatingRefusal
+          ? "Rezervarea ta a fost refuzată din cauza istoricului de prezență. Dacă doriți să rezervați cu adevărat, vă rugăm să contactați restaurantul și după aceea mai rezervați încă o dată în aplicație."
+          : suggestionText
+            ? `Rezervarea ta a fost refuzată. Sugestie: ${suggestionText}`
+            : "Rezervarea ta a fost refuzată.";
         await supabase.from("notifications").insert({
           user_id: reservation.user_id,
           restaurant_id: restaurantId,
@@ -1032,6 +1059,75 @@ export function WaiterTablet({
       showToast("❌ Rezervare refuzată.");
     } catch (err) {
       showToast("❌ Eroare.");
+    }
+  };
+
+  // No-show: verifica rezervarile confirmate care au trecut de 30 min
+  const [noShowModal, setNoShowModal] = useState(null);
+  const checkedNoShows = useRef(new Set());
+
+  useEffect(() => {
+    const checkNoShows = () => {
+      const now = new Date();
+      const confirmed = displayReservations.filter(
+        (r) => r.status === "confirmed",
+      );
+      for (const res of confirmed) {
+        if (!res.user_id || !res.date || !res.time) continue;
+        if (checkedNoShows.current.has(res.id)) continue;
+        const resDateTime = new Date(`${res.date}T${res.time}:00`);
+        const diffMin = (now - resDateTime) / 60000;
+        if (diffMin >= 30 && diffMin < 120) {
+          checkedNoShows.current.add(res.id);
+          setNoShowModal(res);
+          break;
+        }
+      }
+    };
+    const interval = setInterval(checkNoShows, 60000);
+    checkNoShows();
+    return () => clearInterval(interval);
+  }, [displayReservations]);
+
+  const markNoShow = async (res) => {
+    try {
+      await supabase.rpc("decrement_client_rating", {
+        user_id_input: res.user_id,
+      });
+      await supabase
+        .from("reservations")
+        .update({ status: "no_show" })
+        .eq("id", res.id);
+      await supabase.from("notifications").insert({
+        user_id: res.user_id,
+        restaurant_id: restaurantId,
+        type: "no_show",
+        message:
+          "Ai fost marcat absent la rezervarea ta. Scorul tau de prezenta a scazut cu 1 stea.",
+        is_read: false,
+      });
+      setDisplayReservations((prev) => prev.filter((r) => r.id !== res.id));
+      setNoShowModal(null);
+      showToast("No-show marcat.");
+    } catch {
+      showToast("Eroare.");
+    }
+  };
+
+  const markPresent = async (res) => {
+    try {
+      await supabase.rpc("increment_client_rating", {
+        user_id_input: res.user_id,
+      });
+      await supabase
+        .from("reservations")
+        .update({ status: "completed" })
+        .eq("id", res.id);
+      setDisplayReservations((prev) => prev.filter((r) => r.id !== res.id));
+      setNoShowModal(null);
+      showToast("Prezenta confirmata!");
+    } catch {
+      showToast("Eroare.");
     }
   };
 
@@ -1098,6 +1194,92 @@ export function WaiterTablet({
         flexDirection: "column",
       }}
     >
+      {/* Modal No-Show */}
+      {noShowModal && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(0,0,0,.7)",
+            zIndex: 9999,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: 20,
+          }}
+        >
+          <div
+            style={{
+              background: "#1a1510",
+              border: "1px solid #2a2218",
+              borderRadius: 20,
+              padding: 24,
+              maxWidth: 340,
+              width: "100%",
+            }}
+          >
+            <div
+              style={{
+                fontSize: 22,
+                fontWeight: 900,
+                fontFamily: "'Fraunces',serif",
+                marginBottom: 8,
+              }}
+            >
+              Verificare prezenta
+            </div>
+            <div
+              style={{
+                fontSize: 13,
+                color: "#c8a97e",
+                marginBottom: 16,
+                lineHeight: 1.6,
+              }}
+            >
+              A venit <b>{noShowModal.customer_name}</b> la rezervarea de la ora{" "}
+              <b>{noShowModal.time}</b>?
+            </div>
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "1fr 1fr",
+                gap: 10,
+              }}
+            >
+              <button
+                onClick={() => markNoShow(noShowModal)}
+                style={{
+                  padding: "12px",
+                  borderRadius: 12,
+                  background: "rgba(192,57,43,.15)",
+                  border: "1px solid rgba(192,57,43,.3)",
+                  color: "#e05050",
+                  fontWeight: 700,
+                  cursor: "pointer",
+                  fontSize: 13,
+                }}
+              >
+                Nu a venit
+              </button>
+              <button
+                onClick={() => markPresent(noShowModal)}
+                style={{
+                  padding: "12px",
+                  borderRadius: 12,
+                  background: "rgba(74,110,74,.2)",
+                  border: "1px solid rgba(74,110,74,.4)",
+                  color: "#6b9e6b",
+                  fontWeight: 700,
+                  cursor: "pointer",
+                  fontSize: 13,
+                }}
+              >
+                Da, a venit
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       {/* Header */}
       <div
         style={{
@@ -2244,16 +2426,63 @@ export function WaiterTablet({
                       <div style={{ flex: 1 }}>
                         <div
                           style={{
-                            fontWeight: 600,
-                            fontSize: 14,
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 6,
                             marginBottom: 2,
                           }}
                         >
-                          {r.customer_name}
+                          <div style={{ fontWeight: 600, fontSize: 14 }}>
+                            {r.customer_name}
+                          </div>
+                          {r.user_id && (
+                            <div
+                              style={{
+                                fontSize: 10,
+                                fontWeight: 700,
+                                padding: "2px 6px",
+                                borderRadius: 8,
+                                background:
+                                  r.clientRating >= 4
+                                    ? "rgba(74,110,74,.2)"
+                                    : r.clientRating >= 3
+                                      ? "rgba(200,169,126,.2)"
+                                      : "rgba(192,57,43,.2)",
+                                color:
+                                  r.clientRating >= 4
+                                    ? "#6b9e6b"
+                                    : r.clientRating >= 3
+                                      ? "#c8a97e"
+                                      : "#e05050",
+                                border: `1px solid ${
+                                  r.clientRating >= 4
+                                    ? "rgba(74,110,74,.3)"
+                                    : r.clientRating >= 3
+                                      ? "rgba(200,169,126,.3)"
+                                      : "rgba(192,57,43,.3)"
+                                }`,
+                              }}
+                            >
+                              ★ {Number(r.clientRating || 5).toFixed(1)}
+                            </div>
+                          )}
                         </div>
                         <div style={{ fontSize: 11, color: "#6b6050" }}>
                           📅 {r.date} • 🕐 {r.time} • 👥 {r.persons} pers.
                         </div>
+                        {r.clientNoShows > 0 && (
+                          <div
+                            style={{
+                              fontSize: 10,
+                              color: "#e05050",
+                              marginTop: 2,
+                            }}
+                          >
+                            ⚠️ {r.clientNoShows} no-show
+                            {r.clientNoShows > 1 ? "-uri" : ""} •{" "}
+                            {r.clientVisits} vizite
+                          </div>
+                        )}
                       </div>
                     </div>
                     <div

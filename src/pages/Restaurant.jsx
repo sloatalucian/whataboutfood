@@ -732,6 +732,10 @@ export default function Restaurant() {
 
   const [showLive, setShowLive] = useState(false);
   const [showProgram, setShowProgram] = useState(false);
+  const [showReviews, setShowReviews] = useState(false);
+  const [reviews, setReviews] = useState([]);
+  const [reviewsLoading, setReviewsLoading] = useState(false);
+  const [reviewFilter, setReviewFilter] = useState(0); // 0 = toate
   const [program, setProgram] = useState(
     selectedRest?.program || DEFAULT_PROGRAM,
   );
@@ -753,6 +757,37 @@ export default function Restaurant() {
     navigate("home");
     return null;
   }
+
+  const loadReviews = async () => {
+    if (!selectedRest?.id) return;
+    setReviewsLoading(true);
+    const { data } = await supabase
+      .from("restaurant_reviews")
+      .select("*")
+      .eq("restaurant_id", selectedRest.id)
+      .order("created_at", { ascending: false });
+    if (data && data.length > 0) {
+      // Incarcam numele clientilor separat
+      const userIds = [...new Set(data.map((r) => r.user_id).filter(Boolean))];
+      const { data: profiles } = await supabase
+        .from("profiles")
+        .select("id, full_name")
+        .in("id", userIds);
+      const profileMap = {};
+      (profiles || []).forEach((p) => {
+        profileMap[p.id] = p.full_name;
+      });
+      setReviews(
+        data.map((r) => ({
+          ...r,
+          reviewer_name: profileMap[r.user_id] || "Client",
+        })),
+      );
+    } else {
+      setReviews([]);
+    }
+    setReviewsLoading(false);
+  };
 
   const allTables = (selectedRest.floors || []).flatMap((f) => f.tables || []);
   // Numaram direct din tableStates (cheie = table_label)
@@ -795,6 +830,169 @@ export default function Restaurant() {
 
   return (
     <>
+      {/* Modal Review-uri */}
+      {showReviews && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(0,0,0,.85)",
+            zIndex: 9999,
+            display: "flex",
+            flexDirection: "column",
+            fontFamily: "'Plus Jakarta Sans',sans-serif",
+          }}
+        >
+          <div
+            style={{
+              padding: "20px 20px 0",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+            }}
+          >
+            <div
+              style={{
+                fontFamily: "'Fraunces',serif",
+                fontSize: 20,
+                fontWeight: 900,
+              }}
+            >
+              Recenzii {selectedRest.name}
+            </div>
+            <button
+              onClick={() => setShowReviews(false)}
+              style={{
+                background: "none",
+                border: "none",
+                color: "#f0ebe3",
+                fontSize: 22,
+                cursor: "pointer",
+              }}
+            >
+              x
+            </button>
+          </div>
+          <div
+            style={{
+              padding: "12px 20px",
+              display: "flex",
+              alignItems: "center",
+              gap: 10,
+            }}
+          >
+            <span style={{ fontSize: 32, fontWeight: 900, color: "#c8a97e" }}>
+              {selectedRest.rating
+                ? Number(selectedRest.rating).toFixed(1)
+                : "—"}
+            </span>
+            <div>
+              <div style={{ color: "#c8a97e", fontSize: 18 }}>
+                {"★".repeat(Math.round(selectedRest.rating || 0))}
+                {"☆".repeat(5 - Math.round(selectedRest.rating || 0))}
+              </div>
+              <div style={{ fontSize: 11, color: "#6b6050" }}>
+                {reviews.length} recenzii
+              </div>
+            </div>
+          </div>
+          <div
+            style={{
+              display: "flex",
+              gap: 6,
+              padding: "0 20px 12px",
+              overflowX: "auto",
+            }}
+          >
+            {[0, 5, 4, 3, 2, 1].map((f) => (
+              <button
+                key={f}
+                onClick={() => setReviewFilter(f)}
+                style={{
+                  padding: "5px 12px",
+                  borderRadius: 20,
+                  border: "1px solid",
+                  borderColor: reviewFilter === f ? "#c8a97e" : "#2a2218",
+                  background:
+                    reviewFilter === f
+                      ? "rgba(200,169,126,.15)"
+                      : "transparent",
+                  color: reviewFilter === f ? "#c8a97e" : "#6b6050",
+                  fontSize: 12,
+                  cursor: "pointer",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                {f === 0 ? "Toate" : `${"★".repeat(f)} ${f} stele`}
+              </button>
+            ))}
+          </div>
+          <div style={{ flex: 1, overflowY: "auto", padding: "0 20px 20px" }}>
+            {reviewsLoading ? (
+              <div
+                style={{ textAlign: "center", color: "#6b6050", padding: 40 }}
+              >
+                Se incarca...
+              </div>
+            ) : reviews.filter(
+                (r) => reviewFilter === 0 || r.rating === reviewFilter,
+              ).length === 0 ? (
+              <div
+                style={{ textAlign: "center", color: "#6b6050", padding: 40 }}
+              >
+                Nicio recenzie.
+              </div>
+            ) : (
+              reviews
+                .filter((r) => reviewFilter === 0 || r.rating === reviewFilter)
+                .map((r) => (
+                  <div
+                    key={r.id}
+                    style={{
+                      background: "#1a1510",
+                      border: "1px solid #2a2218",
+                      borderRadius: 14,
+                      padding: 16,
+                      marginBottom: 10,
+                    }}
+                  >
+                    <div
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        marginBottom: 6,
+                      }}
+                    >
+                      <div style={{ fontWeight: 600, fontSize: 13 }}>
+                        {r.reviewer_name || "Client"}
+                      </div>
+                      <div style={{ color: "#c8a97e", fontSize: 13 }}>
+                        {"★".repeat(r.rating)}
+                        {"☆".repeat(5 - r.rating)}
+                      </div>
+                    </div>
+                    {r.comment && (
+                      <div
+                        style={{
+                          fontSize: 13,
+                          color: "#a09070",
+                          lineHeight: 1.5,
+                        }}
+                      >
+                        {r.comment}
+                      </div>
+                    )}
+                    <div
+                      style={{ fontSize: 10, color: "#6b6050", marginTop: 6 }}
+                    >
+                      {new Date(r.created_at).toLocaleDateString("ro-RO")}
+                    </div>
+                  </div>
+                ))
+            )}
+          </div>
+        </div>
+      )}
       {showLive && (
         <LiveTablesModal
           restaurant={selectedRest}
@@ -883,10 +1081,21 @@ export default function Restaurant() {
             }}
           >
             <span
-              style={{ fontSize: 14, fontWeight: 700, color: "var(--gold)" }}
+              onClick={() => {
+                setShowReviews(true);
+                loadReviews();
+              }}
+              style={{
+                fontSize: 14,
+                fontWeight: 700,
+                color: "var(--gold)",
+                cursor: "pointer",
+              }}
             >
               ★ {selectedRest.rating || "—"}{" "}
-              {selectedRest.reviews ? `(${selectedRest.reviews} recenzii)` : ""}
+              {selectedRest.reviews
+                ? `(${selectedRest.reviews} recenzii)`
+                : "(recenzii)"}
             </span>
             <span style={{ fontSize: 12, color: "rgba(255,255,255,.5)" }}>
               ⏰ {programZiCurenta}
