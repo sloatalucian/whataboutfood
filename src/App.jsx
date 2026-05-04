@@ -163,30 +163,39 @@ function Router() {
   const [reviewRating, setReviewRating] = useState(0);
   const [reviewComment, setReviewComment] = useState("");
   const [reviewSent, setReviewSent] = useState(false);
+  // Retinem datele restaurantului la momentul platii (inainte de RESET)
+  const [reviewRestId, setReviewRestId] = useState(null);
+  const [reviewSessionId, setReviewSessionId] = useState(null);
 
   const handleSendReview = async () => {
-    if (!reviewRating || !selectedRest?.id || !user?.id) return;
+    if (!reviewRating || !reviewRestId || !user?.id) return;
     try {
       await supabase.from("restaurant_reviews").insert({
-        restaurant_id: selectedRest.id,
+        restaurant_id: reviewRestId,
         user_id: user.id,
-        table_session_id: state.tableSessionId || null,
+        table_session_id: reviewSessionId || null,
         rating: reviewRating,
         comment: reviewComment.trim() || null,
       });
       await supabase.rpc("update_restaurant_rating", {
-        restaurant_id_input: selectedRest.id,
+        restaurant_id_input: reviewRestId,
       });
       setReviewSent(true);
     } catch {}
   };
 
-  // Reset review state cand paid devine false
+  // Salvam datele pentru review cand paid devine true, resetam cand devine false
   useEffect(() => {
-    if (!paid) {
+    if (paid) {
+      // Salvam datele INAINTE ca RESET_TABLE_SESSION sa le stearga
+      setReviewRestId(selectedRest?.id || null);
+      setReviewSessionId(tableSessionId || null);
+    } else {
       setReviewRating(0);
       setReviewComment("");
       setReviewSent(false);
+      setReviewRestId(null);
+      setReviewSessionId(null);
     }
   }, [paid]);
 
@@ -410,7 +419,7 @@ function Router() {
                     style={{
                       display: "flex",
                       justifyContent: "center",
-                      gap: 8,
+                      gap: 4,
                       marginBottom: 16,
                     }}
                   >
@@ -419,12 +428,16 @@ function Router() {
                         key={star}
                         onClick={() => setReviewRating(star)}
                         style={{
-                          fontSize: 32,
+                          fontSize: 40,
                           background: "none",
                           border: "none",
                           cursor: "pointer",
-                          opacity: star <= reviewRating ? 1 : 0.3,
-                          transition: "opacity .2s",
+                          color: star <= reviewRating ? "#f5c518" : "#3a2e22",
+                          transition: "color .15s, transform .15s",
+                          transform:
+                            star <= reviewRating ? "scale(1.15)" : "scale(1)",
+                          lineHeight: 1,
+                          padding: "4px 2px",
                         }}
                       >
                         ★
