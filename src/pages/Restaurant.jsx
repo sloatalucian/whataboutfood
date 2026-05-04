@@ -918,7 +918,7 @@ export default function Restaurant() {
                   {"☆".repeat(5 - Math.round(selectedRest.rating || 0))}
                 </div>
                 <div style={{ fontSize: 11, color: "#6b6050" }}>
-                  {reviews.length} recenzii
+                  {reviewsLoading ? "..." : reviews.length} recenzii
                 </div>
               </div>
             </div>
@@ -964,7 +964,8 @@ export default function Restaurant() {
                   Se încarcă...
                 </div>
               ) : reviews.filter(
-                  (r) => reviewFilter === 0 || r.rating === reviewFilter,
+                  (r) =>
+                    reviewFilter === 0 || Number(r.rating) === reviewFilter,
                 ).length === 0 ? (
                 <div
                   style={{ textAlign: "center", color: "#6b6050", padding: 30 }}
@@ -974,7 +975,8 @@ export default function Restaurant() {
               ) : (
                 reviews
                   .filter(
-                    (r) => reviewFilter === 0 || r.rating === reviewFilter,
+                    (r) =>
+                      reviewFilter === 0 || Number(r.rating) === reviewFilter,
                   )
                   .map((r) => (
                     <div
