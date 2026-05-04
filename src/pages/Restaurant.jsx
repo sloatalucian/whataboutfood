@@ -726,7 +726,7 @@ function LiveTablesModal({ restaurant, onClose }) {
 
 // ─── PAGINA RESTAURANT ────────────────────────────────────────────────────────
 export default function Restaurant() {
-  const { state, navigate, showToast, isLocked } = useApp();
+  const { state, navigate, showToast, isLocked, dispatch } = useApp();
   const { tableStates } = useTable();
   const { selectedRest, user } = state;
 
