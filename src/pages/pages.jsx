@@ -961,7 +961,12 @@ export function Meniu() {
                 onClick={() =>
                   dispatch({
                     type: "SET_PAID",
-                    payload: { paid: true, method: p.method },
+                    payload: {
+                      paid: true,
+                      method: p.method,
+                      restaurantId: selectedRest?.id || null,
+                      sessionId: tableSessionId || null,
+                    },
                   })
                 }
                 style={{

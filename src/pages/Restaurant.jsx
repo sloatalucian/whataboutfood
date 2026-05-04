@@ -836,160 +836,183 @@ export default function Restaurant() {
           style={{
             position: "fixed",
             inset: 0,
-            background: "rgba(0,0,0,.85)",
+            background: "rgba(0,0,0,.75)",
             zIndex: 9999,
             display: "flex",
-            flexDirection: "column",
+            alignItems: "flex-end",
+            justifyContent: "center",
             fontFamily: "'Plus Jakarta Sans',sans-serif",
           }}
         >
           <div
             style={{
-              padding: "20px 20px 0",
+              background: "#1a1510",
+              border: "1px solid #2a2218",
+              borderRadius: "24px 24px 0 0",
+              width: "100%",
+              maxWidth: 480,
+              maxHeight: "80vh",
               display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
+              flexDirection: "column",
             }}
           >
+            {/* Header */}
             <div
               style={{
-                fontFamily: "'Fraunces',serif",
-                fontSize: 20,
-                fontWeight: 900,
+                padding: "20px 20px 0",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                flexShrink: 0,
               }}
             >
-              Recenzii {selectedRest.name}
-            </div>
-            <button
-              onClick={() => setShowReviews(false)}
-              style={{
-                background: "none",
-                border: "none",
-                color: "#f0ebe3",
-                fontSize: 22,
-                cursor: "pointer",
-              }}
-            >
-              x
-            </button>
-          </div>
-          <div
-            style={{
-              padding: "12px 20px",
-              display: "flex",
-              alignItems: "center",
-              gap: 10,
-            }}
-          >
-            <span style={{ fontSize: 32, fontWeight: 900, color: "#c8a97e" }}>
-              {selectedRest.rating
-                ? Number(selectedRest.rating).toFixed(1)
-                : "—"}
-            </span>
-            <div>
-              <div style={{ color: "#c8a97e", fontSize: 18 }}>
-                {"★".repeat(Math.round(selectedRest.rating || 0))}
-                {"☆".repeat(5 - Math.round(selectedRest.rating || 0))}
-              </div>
-              <div style={{ fontSize: 11, color: "#6b6050" }}>
-                {reviews.length} recenzii
-              </div>
-            </div>
-          </div>
-          <div
-            style={{
-              display: "flex",
-              gap: 6,
-              padding: "0 20px 12px",
-              overflowX: "auto",
-            }}
-          >
-            {[0, 5, 4, 3, 2, 1].map((f) => (
-              <button
-                key={f}
-                onClick={() => setReviewFilter(f)}
+              <div
                 style={{
-                  padding: "5px 12px",
-                  borderRadius: 20,
-                  border: "1px solid",
-                  borderColor: reviewFilter === f ? "#c8a97e" : "#2a2218",
-                  background:
-                    reviewFilter === f
-                      ? "rgba(200,169,126,.15)"
-                      : "transparent",
-                  color: reviewFilter === f ? "#c8a97e" : "#6b6050",
-                  fontSize: 12,
-                  cursor: "pointer",
-                  whiteSpace: "nowrap",
+                  fontFamily: "'Fraunces',serif",
+                  fontSize: 18,
+                  fontWeight: 900,
                 }}
               >
-                {f === 0 ? "Toate" : `${"★".repeat(f)} ${f} stele`}
+                Recenzii {selectedRest.name}
+              </div>
+              <button
+                onClick={() => setShowReviews(false)}
+                style={{
+                  background: "none",
+                  border: "none",
+                  color: "#f0ebe3",
+                  fontSize: 22,
+                  cursor: "pointer",
+                }}
+              >
+                ×
               </button>
-            ))}
-          </div>
-          <div style={{ flex: 1, overflowY: "auto", padding: "0 20px 20px" }}>
-            {reviewsLoading ? (
-              <div
-                style={{ textAlign: "center", color: "#6b6050", padding: 40 }}
-              >
-                Se incarca...
+            </div>
+            {/* Media stele */}
+            <div
+              style={{
+                padding: "10px 20px",
+                display: "flex",
+                alignItems: "center",
+                gap: 10,
+                flexShrink: 0,
+              }}
+            >
+              <span style={{ fontSize: 28, fontWeight: 900, color: "#c8a97e" }}>
+                {selectedRest.rating
+                  ? Number(selectedRest.rating).toFixed(1)
+                  : "—"}
+              </span>
+              <div>
+                <div style={{ color: "#c8a97e", fontSize: 16 }}>
+                  {"★".repeat(Math.round(selectedRest.rating || 0))}
+                  {"☆".repeat(5 - Math.round(selectedRest.rating || 0))}
+                </div>
+                <div style={{ fontSize: 11, color: "#6b6050" }}>
+                  {reviews.length} recenzii
+                </div>
               </div>
-            ) : reviews.filter(
-                (r) => reviewFilter === 0 || r.rating === reviewFilter,
-              ).length === 0 ? (
-              <div
-                style={{ textAlign: "center", color: "#6b6050", padding: 40 }}
-              >
-                Nicio recenzie.
-              </div>
-            ) : (
-              reviews
-                .filter((r) => reviewFilter === 0 || r.rating === reviewFilter)
-                .map((r) => (
-                  <div
-                    key={r.id}
-                    style={{
-                      background: "#1a1510",
-                      border: "1px solid #2a2218",
-                      borderRadius: 14,
-                      padding: 16,
-                      marginBottom: 10,
-                    }}
-                  >
+            </div>
+            {/* Filtre */}
+            <div
+              style={{
+                display: "flex",
+                gap: 6,
+                padding: "0 20px 10px",
+                overflowX: "auto",
+                flexShrink: 0,
+              }}
+            >
+              {[0, 5, 4, 3, 2, 1].map((f) => (
+                <button
+                  key={f}
+                  onClick={() => setReviewFilter(f)}
+                  style={{
+                    padding: "4px 10px",
+                    borderRadius: 20,
+                    border: "1px solid",
+                    borderColor: reviewFilter === f ? "#c8a97e" : "#2a2218",
+                    background:
+                      reviewFilter === f
+                        ? "rgba(200,169,126,.15)"
+                        : "transparent",
+                    color: reviewFilter === f ? "#c8a97e" : "#6b6050",
+                    fontSize: 11,
+                    cursor: "pointer",
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  {f === 0 ? "Toate" : `${"★".repeat(f)} ${f}`}
+                </button>
+              ))}
+            </div>
+            {/* Lista recenzii */}
+            <div style={{ flex: 1, overflowY: "auto", padding: "0 20px 20px" }}>
+              {reviewsLoading ? (
+                <div
+                  style={{ textAlign: "center", color: "#6b6050", padding: 30 }}
+                >
+                  Se încarcă...
+                </div>
+              ) : reviews.filter(
+                  (r) => reviewFilter === 0 || r.rating === reviewFilter,
+                ).length === 0 ? (
+                <div
+                  style={{ textAlign: "center", color: "#6b6050", padding: 30 }}
+                >
+                  Nicio recenzie.
+                </div>
+              ) : (
+                reviews
+                  .filter(
+                    (r) => reviewFilter === 0 || r.rating === reviewFilter,
+                  )
+                  .map((r) => (
                     <div
+                      key={r.id}
                       style={{
-                        display: "flex",
-                        justifyContent: "space-between",
-                        marginBottom: 6,
+                        background: "#0d0a07",
+                        border: "1px solid #2a2218",
+                        borderRadius: 12,
+                        padding: 14,
+                        marginBottom: 8,
                       }}
                     >
-                      <div style={{ fontWeight: 600, fontSize: 13 }}>
-                        {r.reviewer_name || "Client"}
-                      </div>
-                      <div style={{ color: "#c8a97e", fontSize: 13 }}>
-                        {"★".repeat(r.rating)}
-                        {"☆".repeat(5 - r.rating)}
-                      </div>
-                    </div>
-                    {r.comment && (
                       <div
                         style={{
-                          fontSize: 13,
-                          color: "#a09070",
-                          lineHeight: 1.5,
+                          display: "flex",
+                          justifyContent: "space-between",
+                          marginBottom: 4,
                         }}
                       >
-                        {r.comment}
+                        <div style={{ fontWeight: 600, fontSize: 13 }}>
+                          {r.reviewer_name || "Client"}
+                        </div>
+                        <div style={{ color: "#f5c518", fontSize: 12 }}>
+                          {"★".repeat(r.rating)}
+                          {"☆".repeat(5 - r.rating)}
+                        </div>
                       </div>
-                    )}
-                    <div
-                      style={{ fontSize: 10, color: "#6b6050", marginTop: 6 }}
-                    >
-                      {new Date(r.created_at).toLocaleDateString("ro-RO")}
+                      {r.comment && (
+                        <div
+                          style={{
+                            fontSize: 12,
+                            color: "#a09070",
+                            lineHeight: 1.5,
+                          }}
+                        >
+                          {r.comment}
+                        </div>
+                      )}
+                      <div
+                        style={{ fontSize: 10, color: "#6b6050", marginTop: 4 }}
+                      >
+                        {new Date(r.created_at).toLocaleDateString("ro-RO")}
+                      </div>
                     </div>
-                  </div>
-                ))
-            )}
+                  ))
+              )}
+            </div>
           </div>
         </div>
       )}
