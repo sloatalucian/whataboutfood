@@ -469,6 +469,7 @@ export default function MenuEditor() {
               <input
                 placeholder="Nume categorie (ex: Paste, Pizza...)"
                 value={newCat.name}
+                maxLength={50}
                 onChange={(e) =>
                   setNewCat((p) => ({ ...p, name: e.target.value }))
                 }
@@ -589,6 +590,7 @@ export default function MenuEditor() {
               <input
                 placeholder="Numele produsului"
                 value={newProd.name}
+                maxLength={80}
                 onChange={(e) =>
                   setNewProd((p) => ({ ...p, name: e.target.value }))
                 }
@@ -621,6 +623,7 @@ export default function MenuEditor() {
               <textarea
                 placeholder="Ex: Guanciale, pecorino, ou..."
                 value={newProd.desc}
+                maxLength={200}
                 onChange={(e) =>
                   setNewProd((p) => ({ ...p, desc: e.target.value }))
                 }
@@ -815,6 +818,7 @@ export default function MenuEditor() {
               </button>
               <input
                 value={editProduct.name}
+                maxLength={80}
                 onChange={(e) =>
                   setEditProduct((p) => ({ ...p, name: e.target.value }))
                 }
@@ -846,6 +850,7 @@ export default function MenuEditor() {
               </label>
               <textarea
                 value={editProduct.desc || editProduct.description || ""}
+                maxLength={200}
                 onChange={(e) =>
                   setEditProduct((p) => ({
                     ...p,

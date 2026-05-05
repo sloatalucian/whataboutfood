@@ -163,6 +163,7 @@ export function WaiterLogin({ onLogin, onBack }) {
             type="email"
             placeholder="email@restaurant.ro"
             value={email}
+            maxLength={100}
             onChange={(e) => setEmail(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && handleLogin()}
             style={{
@@ -197,6 +198,7 @@ export function WaiterLogin({ onLogin, onBack }) {
             type="password"
             placeholder="••••••••"
             value={password}
+            maxLength={50}
             onChange={(e) => setPassword(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && handleLogin()}
             style={{
@@ -610,6 +612,7 @@ export function WaiterManagement({ onBack, onLogout }) {
               <input
                 placeholder="Ion Popescu"
                 value={newWaiter.name}
+                maxLength={60}
                 onChange={(e) => set("name", e.target.value)}
                 style={{
                   width: "100%",
@@ -643,6 +646,7 @@ export function WaiterManagement({ onBack, onLogout }) {
                 type="email"
                 placeholder="ion@restaurant.ro"
                 value={newWaiter.email}
+                maxLength={100}
                 onChange={(e) => set("email", e.target.value)}
                 style={{
                   width: "100%",
@@ -676,6 +680,7 @@ export function WaiterManagement({ onBack, onLogout }) {
                 type="password"
                 placeholder="Min. 4 caractere"
                 value={newWaiter.password}
+                maxLength={50}
                 onChange={(e) => set("password", e.target.value)}
                 style={{
                   width: "100%",

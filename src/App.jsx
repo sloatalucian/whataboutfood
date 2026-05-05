@@ -461,6 +461,7 @@ function Router() {
                     ))}
                   </div>
                   <textarea
+                    maxLength={500}
                     placeholder="Comentariu opțional..."
                     value={reviewComment}
                     onChange={(e) => setReviewComment(e.target.value)}

@@ -297,6 +297,7 @@ function WaiterLoginModal({ onLogin, onClose }) {
             type="email"
             placeholder="email@restaurant.ro"
             value={email}
+            maxLength={100}
             onChange={(e) => setEmail(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && handleLogin()}
             style={{
@@ -330,6 +331,7 @@ function WaiterLoginModal({ onLogin, onClose }) {
             type="password"
             placeholder="••••••••"
             value={password}
+            maxLength={50}
             onChange={(e) => setPassword(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && handleLogin()}
             style={{
@@ -560,6 +562,7 @@ function OwnerRegisterModal({ onClose, onSuccess }) {
               placeholder={f.placeholder}
               value={form[f.key]}
               onChange={(e) => set(f.key, e.target.value)}
+              maxLength={100}
               style={{
                 width: "100%",
                 background: "#1e1a14",
@@ -986,6 +989,7 @@ export default function SplashScreen({ onComplete, onWaiterLogin }) {
                   placeholder="email@gmail.com"
                   value={form.email}
                   onChange={(e) => set("email", e.target.value)}
+                  maxLength={100}
                   onKeyDown={(e) => e.key === "Enter" && handleLogin()}
                   style={{
                     width: "100%",
@@ -1111,6 +1115,8 @@ export default function SplashScreen({ onComplete, onWaiterLogin }) {
                 <input
                   placeholder="Ion Popescu"
                   value={form.name}
+                  maxLength={60}
+                  maxLength={60}
                   onChange={(e) => set("name", e.target.value)}
                   style={{
                     width: "100%",
@@ -1144,6 +1150,7 @@ export default function SplashScreen({ onComplete, onWaiterLogin }) {
                   placeholder="email@gmail.com"
                   value={form.email}
                   onChange={(e) => set("email", e.target.value)}
+                  maxLength={100}
                   style={{
                     width: "100%",
                     background: "#1e1a14",

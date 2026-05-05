@@ -143,6 +143,7 @@ export default function CartBar({
               💬 Observații pentru ospătar (opțional)
             </label>
             <textarea
+              maxLength={300}
               value={observations}
               onChange={(e) => setObservations(e.target.value)}
               placeholder="Ex: fără ceapă la carbonara, apă la temperatura camerei, alergie la nuci..."

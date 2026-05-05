@@ -300,6 +300,7 @@ export default function NewRestaurant() {
               <input
                 placeholder="Ex: Mama Mia, La Fontana..."
                 value={form.name}
+                maxLength={80}
                 onChange={(e) => set("name", e.target.value)}
                 style={{
                   width: "100%",
@@ -369,6 +370,7 @@ export default function NewRestaurant() {
               <input
                 placeholder="Ex: Str. Floreasca nr. 42"
                 value={form.address}
+                maxLength={120}
                 onChange={(e) => set("address", e.target.value)}
                 style={{
                   width: "100%",
@@ -571,6 +573,7 @@ export default function NewRestaurant() {
                   placeholder={f.placeholder}
                   value={form[f.key]}
                   onChange={(e) => set(f.key, e.target.value)}
+                  maxLength={100}
                   style={{
                     width: "100%",
                     background: "#1e1a14",
@@ -604,6 +607,7 @@ export default function NewRestaurant() {
                 placeholder="Ex: Restaurant cu specific italian, în inima orașului..."
                 value={form.description}
                 onChange={(e) => set("description", e.target.value)}
+                maxLength={500}
                 rows={3}
                 style={{
                   width: "100%",

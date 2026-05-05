@@ -193,6 +193,7 @@ function SearchBar({ onSelect, selectedCity, onCityChange, restaurants = [] }) {
         <input
           ref={inputRef}
           value={query}
+          maxLength={100}
           onChange={(e) => setQuery(e.target.value)}
           onFocus={() => {
             setFocused(true);
@@ -520,6 +521,7 @@ function DeleteRestaurantModal({ restaurant, onConfirm, onClose }) {
               </label>
               <input
                 value={typedName}
+                maxLength={60}
                 onChange={(e) => setTypedName(e.target.value)}
                 placeholder={restaurant.name}
                 style={{

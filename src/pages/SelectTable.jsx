@@ -1857,6 +1857,7 @@ export function WaiterTablet({
                             <textarea
                               placeholder="Motivul anulării (ex: Nu avem cola)"
                               value={cancellingOrders[o.id]?.note || ""}
+                              maxLength={200}
                               onChange={(e) =>
                                 setCancellingOrders((prev) => ({
                                   ...prev,
@@ -2948,6 +2949,7 @@ export function WaiterTablet({
             </div>
             <textarea
               value={suggestionModal.text}
+              maxLength={200}
               onChange={(e) =>
                 setSuggestionModal((prev) => ({
                   ...prev,
