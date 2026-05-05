@@ -8,7 +8,6 @@ Sentry.init({
   sendDefaultPii: false,
   environment: process.env.NODE_ENV || "production",
   beforeSend(event) {
-    // Nu trimitem erori in development
     if (process.env.NODE_ENV === "development") return null;
     return event;
   },
