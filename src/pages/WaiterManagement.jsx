@@ -336,6 +336,10 @@ export function WaiterManagement({ onBack, onLogout }) {
 
   // ── Adaugă ospătar în Supabase ──
   const handleAdd = async () => {
+    if (/\p{Emoji}/u.test(newWaiter.name)) {
+      showToast("Numele ospătarului nu poate conține emoji.");
+      return;
+    }
     if (!newWaiter.name || !newWaiter.email || !newWaiter.password) {
       showToast("⚠️ Completează toate câmpurile!");
       return;

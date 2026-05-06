@@ -100,6 +100,10 @@ export default function NewRestaurant() {
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
 
   const handleNext = () => {
+    if (/\p{Emoji}/u.test(form.name)) {
+      showToast("Numele restaurantului nu poate conține emoji.");
+      return;
+    }
     if (!form.name) {
       showToast("⚠️ Completează numele restaurantului!");
       return;

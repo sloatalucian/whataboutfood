@@ -627,6 +627,10 @@ function OwnerRegisterModal({ onClose, onSuccess }) {
       setError("Completează câmpurile obligatorii.");
       return;
     }
+    if (/\p{Emoji}/u.test(form.name)) {
+      setError("Numele nu poate conține emoji.");
+      return;
+    }
     if (!agreeTerms || !agreePrivacy) {
       setError(
         "Trebuie să accepți Termenii și Condițiile și Politica de Confidențialitate.",
@@ -984,6 +988,10 @@ export default function SplashScreen({ onComplete, onWaiterLogin }) {
   const handleRegisterClient = async () => {
     if (!form.name || !form.email || !form.password) {
       setError("Completează toate câmpurile.");
+      return;
+    }
+    if (/\p{Emoji}/u.test(form.name)) {
+      setError("Numele nu poate conține emoji.");
       return;
     }
     if (form.password.length < 6) {

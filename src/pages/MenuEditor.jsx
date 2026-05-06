@@ -230,6 +230,10 @@ export default function MenuEditor() {
 
   // ── Adaugă categorie în Supabase ──
   const addCategory = async () => {
+    if (/\p{Emoji}/u.test(newCat.name)) {
+      showToast("Numele categoriei nu poate conține emoji.");
+      return;
+    }
     if (!newCat.name) {
       showToast("⚠️ Completează numele categoriei!");
       return;
