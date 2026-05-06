@@ -42,9 +42,17 @@ function Router() {
   useEffect(() => {
     const checkSession = async () => {
       try {
-        const {
-          data: { session },
-        } = await supabase.auth.getSession();
+        // Incercam sa reinnnoim sesiunea daca exista
+        let session = null;
+        const { data: sessionData } = await supabase.auth.getSession();
+        session = sessionData?.session;
+
+        // Daca sesiunea e expirata, o reinnnoim automat
+        if (session && session.expires_at * 1000 < Date.now()) {
+          const { data: refreshData } = await supabase.auth.refreshSession();
+          session = refreshData?.session;
+        }
+
         if (session?.user) {
           const { data: profile } = await supabase
             .from("profiles")
