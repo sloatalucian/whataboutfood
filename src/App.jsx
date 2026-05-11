@@ -8,6 +8,7 @@ import { Rezervare, Meniu, Auth } from "./pages/pages";
 import { SelectTable, WaiterTablet } from "./pages/SelectTable";
 import DashboardLive from "./pages/DashboardLive";
 import { WaiterLogin, WaiterManagement } from "./pages/WaiterManagement";
+import HartaPage from "./pages/HartaPage";
 import StatisticiProprietar from "./pages/StatisticiProprietar";
 import SplashScreen from "./pages/SplashScreen";
 import MenuEditor from "./pages/MenuEditor";
@@ -335,6 +336,7 @@ function Router() {
     reserve: <Rezervare />,
     menu: <Meniu />,
     auth: <Auth />,
+    map: <HartaPage />,
     admin: (
       <WaiterManagement
         onBack={() => navigate("home")}
