@@ -118,6 +118,8 @@ export default function HartaPage() {
     });
 
     setMapReady(true);
+    // Afisam imediat restaurantele inregistrate din coordonatele demo
+    renderRegisteredOnly();
     loadOverpassPOIs();
   }, [selectedCity]);
 
@@ -126,7 +128,7 @@ export default function HartaPage() {
     if (!leafletMap.current || !window.L) return;
     const bounds = leafletMap.current.getBounds();
     const zoom = leafletMap.current.getZoom();
-    if (zoom < 12) {
+    if (zoom < 11) {
       renderMarkers([]);
       return;
     }
@@ -167,6 +169,49 @@ out center 80;`;
       renderMarkers([]);
     }
     setLoading(false);
+  }, [registeredRestaurants]);
+
+  // Randam doar restaurantele inregistrate cu coordonate demo
+  const renderRegisteredOnly = useCallback(() => {
+    if (!markersLayer.current || !window.L) return;
+    const L = window.L;
+
+    registeredRestaurants.forEach((rest) => {
+      const coords = RESTAURANT_COORDS[rest.name];
+      if (!coords) return;
+
+      const icon = L.divIcon({
+        className: "",
+        html: `<div style="
+          background:#c0622f;border:1.5px solid #8b3a18;
+          border-radius:8px;padding:4px 8px;
+          font-size:11px;font-weight:700;color:#fff;
+          font-family:sans-serif;white-space:nowrap;
+          box-shadow:0 2px 8px rgba(0,0,0,.4);
+          max-width:140px;overflow:hidden;text-overflow:ellipsis;
+          cursor:pointer;position:relative;
+        ">${rest.name}<div style="
+          position:absolute;bottom:-6px;left:50%;
+          transform:translateX(-50%);width:0;height:0;
+          border-left:5px solid transparent;border-right:5px solid transparent;
+          border-top:6px solid #c0622f;
+        "></div></div>`,
+        iconAnchor: [0, 0],
+      });
+
+      const marker = L.marker(coords, { icon });
+      marker.on("click", () => {
+        setSelectedMarker({
+          id: rest.id,
+          name: rest.name,
+          lat: coords[0],
+          lon: coords[1],
+          isRegistered: true,
+          registeredData: rest,
+        });
+      });
+      markersLayer.current.addLayer(marker);
+    });
   }, [registeredRestaurants]);
 
   // Randam markerii pe harta
@@ -335,18 +380,17 @@ out center 80;`;
         zIndex: 1000,
       }}
     >
-      {/* Header */}
+      {/* Header fix cu buton înapoi */}
       <div
         style={{
-          position: "absolute",
-          top: 0,
-          left: 0,
-          right: 0,
-          zIndex: 10,
+          background: "#0a0805",
+          borderBottom: "1px solid #2a2218",
           padding: "12px 16px",
           display: "flex",
           flexDirection: "column",
           gap: 8,
+          zIndex: 10,
+          flexShrink: 0,
         }}
       >
         {/* Bara top: back + titlu + selector oras */}

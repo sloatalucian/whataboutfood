@@ -188,30 +188,30 @@ function SearchBar({
             ))}
           </div>
         )}
-      </div>
 
-      {/* Buton hartă */}
-      <button
-        onClick={() => onMapClick && onMapClick()}
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: 6,
-          padding: "6px 14px",
-          background: "rgba(192,98,47,.15)",
-          border: "1px solid rgba(192,98,47,.4)",
-          borderRadius: 20,
-          cursor: "pointer",
-          color: "#e07a47",
-          fontSize: 12,
-          fontWeight: 600,
-          whiteSpace: "nowrap",
-          flexShrink: 0,
-        }}
-      >
-        <span>🗺️</span>
-        <span>Hartă</span>
-      </button>
+        {/* Buton hartă - aliniat cu Toate orasele */}
+        <button
+          onClick={() => onMapClick && onMapClick()}
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 6,
+            padding: "6px 14px",
+            background: "rgba(192,98,47,.15)",
+            border: "1px solid rgba(192,98,47,.4)",
+            borderRadius: 20,
+            cursor: "pointer",
+            color: "#e07a47",
+            fontSize: 12,
+            fontWeight: 600,
+            whiteSpace: "nowrap",
+            flexShrink: 0,
+          }}
+        >
+          <span>🗺️</span>
+          <span>Hartă</span>
+        </button>
+      </div>
 
       <div
         style={{
