@@ -31,14 +31,14 @@ const CITY_COORDS = {
   Deva: [45.885, 22.9108],
 };
 
-// Coordonate demo pentru restaurantele din DB (Iasi)
+// Coordonate restaurante langa sensul giratoriu Podul Ros, Iasi
 const RESTAURANT_COORDS = {
-  "Mama Mia": [44.4398, 26.0965],
-  "Sushi Zen": [44.4478, 26.0889],
-  "Verde Bistro": [44.435, 26.12],
-  "Burger Big": [47.1612, 27.5889],
-  "Pizza Nico": [47.155, 27.61],
-  "Muu Bistro": [47.168, 27.595],
+  "Mama Mia": [47.1578, 27.5885],
+  "Sushi Zen": [47.1582, 27.5892],
+  "Verde Bistro": [47.1575, 27.5898],
+  "Burger Big": [47.1585, 27.5878],
+  "Muu Bistro": [47.1572, 27.5905],
+  "Pizza Nico": [47.1588, 27.587],
 };
 
 export default function HartaPage() {
@@ -95,8 +95,8 @@ export default function HartaPage() {
     if (!mapRef.current || leafletMap.current) return;
     const L = window.L;
 
-    const coords = CITY_COORDS[selectedCity] || CITY_COORDS["Iași"];
-    const zoom = selectedCity === "Toate orașele" ? 7 : 14;
+    const coords = CITY_COORDS[selectedCity] || [47.158, 27.589];
+    const zoom = selectedCity === "Toate orașele" ? 7 : 15;
 
     leafletMap.current = L.map(mapRef.current, {
       center: coords,
@@ -341,15 +341,15 @@ out center 80;`;
   // Schimbare oras
   useEffect(() => {
     if (!leafletMap.current || !mapReady) return;
-    const coords = CITY_COORDS[selectedCity] || CITY_COORDS["Iași"];
-    const zoom = selectedCity === "Toate orașele" ? 7 : 14;
+    const coords = CITY_COORDS[selectedCity] || [47.158, 27.589];
+    const zoom = selectedCity === "Toate orașele" ? 7 : 15;
     leafletMap.current.setView(coords, zoom);
   }, [selectedCity, mapReady]);
 
-  // Reinitializam markerii cand se schimba restaurantele inregistrate
+  // Cand se incarca restaurantele din DB, adaugam markerii
   useEffect(() => {
-    if (mapReady && overpassPOIs.length > 0) {
-      renderMarkers(overpassPOIs);
+    if (registeredRestaurants.length > 0 && mapReady && markersLayer.current) {
+      renderRegisteredOnly();
     }
   }, [registeredRestaurants, mapReady]);
 
@@ -463,7 +463,7 @@ out center 80;`;
                   width: 200,
                   maxHeight: 320,
                   overflowY: "auto",
-                  zIndex: 100,
+                  zIndex: 9999,
                   boxShadow: "0 8px 32px rgba(0,0,0,.6)",
                 }}
               >
@@ -550,7 +550,7 @@ out center 80;`;
                 borderRadius: 14,
                 overflow: "hidden",
                 boxShadow: "0 8px 24px rgba(0,0,0,.5)",
-                zIndex: 100,
+                zIndex: 9999,
               }}
             >
               {searchResults.map((r) => (
