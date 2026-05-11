@@ -6,7 +6,7 @@ export default function CartBar({
   loading = false,
   hasActiveOrder = false,
 }) {
-  const { state, cartTotal, cartCount } = useApp();
+  const { state, cartTotal, cartCount, dispatch } = useApp();
   const { cart, orderTableNum } = state;
   const [showSummary, setShowSummary] = useState(false);
   const [observations, setObservations] = useState("");
@@ -96,9 +96,16 @@ export default function CartBar({
                   fontSize: 13,
                   marginBottom: 8,
                   alignItems: "center",
+                  gap: 8,
                 }}
               >
-                <span style={{ color: "rgba(240,235,227,.8)" }}>
+                <span
+                  style={{
+                    color: "rgba(240,235,227,.8)",
+                    flex: 1,
+                    minWidth: 0,
+                  }}
+                >
                   {item.emoji} {item.name}
                   <span style={{ color: "#6b6050", marginLeft: 6 }}>
                     ×{item.qty}
@@ -109,6 +116,30 @@ export default function CartBar({
                 >
                   {item.price * item.qty} lei
                 </span>
+                <button
+                  onClick={() =>
+                    dispatch({ type: "CART_REMOVE", payload: item.id })
+                  }
+                  style={{
+                    width: 22,
+                    height: 22,
+                    borderRadius: "50%",
+                    background: "rgba(192,57,43,.15)",
+                    border: "1px solid rgba(192,57,43,.3)",
+                    color: "#e05050",
+                    fontSize: 14,
+                    fontWeight: 700,
+                    cursor: "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    flexShrink: 0,
+                    lineHeight: 1,
+                    padding: 0,
+                  }}
+                >
+                  ×
+                </button>
               </div>
             ))}
             <div
