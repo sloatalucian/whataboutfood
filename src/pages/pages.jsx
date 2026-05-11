@@ -787,6 +787,27 @@ export function Meniu() {
   const hasTable = orderTableNum && orderTableNum !== 1;
 
   const [orderLoading, setOrderLoading] = useState(false);
+  const [menuSearch, setMenuSearch] = useState("");
+  const [searchFocused, setSearchFocused] = useState(false);
+  const searchInputRef = useRef(null);
+
+  const allMenuItems = dbCategories.flatMap((cat) =>
+    (cat.items || []).map((item) => ({
+      ...item,
+      catName: cat.name,
+      catEmoji: cat.emoji,
+    })),
+  );
+  const searchResults =
+    menuSearch.trim().length > 0
+      ? allMenuItems.filter(
+          (item) =>
+            item.name.toLowerCase().includes(menuSearch.toLowerCase()) ||
+            (item.description || "")
+              .toLowerCase()
+              .includes(menuSearch.toLowerCase()),
+        )
+      : [];
 
   const placeOrder = async (observations = "") => {
     if (!cart.length) return;
@@ -1359,6 +1380,248 @@ export function Meniu() {
           </div>
         ) : (
           <>
+            {/* Search bar */}
+            <div style={{ position: "relative", marginBottom: 14 }}>
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 10,
+                  background: "var(--card2)",
+                  border: `1px solid ${searchFocused ? "var(--terra)" : "var(--border)"}`,
+                  borderRadius: 50,
+                  padding: "10px 16px",
+                  transition: "border-color .2s",
+                }}
+              >
+                {searchFocused || menuSearch ? (
+                  <button
+                    onClick={() => {
+                      setMenuSearch("");
+                      setSearchFocused(false);
+                      searchInputRef.current?.blur();
+                    }}
+                    style={{
+                      background: "none",
+                      border: "none",
+                      cursor: "pointer",
+                      color: "var(--terra)",
+                      fontSize: 18,
+                      padding: 0,
+                      display: "flex",
+                      alignItems: "center",
+                      flexShrink: 0,
+                    }}
+                  >
+                    ←
+                  </button>
+                ) : (
+                  <span
+                    style={{
+                      color: "var(--muted)",
+                      fontSize: 15,
+                      flexShrink: 0,
+                    }}
+                  >
+                    🔍
+                  </span>
+                )}
+                <input
+                  ref={searchInputRef}
+                  type="text"
+                  placeholder="Caută în meniu..."
+                  value={menuSearch}
+                  onChange={(e) => setMenuSearch(e.target.value)}
+                  onFocus={() => setSearchFocused(true)}
+                  onBlur={() => {
+                    if (!menuSearch) setSearchFocused(false);
+                  }}
+                  maxLength={60}
+                  style={{
+                    flex: 1,
+                    background: "none",
+                    border: "none",
+                    outline: "none",
+                    color: "var(--cream)",
+                    fontSize: 14,
+                    fontFamily: "inherit",
+                  }}
+                />
+                {menuSearch.length > 0 && (
+                  <button
+                    onClick={() => setMenuSearch("")}
+                    style={{
+                      background: "none",
+                      border: "none",
+                      cursor: "pointer",
+                      color: "var(--muted)",
+                      fontSize: 16,
+                      padding: 0,
+                      display: "flex",
+                      alignItems: "center",
+                      flexShrink: 0,
+                    }}
+                  >
+                    ×
+                  </button>
+                )}
+              </div>
+
+              {/* Sugestii search */}
+              {searchResults.length > 0 && (
+                <div
+                  style={{
+                    position: "absolute",
+                    top: "calc(100% + 6px)",
+                    left: 0,
+                    right: 0,
+                    background: "var(--card)",
+                    border: "1px solid var(--border)",
+                    borderRadius: 16,
+                    zIndex: 50,
+                    overflow: "hidden",
+                    boxShadow: "0 8px 24px rgba(0,0,0,.3)",
+                  }}
+                >
+                  {searchResults.slice(0, 6).map((item) => {
+                    const qty = cartQty(item.id);
+                    return (
+                      <div
+                        key={item.id}
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 12,
+                          padding: "12px 16px",
+                          borderBottom: "1px solid var(--border)",
+                          cursor: "pointer",
+                        }}
+                        onClick={() => {
+                          const cat = dbCategories.find(
+                            (c) => c.id === item.category_id,
+                          );
+                          if (cat)
+                            dispatch({ type: "SET_MENU_CAT", payload: cat.id });
+                          setMenuSearch("");
+                          setSearchFocused(false);
+                          searchInputRef.current?.blur();
+                        }}
+                      >
+                        <span style={{ fontSize: 22 }}>
+                          {item.emoji || "🍽️"}
+                        </span>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div
+                            style={{
+                              fontSize: 13,
+                              fontWeight: 600,
+                              color: "var(--cream)",
+                              whiteSpace: "nowrap",
+                              overflow: "hidden",
+                              textOverflow: "ellipsis",
+                            }}
+                          >
+                            {item.name}
+                          </div>
+                          <div style={{ fontSize: 11, color: "var(--muted)" }}>
+                            {item.catEmoji} {item.catName} ·{" "}
+                            {Number(item.price).toFixed(2)} lei
+                          </div>
+                        </div>
+                        <div
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 8,
+                          }}
+                        >
+                          {qty > 0 && (
+                            <span
+                              style={{
+                                background: "var(--terra)",
+                                color: "#fff",
+                                borderRadius: 20,
+                                padding: "2px 8px",
+                                fontSize: 11,
+                                fontWeight: 700,
+                              }}
+                            >
+                              ×{qty}
+                            </span>
+                          )}
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              dispatch({
+                                type: "CART_ADD",
+                                payload: {
+                                  id: item.id,
+                                  name: item.name,
+                                  price: item.price,
+                                  emoji: item.emoji,
+                                },
+                              });
+                            }}
+                            style={{
+                              width: 30,
+                              height: 30,
+                              borderRadius: 10,
+                              background: "var(--terra)",
+                              border: "none",
+                              color: "#fff",
+                              fontSize: 18,
+                              cursor: "pointer",
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                            }}
+                          >
+                            +
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                  {searchResults.length > 6 && (
+                    <div
+                      style={{
+                        padding: "10px 16px",
+                        fontSize: 12,
+                        color: "var(--muted)",
+                        textAlign: "center",
+                      }}
+                    >
+                      + {searchResults.length - 6} rezultate — scrie mai
+                      specific
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Niciun rezultat */}
+              {menuSearch.trim().length > 0 && searchResults.length === 0 && (
+                <div
+                  style={{
+                    position: "absolute",
+                    top: "calc(100% + 6px)",
+                    left: 0,
+                    right: 0,
+                    background: "var(--card)",
+                    border: "1px solid var(--border)",
+                    borderRadius: 16,
+                    padding: "16px",
+                    textAlign: "center",
+                    boxShadow: "0 8px 24px rgba(0,0,0,.3)",
+                  }}
+                >
+                  <div style={{ fontSize: 24, marginBottom: 6 }}>🔍</div>
+                  <div style={{ fontSize: 13, color: "var(--muted)" }}>
+                    Niciun produs găsit pentru „{menuSearch}"
+                  </div>
+                </div>
+              )}
+            </div>
+
             {/* Tabs categorii */}
             <div
               style={{
