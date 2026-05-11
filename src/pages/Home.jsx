@@ -48,7 +48,13 @@ function HighlightText({ text, query }) {
   );
 }
 
-function SearchBar({ onSelect, selectedCity, onCityChange, restaurants = [] }) {
+function SearchBar({
+  onSelect,
+  selectedCity,
+  onCityChange,
+  restaurants = [],
+  onMapClick,
+}) {
   const [query, setQuery] = useState("");
   const [focused, setFocused] = useState(false);
   const [showCities, setShowCities] = useState(false);
@@ -84,8 +90,16 @@ function SearchBar({ onSelect, selectedCity, onCityChange, restaurants = [] }) {
 
   return (
     <div ref={wrapRef} style={{ position: "relative", zIndex: 150 }}>
-      {/* Selector oraș */}
-      <div style={{ marginBottom: 8, position: "relative" }}>
+      {/* Selector oraș + buton hartă */}
+      <div
+        style={{
+          marginBottom: 8,
+          position: "relative",
+          display: "flex",
+          alignItems: "center",
+          gap: 8,
+        }}
+      >
         <button
           onClick={() => {
             setShowCities(!showCities);
@@ -176,7 +190,29 @@ function SearchBar({ onSelect, selectedCity, onCityChange, restaurants = [] }) {
         )}
       </div>
 
-      {/* Input căutare */}
+      {/* Buton hartă */}
+      <button
+        onClick={() => onMapClick && onMapClick()}
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 6,
+          padding: "6px 14px",
+          background: "rgba(192,98,47,.15)",
+          border: "1px solid rgba(192,98,47,.4)",
+          borderRadius: 20,
+          cursor: "pointer",
+          color: "#e07a47",
+          fontSize: 12,
+          fontWeight: 600,
+          whiteSpace: "nowrap",
+          flexShrink: 0,
+        }}
+      >
+        <span>🗺️</span>
+        <span>Hartă</span>
+      </button>
+
       <div
         style={{
           display: "flex",
@@ -753,6 +789,7 @@ function HomeClient() {
           onCityChange={setSelectedCity}
           onSelect={handleSearchSelect}
           restaurants={allRestaurants}
+          onMapClick={() => navigate("map")}
         />
       </div>
 
