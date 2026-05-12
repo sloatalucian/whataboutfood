@@ -551,7 +551,8 @@ export function WaiterTablet({
   const [loading, setLoading] = useState(true);
   const [activeMapFloor, setActiveMapFloor] = useState(0);
   const [displayReservations, setDisplayReservations] = useState([]);
-  const [suggestionModal, setSuggestionModal] = useState(null); // { reservationId, text }
+  const [suggestionModal, setSuggestionModal] = useState(null);
+  const [waiterCalls, setWaiterCalls] = useState([]);
 
   const restaurantId = restaurantIdProp || restaurant?.id;
   const [mapZoom, setMapZoom] = useState(60);
@@ -742,6 +743,25 @@ export function WaiterTablet({
           }
           if (payload.eventType === "DELETE") {
             setOrders((prev) => prev.filter((o) => o.id !== payload.old.id));
+          }
+        },
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "notifications",
+          filter: `restaurant_id=eq.${restaurantId}`,
+        },
+        (payload) => {
+          if (payload.new?.type === "waiter_call") {
+            const msg = payload.new.message || "🔔 Masă cheamă ospătarul";
+            setWaiterCalls((prev) => [
+              ...prev,
+              { id: payload.new.id, message: msg },
+            ]);
+            showToast(`🔔 ${msg}`);
           }
         },
       )
@@ -1629,6 +1649,67 @@ export function WaiterTablet({
                         ✅ Confirmă plata
                       </button>
                     </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Chemări ospătar */}
+            {waiterCalls.length > 0 && (
+              <div style={{ marginBottom: 20 }}>
+                <div
+                  style={{
+                    fontSize: 10,
+                    letterSpacing: 2,
+                    textTransform: "uppercase",
+                    color: "#c8a97e",
+                    marginBottom: 10,
+                  }}
+                >
+                  🔔 Chemări ospătar
+                </div>
+                {waiterCalls.map((call) => (
+                  <div
+                    key={call.id}
+                    style={{
+                      background: "rgba(200,169,126,.08)",
+                      border: "1px solid rgba(200,169,126,.25)",
+                      borderRadius: 14,
+                      padding: "14px 16px",
+                      marginBottom: 8,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                    }}
+                  >
+                    <span
+                      style={{
+                        fontSize: 14,
+                        color: "#c8a97e",
+                        fontWeight: 600,
+                      }}
+                    >
+                      {call.message}
+                    </span>
+                    <button
+                      onClick={() =>
+                        setWaiterCalls((prev) =>
+                          prev.filter((c) => c.id !== call.id),
+                        )
+                      }
+                      style={{
+                        background: "rgba(200,169,126,.15)",
+                        border: "1px solid rgba(200,169,126,.2)",
+                        borderRadius: 8,
+                        padding: "4px 12px",
+                        color: "#c8a97e",
+                        fontSize: 12,
+                        cursor: "pointer",
+                        fontWeight: 600,
+                      }}
+                    >
+                      ✓ Am văzut
+                    </button>
                   </div>
                 ))}
               </div>

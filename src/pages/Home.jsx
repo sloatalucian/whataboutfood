@@ -635,6 +635,9 @@ function HomeClient() {
   const [activeOrder, setActiveOrder] = useState(null);
   const [showPayNote, setShowPayNote] = useState(false);
   const [payNoteLoading, setPayNoteLoading] = useState(false);
+  const [waiterCalled, setWaiterCalled] = useState(false);
+  const [waiterCooldown, setWaiterCooldown] = useState(0);
+  const waiterTimerRef = useRef(null);
 
   useEffect(() => {
     const load = async () => {
@@ -669,6 +672,32 @@ function HomeClient() {
     const interval = setInterval(loadActiveOrder, 5000);
     return () => clearInterval(interval);
   }, [user?.id]);
+
+  const callWaiter = async () => {
+    if (!activeOrder || waiterCooldown > 0) return;
+    try {
+      await supabase.from("notifications").insert({
+        restaurant_id: activeOrder.restaurant_id,
+        type: "waiter_call",
+        message: `🔔 Masa ${activeOrder.table_label} cheamă ospătarul`,
+        is_read: false,
+      });
+      setWaiterCalled(true);
+      setWaiterCooldown(300); // 5 minute = 300 secunde
+
+      // Temporizator countdown
+      if (waiterTimerRef.current) clearInterval(waiterTimerRef.current);
+      waiterTimerRef.current = setInterval(() => {
+        setWaiterCooldown((prev) => {
+          if (prev <= 1) {
+            clearInterval(waiterTimerRef.current);
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    } catch (e) {}
+  };
 
   const requestBill = async (method) => {
     if (!activeOrder) return;
@@ -994,6 +1023,60 @@ function HomeClient() {
                 );
               })}
             </div>
+            {/* Buton cheama ospatar - vizibil dupa confirmare comanda */}
+            {activeOrder?.status !== "pending" &&
+              activeOrder?.status !== "paying" && (
+                <div style={{ marginTop: 10 }}>
+                  {waiterCalled && waiterCooldown > 0 ? (
+                    <div
+                      style={{
+                        background: "rgba(200,169,126,.08)",
+                        border: "1px solid rgba(200,169,126,.2)",
+                        borderRadius: 12,
+                        padding: "10px 14px",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                      }}
+                    >
+                      <span style={{ fontSize: 13, color: "#c8a97e" }}>
+                        🔔 Ospătarul a fost chemat
+                      </span>
+                      <span
+                        style={{
+                          fontSize: 12,
+                          color: "#6b6050",
+                          fontWeight: 600,
+                        }}
+                      >
+                        {Math.floor(waiterCooldown / 60)}:
+                        {String(waiterCooldown % 60).padStart(2, "0")}
+                      </span>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={callWaiter}
+                      style={{
+                        width: "100%",
+                        padding: "10px",
+                        borderRadius: 12,
+                        background:
+                          waiterCooldown > 0
+                            ? "#1a1510"
+                            : "rgba(200,169,126,.1)",
+                        border: `1px solid ${waiterCooldown > 0 ? "#2a2218" : "rgba(200,169,126,.3)"}`,
+                        color: waiterCooldown > 0 ? "#6b6050" : "#c8a97e",
+                        fontSize: 13,
+                        fontWeight: 600,
+                        cursor: waiterCooldown > 0 ? "not-allowed" : "pointer",
+                        fontFamily: "inherit",
+                      }}
+                    >
+                      🔔 Cheamă ospătarul
+                    </button>
+                  )}
+                </div>
+              )}
             {/* Buton cere nota */}
             {activeOrder?.status === "ready" && (
               <button
