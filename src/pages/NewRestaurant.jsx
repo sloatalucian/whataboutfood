@@ -982,7 +982,7 @@ export default function NewRestaurant() {
         return;
       }
 
-      // Cream restaurantul fara coordonate — apar pe harta doar dupa aprobare
+      // Restaurantul porneste inactiv — devine activ dupa aprobare SuperAdmin
       const { error } = await supabase.from("restaurants").insert({
         owner_id: userId,
         name: form.name,
@@ -995,7 +995,7 @@ export default function NewRestaurant() {
         website: form.website || null,
         description: form.description || null,
         plan: user?.plan || "free",
-        is_active: true,
+        is_active: false,
         latitude: null,
         longitude: null,
         location_name: restLocation?.name || null,

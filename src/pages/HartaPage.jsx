@@ -147,6 +147,7 @@ export default function HartaPage() {
     supabase
       .from("restaurants")
       .select("id, name, address, city, rating, type, latitude, longitude")
+      .eq("is_active", true)
       .then(({ data }) => setRegisteredRestaurants(data || []));
 
     supabase

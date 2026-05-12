@@ -1761,8 +1761,8 @@ function HomeOwner({ onLogout }) {
                 <div
                   key={r.id}
                   style={{
-                    background: "#161210",
-                    border: "1px solid #2a2218",
+                    background: r.is_active ? "#161210" : "rgba(224,122,71,.04)",
+                    border: `1px solid ${r.is_active ? "#2a2218" : "rgba(224,122,71,.3)"}`,
                     borderRadius: 16,
                     padding: "14px 16px",
                     display: "flex",
@@ -1792,7 +1792,9 @@ function HomeOwner({ onLogout }) {
                       style={{ fontSize: 11, color: "#6b6050", marginTop: 2 }}
                     >
                       {r.city} • Plan {r.plan?.toUpperCase() || "FREE"} •{" "}
-                      {r.is_active ? "✅ Activ" : "⏸️ Inactiv"}
+                      <span style={{ color: r.is_active ? "#6b9e6b" : "#e07a47", fontWeight: 600 }}>
+                        {r.is_active ? "✅ Activ" : "⏳ În așteptare"}
+                      </span>
                     </div>
                   </div>
                   <div style={{ display: "flex", gap: 6 }}>

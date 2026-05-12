@@ -340,6 +340,18 @@ export default function SuperAdmin() {
     }
   };
 
+  const approveRestaurant = async (id, name) => {
+    try {
+      await supabase.from("restaurants").update({ is_active: true }).eq("id", id);
+      setRestaurante((prev) =>
+        prev.map((r) => (r.id === id ? { ...r, is_active: true } : r)),
+      );
+      showToast(`✅ „${name}" aprobat! Vizibil pentru clienți.`);
+    } catch {
+      showToast("❌ Eroare.");
+    }
+  };
+
   const toggleRestaurant = async (id, isActive) => {
     try {
       await supabase
@@ -745,6 +757,22 @@ export default function SuperAdmin() {
                 {mapPinRequests.length}
               </span>
             )}
+            {t.id === "restaurante" &&
+              restaurante.filter((r) => !r.is_active).length > 0 && (
+                <span
+                  style={{
+                    background: "#e07a47",
+                    color: "#fff",
+                    borderRadius: 20,
+                    padding: "1px 6px",
+                    fontSize: 10,
+                    fontWeight: 800,
+                    marginLeft: 2,
+                  }}
+                >
+                  {restaurante.filter((r) => !r.is_active).length}
+                </span>
+              )}
           </div>
         ))}
       </div>
@@ -1193,6 +1221,119 @@ export default function SuperAdmin() {
         {/* ── RESTAURANTE ── */}
         {!loading && activeTab === "restaurante" && (
           <div>
+            {/* Subsectiune: in asteptare */}
+            {restaurante.filter((r) => !r.is_active).length > 0 && (
+              <div style={{ marginBottom: 20 }}>
+                <div
+                  style={{
+                    fontSize: 11,
+                    letterSpacing: 2,
+                    textTransform: "uppercase",
+                    color: "#e07a47",
+                    marginBottom: 12,
+                  }}
+                >
+                  ⏳ În așteptare aprobare (
+                  {restaurante.filter((r) => !r.is_active).length})
+                </div>
+                {restaurante
+                  .filter((r) => !r.is_active)
+                  .map((r) => (
+                    <div
+                      key={r.id}
+                      style={{
+                        background: "rgba(224,122,71,.06)",
+                        border: "1px solid rgba(224,122,71,.3)",
+                        borderRadius: 16,
+                        padding: 14,
+                        marginBottom: 10,
+                      }}
+                    >
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 12,
+                          marginBottom: 10,
+                        }}
+                      >
+                        <div style={{ fontSize: 28, flexShrink: 0 }}>
+                          {r.emoji || "🍽️"}
+                        </div>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div
+                            style={{
+                              fontWeight: 700,
+                              fontSize: 14,
+                              marginBottom: 2,
+                            }}
+                          >
+                            {r.name}
+                          </div>
+                          <div style={{ fontSize: 11, color: "#6b6050" }}>
+                            📍 {r.city} • 👤 {r.profiles?.full_name || "—"}
+                          </div>
+                          <div
+                            style={{
+                              fontSize: 10,
+                              color: "#6b6050",
+                              marginTop: 2,
+                            }}
+                          >
+                            {new Date(r.created_at).toLocaleDateString(
+                              "ro-RO",
+                              {
+                                day: "numeric",
+                                month: "short",
+                                year: "numeric",
+                              },
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                      <div
+                        style={{
+                          display: "grid",
+                          gridTemplateColumns: "1fr 1fr",
+                          gap: 8,
+                        }}
+                      >
+                        <button
+                          onClick={() => toggleRestaurant(r.id, false)}
+                          style={{
+                            padding: 10,
+                            borderRadius: 10,
+                            background: "rgba(192,57,43,.15)",
+                            border: "1px solid rgba(192,57,43,.3)",
+                            color: "#e05050",
+                            fontSize: 13,
+                            cursor: "pointer",
+                            fontWeight: 600,
+                          }}
+                        >
+                          ❌ Respinge
+                        </button>
+                        <button
+                          onClick={() => approveRestaurant(r.id, r.name)}
+                          style={{
+                            padding: 10,
+                            borderRadius: 10,
+                            background: "rgba(74,110,74,.2)",
+                            border: "1px solid rgba(74,110,74,.4)",
+                            color: "#6b9e6b",
+                            fontSize: 13,
+                            cursor: "pointer",
+                            fontWeight: 600,
+                          }}
+                        >
+                          ✅ Aprobă
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+              </div>
+            )}
+
             <div
               style={{
                 display: "flex",
