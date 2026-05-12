@@ -283,7 +283,7 @@ export default function HartaPage() {
       const coords = CITY_COORDS[city];
       if (!coords) return;
 
-      // Nu re-incarcam daca orasul e acelasi
+      // Nu re-incarcam daca orasul e acelasi si avem cache
       if (loadedCity.current === city && cachedPOIs.current.length > 0) {
         const zoom = leafletMap.current?.getZoom() || 15;
         renderOverpassMarkers(cachedPOIs.current, zoom);
@@ -293,24 +293,35 @@ export default function HartaPage() {
       setLoading(true);
       overpassLayer.current?.clearLayers();
 
-      // Bbox pentru tot orasul (~15km radius)
-      const r = 0.15;
+      // Bbox ~7km radius in jurul centrului orasului
+      const r = 0.07;
       const s = coords[0] - r,
         n = coords[0] + r;
       const w = coords[1] - r,
         e = coords[1] + r;
-
-      const query = `[out:json][timeout:25];(node["amenity"~"restaurant|cafe|bar|fast_food|pub|bistro"](${s},${w},${n},${e}););out 300;`;
+      const query = `[out:json][timeout:20];(node["amenity"~"restaurant|cafe|bar|fast_food|pub|bistro"](${s},${w},${n},${e}););out 200;`;
+      const url = `https://overpass.kumi.systems/api/interpreter?data=${encodeURIComponent(query)}`;
 
       try {
-        const res = await fetch(
-          `https://overpass.kumi.systems/api/interpreter?data=${encodeURIComponent(query)}`,
-        );
-        if (!res.ok) throw new Error();
-        const data = await res.json();
+        let data = null;
+        // Incercam primul server
+        try {
+          const res = await fetch(url);
+          if (res.ok) data = await res.json();
+        } catch (_) {}
 
-        const registeredNames = registeredRestaurants.map((r) =>
-          r.name.toLowerCase(),
+        // Fallback server
+        if (!data) {
+          const res2 = await fetch(
+            `https://lz4.overpass-api.de/api/interpreter?data=${encodeURIComponent(query)}`,
+          );
+          if (res2.ok) data = await res2.json();
+        }
+
+        if (!data) throw new Error("Ambele servere au eșuat");
+
+        const registeredNames = registeredRestaurants.map((rr) =>
+          rr.name.toLowerCase(),
         );
         const pois = (data.elements || [])
           .filter((el) => el.tags?.name && el.lat && el.lon)
@@ -330,7 +341,9 @@ export default function HartaPage() {
 
         const zoom = leafletMap.current?.getZoom() || 15;
         renderOverpassMarkers(pois, zoom);
-      } catch (e) {}
+      } catch (e) {
+        console.warn("Overpass indisponibil:", e);
+      }
       setLoading(false);
     },
     [registeredRestaurants],
