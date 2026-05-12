@@ -127,6 +127,9 @@ export default function HartaPage() {
   const registeredLayer = useRef(null);
   const overpassLayer = useRef(null);
   const scriptLoaded = useRef(false);
+  const fetchTimer = useRef(null);
+  const loadedBounds = useRef(null);
+  const cachedPOIs = useRef([]);
 
   const [selectedCity, setSelectedCity] = useState("Iași");
   const [showCities, setShowCities] = useState(false);
@@ -188,7 +191,11 @@ export default function HartaPage() {
       leafletMap.current.on("moveend zoomend", () => {
         const z = leafletMap.current.getZoom();
         setCurrentZoom(z);
-        fetchOverpass();
+        // Debounce 800ms - nu facem request la fiecare pixel
+        if (fetchTimer.current) clearTimeout(fetchTimer.current);
+        fetchTimer.current = setTimeout(() => {
+          fetchOverpassDebounced();
+        }, 800);
       });
 
       setMapReady(true);
@@ -269,17 +276,44 @@ export default function HartaPage() {
     [registeredRestaurants, makeIcon],
   );
 
-  const fetchOverpass = useCallback(async () => {
+  const fetchOverpassDebounced = useCallback(async () => {
     if (!leafletMap.current || !window.L) return;
     const zoom = leafletMap.current.getZoom();
 
     if (zoom < 14) {
       overpassLayer.current?.clearLayers();
+      cachedPOIs.current = [];
+      loadedBounds.current = null;
       return;
     }
 
     const b = leafletMap.current.getBounds();
-    const query = `[out:json][timeout:10];(node["amenity"~"restaurant|cafe|bar|fast_food|pub"](${b.getSouth()},${b.getWest()},${b.getNorth()},${b.getEast()}););out 40;`;
+
+    // Nu refacem request daca zona e deja acoperita de bounds-ul anterior
+    if (loadedBounds.current) {
+      const lb = loadedBounds.current;
+      const margin = 0.003;
+      if (
+        b.getSouth() >= lb.south - margin &&
+        b.getNorth() <= lb.north + margin &&
+        b.getWest() >= lb.west - margin &&
+        b.getEast() <= lb.east + margin
+      ) {
+        // Zona acoperita - reddam markerii din cache
+        renderOverpassMarkers(cachedPOIs.current, zoom);
+        return;
+      }
+    }
+
+    // Extindem bounds-ul cu 30% ca sa prefetch
+    const latPad = (b.getNorth() - b.getSouth()) * 0.3;
+    const lonPad = (b.getEast() - b.getWest()) * 0.3;
+    const s = b.getSouth() - latPad,
+      n = b.getNorth() + latPad;
+    const w = b.getWest() - lonPad,
+      e = b.getEast() + lonPad;
+
+    const query = `[out:json][timeout:15];(node["amenity"~"restaurant|cafe|bar|fast_food|pub|bistro"](${s},${w},${n},${e}););out 60;`;
 
     setLoading(true);
     try {
@@ -295,7 +329,6 @@ export default function HartaPage() {
       const pois = (data.elements || [])
         .filter((el) => el.tags?.name && el.lat && el.lon)
         .filter((el) => !registeredNames.includes(el.tags.name.toLowerCase()))
-        .slice(0, 40)
         .map((el) => ({
           id: el.id,
           name: el.tags.name,
@@ -305,23 +338,35 @@ export default function HartaPage() {
           address: el.tags["addr:street"] || "",
         }));
 
-      setOverpassPOIs(pois);
+      // Salvam in cache
+      cachedPOIs.current = pois;
+      loadedBounds.current = { south: s, north: n, west: w, east: e };
 
-      if (overpassLayer.current && window.L) {
-        const L = window.L;
-        overpassLayer.current.clearLayers();
-        pois.forEach((poi) => {
-          const icon = makeIcon(poi.name, false, zoom);
-          L.marker([poi.lat, poi.lon], { icon, zIndexOffset: 0 })
-            .on("click", () =>
-              setSelectedMarker({ ...poi, isRegistered: false }),
-            )
-            .addTo(overpassLayer.current);
-        });
-      }
-    } catch (e) {}
+      setOverpassPOIs(pois);
+      renderOverpassMarkers(pois, zoom);
+    } catch (e) {
+      // La eroare pastram markerii existenti
+    }
     setLoading(false);
   }, [registeredRestaurants, makeIcon]);
+
+  const renderOverpassMarkers = useCallback(
+    (pois, zoom) => {
+      if (!overpassLayer.current || !window.L) return;
+      const L = window.L;
+      overpassLayer.current.clearLayers();
+      pois.forEach((poi) => {
+        const icon = makeIcon(poi.name, false, zoom);
+        L.marker([poi.lat, poi.lon], { icon, zIndexOffset: 0 })
+          .on("click", () => setSelectedMarker({ ...poi, isRegistered: false }))
+          .addTo(overpassLayer.current);
+      });
+    },
+    [makeIcon],
+  );
+
+  // Alias pentru compatibilitate
+  const fetchOverpass = fetchOverpassDebounced;
 
   // Schimba orasul
   useEffect(() => {
