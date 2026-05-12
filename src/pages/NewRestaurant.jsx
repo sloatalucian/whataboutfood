@@ -191,34 +191,47 @@ function RestaurantLocationPicker({ city, onSelect, onClose }) {
   }, []);
 
   const searchTimer = useRef(null);
-  const searchOverpass = async (q) => {
+  const searchController = useRef(null);
+
+  const searchNominatim = async (q) => {
     if (q.trim().length < 2) {
       setSearchResults([]);
       return;
     }
     if (searchTimer.current) clearTimeout(searchTimer.current);
     await new Promise((r) => {
-      searchTimer.current = setTimeout(r, 500);
+      searchTimer.current = setTimeout(r, 400);
     });
+
+    if (searchController.current) searchController.current.abort();
+    searchController.current = new AbortController();
+
     setLoading(true);
     try {
-      const query = `[out:json][timeout:10];node["name"~"${q}","i"]["amenity"~"restaurant|cafe|bar|fast_food|pub"](44.0,20.0,48.5,30.0);out 8;`;
-      const res = await fetch(
-        `https://overpass.kumi.systems/api/interpreter?data=${encodeURIComponent(query)}`,
-      );
+      const cityHint = mapCity ? `, ${mapCity}` : "";
+      const url =
+        `https://nominatim.openstreetmap.org/search` +
+        `?q=${encodeURIComponent(q + cityHint)}` +
+        `&format=json&limit=6&countrycodes=ro&addressdetails=1`;
+
+      const res = await fetch(url, {
+        signal: searchController.current.signal,
+        headers: { "Accept-Language": "ro" },
+      });
       const data = await res.json();
+
       setSearchResults(
-        (data.elements || [])
-          .filter((el) => el.tags?.name && el.lat && el.lon)
-          .map((el) => ({
-            id: el.id,
-            name: el.tags.name,
-            lat: el.lat,
-            lon: el.lon,
-            address: el.tags["addr:street"] || "",
-          })),
+        data.map((el) => ({
+          id: el.place_id,
+          name: el.name || el.display_name.split(",")[0],
+          lat: parseFloat(el.lat),
+          lon: parseFloat(el.lon),
+          address: el.display_name,
+        })),
       );
-    } catch (e) {}
+    } catch (e) {
+      if (e.name !== "AbortError") setSearchResults([]);
+    }
     setLoading(false);
   };
 
@@ -390,7 +403,7 @@ function RestaurantLocationPicker({ city, onSelect, onClose }) {
               value={searchQ}
               onChange={(e) => {
                 setSearchQ(e.target.value);
-                searchOverpass(e.target.value);
+                searchNominatim(e.target.value);
               }}
               maxLength={60}
               style={{
@@ -436,34 +449,60 @@ function RestaurantLocationPicker({ city, onSelect, onClose }) {
                 zIndex: 99999,
               }}
             >
-              {searchResults.map((r, i) => (
-                <div
-                  key={i}
-                  onClick={() => {
-                    setSearchResults([]);
-                    setSearchQ(r.name);
-                    if (leafletMap.current)
-                      leafletMap.current.setView([r.lat, r.lon], 17);
-                    setConfirming(r);
-                  }}
-                  style={{
-                    padding: "12px 16px",
-                    cursor: "pointer",
-                    borderBottom: "1px solid rgba(255,255,255,.04)",
-                  }}
-                >
+              {searchResults.map((r, i) => {
+                const addrParts = r.address
+                  ? r.address.split(",").slice(1, 3).join(",").trim()
+                  : "";
+                return (
                   <div
-                    style={{ fontSize: 13, fontWeight: 600, color: "#f0ebe3" }}
+                    key={i}
+                    onClick={() => {
+                      setSearchResults([]);
+                      setSearchQ(r.name);
+                      if (leafletMap.current)
+                        leafletMap.current.setView([r.lat, r.lon], 17);
+                      setConfirming(r);
+                    }}
+                    style={{
+                      padding: "11px 16px",
+                      cursor: "pointer",
+                      borderBottom: "1px solid rgba(255,255,255,.04)",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 10,
+                    }}
                   >
-                    {r.name}
-                  </div>
-                  {r.address && (
-                    <div style={{ fontSize: 11, color: "#6b6050" }}>
-                      📍 {r.address}
+                    <span style={{ fontSize: 15, flexShrink: 0 }}>📍</span>
+                    <div style={{ minWidth: 0 }}>
+                      <div
+                        style={{
+                          fontSize: 13,
+                          fontWeight: 600,
+                          color: "#f0ebe3",
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                          whiteSpace: "nowrap",
+                        }}
+                      >
+                        {r.name}
+                      </div>
+                      {addrParts && (
+                        <div
+                          style={{
+                            fontSize: 11,
+                            color: "#6b6050",
+                            overflow: "hidden",
+                            textOverflow: "ellipsis",
+                            whiteSpace: "nowrap",
+                          }}
+                        >
+                          {addrParts}
+                        </div>
+                      )}
                     </div>
-                  )}
-                </div>
-              ))}
+                  </div>
+                );
+              })}
             </div>
           )}
         </div>
