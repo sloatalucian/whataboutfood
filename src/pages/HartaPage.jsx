@@ -406,6 +406,9 @@ export default function HartaPage() {
           flexDirection: "column",
           gap: 8,
           flexShrink: 0,
+          zIndex: 9999,
+          position: "relative",
+          overflow: "visible",
         }}
       >
         {/* Rand 1 */}
@@ -515,7 +518,7 @@ export default function HartaPage() {
         </div>
 
         {/* Rand 2: search */}
-        <div style={{ position: "relative", zIndex: 400 }}>
+        <div style={{ position: "relative", zIndex: 9999 }}>
           <div
             style={{
               display: "flex",
@@ -540,7 +543,7 @@ export default function HartaPage() {
                 border: "none",
                 outline: "none",
                 color: "#f0ebe3",
-                fontSize: 13,
+                fontSize: 16,
                 fontFamily: "inherit",
               }}
             />
@@ -571,7 +574,7 @@ export default function HartaPage() {
                 borderRadius: 14,
                 overflow: "hidden",
                 boxShadow: "0 8px 24px rgba(0,0,0,.7)",
-                zIndex: 9999,
+                zIndex: 99999,
               }}
             >
               {searchResults.map((r) => (
