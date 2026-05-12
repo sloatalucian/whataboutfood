@@ -128,7 +128,7 @@ export default function HartaPage() {
   const overpassLayer = useRef(null);
   const scriptLoaded = useRef(false);
   const fetchTimer = useRef(null);
-  const loadedBounds = useRef(null);
+  const loadedCity = useRef(null);
   const cachedPOIs = useRef([]);
 
   const [selectedCity, setSelectedCity] = useState("Iași");
@@ -188,14 +188,13 @@ export default function HartaPage() {
       registeredLayer.current = L.layerGroup().addTo(leafletMap.current);
       overpassLayer.current = L.layerGroup().addTo(leafletMap.current);
 
-      leafletMap.current.on("moveend zoomend", () => {
+      leafletMap.current.on("zoomend", () => {
         const z = leafletMap.current.getZoom();
         setCurrentZoom(z);
-        // Debounce 800ms - nu facem request la fiecare pixel
-        if (fetchTimer.current) clearTimeout(fetchTimer.current);
-        fetchTimer.current = setTimeout(() => {
-          fetchOverpassDebounced();
-        }, 800);
+        // La zoom re-randam markerii din cache cu stilul potrivit
+        if (cachedPOIs.current.length > 0) {
+          renderOverpassMarkers(cachedPOIs.current, z);
+        }
       });
 
       setMapReady(true);
@@ -213,6 +212,7 @@ export default function HartaPage() {
     )
       return;
     addRegisteredMarkers(currentZoom);
+    fetchForCity(selectedCity);
   }, [mapReady, registeredRestaurants]);
 
   // Re-randeaza markerii inregistrati la zoom
@@ -276,79 +276,65 @@ export default function HartaPage() {
     [registeredRestaurants, makeIcon],
   );
 
-  const fetchOverpassDebounced = useCallback(async () => {
-    if (!leafletMap.current || !window.L) return;
-    const zoom = leafletMap.current.getZoom();
+  // Incarca TOATE restaurantele din oras o singura data
+  const fetchForCity = useCallback(
+    async (city) => {
+      if (!window.L) return;
+      const coords = CITY_COORDS[city];
+      if (!coords) return;
 
-    if (zoom < 14) {
-      overpassLayer.current?.clearLayers();
-      cachedPOIs.current = [];
-      loadedBounds.current = null;
-      return;
-    }
-
-    const b = leafletMap.current.getBounds();
-
-    // Nu refacem request daca zona e deja acoperita de bounds-ul anterior
-    if (loadedBounds.current) {
-      const lb = loadedBounds.current;
-      const margin = 0.003;
-      if (
-        b.getSouth() >= lb.south - margin &&
-        b.getNorth() <= lb.north + margin &&
-        b.getWest() >= lb.west - margin &&
-        b.getEast() <= lb.east + margin
-      ) {
-        // Zona acoperita - reddam markerii din cache
+      // Nu re-incarcam daca orasul e acelasi
+      if (loadedCity.current === city && cachedPOIs.current.length > 0) {
+        const zoom = leafletMap.current?.getZoom() || 15;
         renderOverpassMarkers(cachedPOIs.current, zoom);
         return;
       }
-    }
 
-    // Extindem bounds-ul cu 30% ca sa prefetch
-    const latPad = (b.getNorth() - b.getSouth()) * 0.3;
-    const lonPad = (b.getEast() - b.getWest()) * 0.3;
-    const s = b.getSouth() - latPad,
-      n = b.getNorth() + latPad;
-    const w = b.getWest() - lonPad,
-      e = b.getEast() + lonPad;
+      setLoading(true);
+      overpassLayer.current?.clearLayers();
 
-    const query = `[out:json][timeout:15];(node["amenity"~"restaurant|cafe|bar|fast_food|pub|bistro"](${s},${w},${n},${e}););out 60;`;
+      // Bbox pentru tot orasul (~15km radius)
+      const r = 0.15;
+      const s = coords[0] - r,
+        n = coords[0] + r;
+      const w = coords[1] - r,
+        e = coords[1] + r;
 
-    setLoading(true);
-    try {
-      const res = await fetch(
-        `https://overpass.kumi.systems/api/interpreter?data=${encodeURIComponent(query)}`,
-      );
-      if (!res.ok) throw new Error();
-      const data = await res.json();
+      const query = `[out:json][timeout:25];(node["amenity"~"restaurant|cafe|bar|fast_food|pub|bistro"](${s},${w},${n},${e}););out 300;`;
 
-      const registeredNames = registeredRestaurants.map((r) =>
-        r.name.toLowerCase(),
-      );
-      const pois = (data.elements || [])
-        .filter((el) => el.tags?.name && el.lat && el.lon)
-        .filter((el) => !registeredNames.includes(el.tags.name.toLowerCase()))
-        .map((el) => ({
-          id: el.id,
-          name: el.tags.name,
-          lat: el.lat,
-          lon: el.lon,
-          type: el.tags.amenity,
-          address: el.tags["addr:street"] || "",
-        }));
+      try {
+        const res = await fetch(
+          `https://overpass.kumi.systems/api/interpreter?data=${encodeURIComponent(query)}`,
+        );
+        if (!res.ok) throw new Error();
+        const data = await res.json();
 
-      // Salvam in cache
-      cachedPOIs.current = pois;
-      loadedBounds.current = { south: s, north: n, west: w, east: e };
+        const registeredNames = registeredRestaurants.map((r) =>
+          r.name.toLowerCase(),
+        );
+        const pois = (data.elements || [])
+          .filter((el) => el.tags?.name && el.lat && el.lon)
+          .filter((el) => !registeredNames.includes(el.tags.name.toLowerCase()))
+          .map((el) => ({
+            id: el.id,
+            name: el.tags.name,
+            lat: el.lat,
+            lon: el.lon,
+            type: el.tags.amenity,
+            address: el.tags["addr:street"] || "",
+          }));
 
-      setOverpassPOIs(pois);
-      renderOverpassMarkers(pois, zoom);
-    } catch (e) {
-      // La eroare pastram markerii existenti
-    }
-    setLoading(false);
-  }, [registeredRestaurants, makeIcon]);
+        cachedPOIs.current = pois;
+        loadedCity.current = city;
+        setOverpassPOIs(pois);
+
+        const zoom = leafletMap.current?.getZoom() || 15;
+        renderOverpassMarkers(pois, zoom);
+      } catch (e) {}
+      setLoading(false);
+    },
+    [registeredRestaurants],
+  );
 
   const renderOverpassMarkers = useCallback(
     (pois, zoom) => {
@@ -365,14 +351,16 @@ export default function HartaPage() {
     [makeIcon],
   );
 
-  // Alias pentru compatibilitate
-  const fetchOverpass = fetchOverpassDebounced;
+  const fetchOverpass = fetchForCity;
 
   // Schimba orasul
   useEffect(() => {
     if (!leafletMap.current || !mapReady) return;
     const coords = CITY_COORDS[selectedCity];
-    if (coords) leafletMap.current.setView(coords, 15);
+    if (coords) {
+      leafletMap.current.setView(coords, 15);
+      fetchForCity(selectedCity);
+    }
   }, [selectedCity, mapReady]);
 
   const searchResults =
