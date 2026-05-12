@@ -31,6 +31,7 @@ function exportToCSV(data, filename) {
 
 const TABS = [
   { id: "cereri", icon: "📋", label: "Cereri" },
+  { id: "hartaPinuri", icon: "📍", label: "Hartă" },
   { id: "proprietari", icon: "👥", label: "Proprietari" },
   { id: "restaurante", icon: "🏪", label: "Restaurante" },
   { id: "statistici", icon: "📊", label: "Statistici" },
@@ -65,6 +66,7 @@ export default function SuperAdmin() {
   const [proprietari, setProprietari] = useState([]);
   const [restaurante, setRestaurante] = useState([]);
   const [abonamente, setAbonamente] = useState([]);
+  const [mapPinRequests, setMapPinRequests] = useState([]);
   const [statistici, setStatistici] = useState(null);
   const [loading, setLoading] = useState(true);
   const [viewAsOwner, setViewAsOwner] = useState(null);
@@ -128,6 +130,7 @@ export default function SuperAdmin() {
         { data: propData },
         { data: restData },
         { data: aboData },
+        { data: pinData },
         { count: totalProp },
         { count: totalRest },
         { count: totalOrders },
@@ -152,6 +155,11 @@ export default function SuperAdmin() {
           .select("*")
           .order("created_at", { ascending: false }),
         supabase
+          .from("map_pin_requests")
+          .select("*")
+          .eq("status", "pending")
+          .order("created_at", { ascending: false }),
+        supabase
           .from("profiles")
           .select("*", { count: "exact", head: true })
           .eq("role", "owner")
@@ -168,6 +176,7 @@ export default function SuperAdmin() {
       ]);
 
       setCereri(cereriData || []);
+      setMapPinRequests(pinData || []);
       setProprietari(propData || []);
       // Mapam proprietarii si restaurantele manual
       const propMap = {};
@@ -267,6 +276,32 @@ export default function SuperAdmin() {
         .eq("id", id);
       setCereri((prev) => prev.filter((c) => c.id !== id));
       showToast(`❌ ${name} respins.`);
+    } catch {
+      showToast("❌ Eroare.");
+    }
+  };
+
+  const approvePin = async (id, name) => {
+    try {
+      await supabase
+        .from("map_pin_requests")
+        .update({ status: "approved" })
+        .eq("id", id);
+      setMapPinRequests((prev) => prev.filter((p) => p.id !== id));
+      showToast(`✅ Pinul „${name}" aprobat! Apare pe hartă.`);
+    } catch {
+      showToast("❌ Eroare.");
+    }
+  };
+
+  const rejectPin = async (id, name) => {
+    try {
+      await supabase
+        .from("map_pin_requests")
+        .update({ status: "rejected" })
+        .eq("id", id);
+      setMapPinRequests((prev) => prev.filter((p) => p.id !== id));
+      showToast(`❌ Pinul „${name}" respins.`);
     } catch {
       showToast("❌ Eroare.");
     }
@@ -695,6 +730,21 @@ export default function SuperAdmin() {
                 {cereri.length}
               </span>
             )}
+            {t.id === "hartaPinuri" && mapPinRequests.length > 0 && (
+              <span
+                style={{
+                  background: "#4a6e4a",
+                  color: "#fff",
+                  borderRadius: 20,
+                  padding: "1px 6px",
+                  fontSize: 10,
+                  fontWeight: 800,
+                  marginLeft: 2,
+                }}
+              >
+                {mapPinRequests.length}
+              </span>
+            )}
           </div>
         ))}
       </div>
@@ -832,6 +882,137 @@ export default function SuperAdmin() {
                       onClick={() =>
                         approveOwner(c.id, c.phone || "—", c.full_name)
                       }
+                      style={{
+                        padding: 10,
+                        borderRadius: 10,
+                        background: "rgba(74,110,74,.2)",
+                        border: "1px solid rgba(74,110,74,.4)",
+                        color: "#6b9e6b",
+                        fontSize: 13,
+                        cursor: "pointer",
+                        fontWeight: 600,
+                      }}
+                    >
+                      ✅ Aprobă
+                    </button>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        )}
+
+        {/* ── HARTA PINURI ── */}
+        {!loading && activeTab === "hartaPinuri" && (
+          <div>
+            <div
+              style={{
+                fontSize: 11,
+                letterSpacing: 2,
+                textTransform: "uppercase",
+                color: "#6b6050",
+                marginBottom: 14,
+              }}
+            >
+              Cereri adăugare pe hartă ({mapPinRequests.length})
+            </div>
+            {mapPinRequests.length === 0 ? (
+              <div
+                style={{
+                  textAlign: "center",
+                  padding: "40px 0",
+                  color: "#6b6050",
+                }}
+              >
+                <div style={{ fontSize: 36, marginBottom: 10 }}>📍</div>
+                <div>Nicio cerere de adăugare pe hartă</div>
+              </div>
+            ) : (
+              mapPinRequests.map((pin) => (
+                <div
+                  key={pin.id}
+                  style={{
+                    background: "rgba(74,110,74,.06)",
+                    border: "1px solid rgba(74,110,74,.25)",
+                    borderRadius: 16,
+                    padding: 16,
+                    marginBottom: 12,
+                  }}
+                >
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "flex-start",
+                      justifyContent: "space-between",
+                      marginBottom: 12,
+                    }}
+                  >
+                    <div>
+                      <div
+                        style={{
+                          fontFamily: "'Fraunces',serif",
+                          fontWeight: 700,
+                          fontSize: 16,
+                          color: "#f0ebe3",
+                          marginBottom: 4,
+                        }}
+                      >
+                        📍 {pin.name}
+                      </div>
+                      <div style={{ fontSize: 12, color: "#6b6050", marginBottom: 2 }}>
+                        👤 {pin.owner_name || "Proprietar"}
+                      </div>
+                      <div style={{ fontSize: 11, color: "#6b6050", marginBottom: 2 }}>
+                        🏙️ {pin.city || "—"} · {pin.lat?.toFixed(4)},{" "}
+                        {pin.lon?.toFixed(4)}
+                      </div>
+                      <div style={{ fontSize: 11, color: "#6b6050" }}>
+                        📅{" "}
+                        {new Date(pin.created_at).toLocaleDateString("ro-RO", {
+                          day: "numeric",
+                          month: "long",
+                          year: "numeric",
+                        })}
+                      </div>
+                    </div>
+                    <div
+                      style={{
+                        fontSize: 9,
+                        fontWeight: 800,
+                        padding: "3px 8px",
+                        borderRadius: 20,
+                        background: "rgba(224,122,71,.2)",
+                        color: "#e07a47",
+                        flexShrink: 0,
+                      }}
+                    >
+                      ⏳ PENDING
+                    </div>
+                  </div>
+                  <div
+                    style={{
+                      display: "grid",
+                      gridTemplateColumns: "1fr 1fr",
+                      gap: 8,
+                    }}
+                  >
+                    <button
+                      onClick={() => rejectPin(pin.id, pin.name)}
+                      style={{
+                        padding: 10,
+                        borderRadius: 10,
+                        background: "rgba(192,57,43,.15)",
+                        border: "1px solid rgba(192,57,43,.3)",
+                        color: "#e05050",
+                        fontSize: 13,
+                        cursor: "pointer",
+                        fontWeight: 600,
+                      }}
+                    >
+                      ❌ Respinge
+                    </button>
+                    <button
+                      onClick={() => approvePin(pin.id, pin.name)}
                       style={{
                         padding: 10,
                         borderRadius: 10,

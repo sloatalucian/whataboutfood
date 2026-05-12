@@ -25,7 +25,7 @@ const CITY_COORDS_MAP = {
   Suceava: [47.6514, 26.2556],
 };
 
-function RestaurantLocationPicker({ city, onSelect, onClose }) {
+function RestaurantLocationPicker({ city, onSelect, onClose, showToast }) {
   const mapRef = useRef(null);
   const leafletMap = useRef(null);
   const markersLayer = useRef(null);
@@ -55,7 +55,7 @@ function RestaurantLocationPicker({ city, onSelect, onClose }) {
     if (!document.querySelector('link[href*="leaflet"]')) {
       const css = document.createElement("link");
       css.rel = "stylesheet";
-      css.href = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.css";
+      css.href = "https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.min.css";
       document.head.appendChild(css);
     }
 
@@ -78,14 +78,26 @@ function RestaurantLocationPicker({ city, onSelect, onClose }) {
         const z = leafletMap.current.getZoom();
         if (allPOIs.current.length > 0) renderPOIs(allPOIs.current, z);
       });
-      leafletMap.current.on("moveend", () => {});
-      setTimeout(fetchPOIs, 600);
+      leafletMap.current.on("click", (e) => {
+        if (!addingModeRef.current) return;
+        const { lat, lng } = e.latlng;
+        if (manualPinRef.current) leafletMap.current.removeLayer(manualPinRef.current);
+        const pinIcon = L.divIcon({
+          className: "",
+          html: `<div style="width:24px;height:24px;background:#c0622f;border:3px solid #fff;border-radius:50%;box-shadow:0 2px 14px rgba(192,98,47,.8);cursor:crosshair;"></div>`,
+          iconSize: [24, 24],
+          iconAnchor: [12, 12],
+        });
+        manualPinRef.current = L.marker([lat, lng], { icon: pinIcon, zIndexOffset: 9999 }).addTo(leafletMap.current);
+        setPendingPin({ lat, lon: lng });
+      });
+      setTimeout(fetchPOIs, 200);
     };
 
     if (window.L) initMap();
     else {
       const js = document.createElement("script");
-      js.src = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.js";
+      js.src = "https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.min.js";
       js.onload = initMap;
       document.head.appendChild(js);
     }
@@ -167,6 +179,7 @@ function RestaurantLocationPicker({ city, onSelect, onClose }) {
 
       L.marker([poi.lat, poi.lon], { icon })
         .on("click", (e) => {
+          if (addingModeRef.current) return;
           const marker = e.target;
           if (
             selectedMarkerRef.current &&
@@ -236,6 +249,13 @@ function RestaurantLocationPicker({ city, onSelect, onClose }) {
   const [mapCity, setMapCity] = useState(city || "Iași");
   const mapCityRef = useRef(city || "Iași");
 
+  const [addingMode, setAddingMode] = useState(false);
+  const [pendingPin, setPendingPin] = useState(null);
+  const [pinName, setPinName] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const addingModeRef = useRef(false);
+  const manualPinRef = useRef(null);
+
   // Schimba orasul pe harta
   const changeCity = (newCity) => {
     mapCityRef.current = newCity;
@@ -247,6 +267,52 @@ function RestaurantLocationPicker({ city, onSelect, onClose }) {
       leafletMap.current.setView(CITY_COORDS_MAP[newCity], 15);
       setTimeout(fetchPOIs, 300);
     }
+  };
+
+  // Sync addingMode ref + cursor
+  useEffect(() => {
+    addingModeRef.current = addingMode;
+    const container = leafletMap.current?.getContainer?.();
+    if (container) container.style.cursor = addingMode ? "crosshair" : "";
+    if (!addingMode) {
+      setPendingPin(null);
+      setPinName("");
+      if (manualPinRef.current && leafletMap.current) {
+        leafletMap.current.removeLayer(manualPinRef.current);
+        manualPinRef.current = null;
+      }
+    }
+  }, [addingMode]);
+
+  const submitPinRequest = async () => {
+    if (!pinName.trim() || !pendingPin || submitting) return;
+    setSubmitting(true);
+    try {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      if (!session?.user?.id) {
+        showToast?.("❌ Trebuie să fii autentificat!");
+        setSubmitting(false);
+        return;
+      }
+      const { error } = await supabase.from("map_pin_requests").insert({
+        owner_id: session.user.id,
+        owner_name:
+          session.user.user_metadata?.full_name || session.user.email || "Proprietar",
+        name: pinName.trim(),
+        lat: pendingPin.lat,
+        lon: pendingPin.lon,
+        city: mapCityRef.current,
+        status: "pending",
+      });
+      if (error) throw error;
+      showToast?.("✅ Cererea a fost trimisă! Apare pe hartă după aprobare.");
+      setAddingMode(false);
+    } catch {
+      showToast?.("❌ Eroare la trimitere. Încearcă din nou.");
+    }
+    setSubmitting(false);
   };
 
   return createPortal(
@@ -380,6 +446,31 @@ function RestaurantLocationPicker({ city, onSelect, onClose }) {
               </div>
             )}
           </div>
+
+          {/* Buton adauga restaurant manual */}
+          <button
+            onClick={() => {
+              setConfirming(null);
+              setAddingMode((v) => !v);
+            }}
+            style={{
+              padding: "7px 11px",
+              background: addingMode
+                ? "rgba(192,57,43,.2)"
+                : "rgba(74,110,74,.15)",
+              border: `1px solid ${addingMode ? "rgba(192,57,43,.5)" : "rgba(74,110,74,.35)"}`,
+              borderRadius: 20,
+              color: addingMode ? "#e05050" : "#6b9e6b",
+              fontSize: 11,
+              fontWeight: 700,
+              cursor: "pointer",
+              flexShrink: 0,
+              whiteSpace: "nowrap",
+              fontFamily: "inherit",
+            }}
+          >
+            {addingMode ? "✕ Anulează" : "📍 Adaugă"}
+          </button>
         </div>
 
         {/* Rand 2: search */}
@@ -508,10 +599,130 @@ function RestaurantLocationPicker({ city, onSelect, onClose }) {
       </div>
 
       {/* HARTA */}
-      <div ref={mapRef} style={{ flex: 1, width: "100%" }} />
+      <div ref={mapRef} style={{ flex: 1, width: "100%", position: "relative" }} />
+
+      {/* INSTRUCTIUNE plasare pin manual */}
+      {addingMode && !pendingPin && (
+        <div
+          style={{
+            position: "fixed",
+            bottom: 30,
+            left: "50%",
+            transform: "translateX(-50%)",
+            background: "rgba(10,8,5,.92)",
+            border: "1px solid rgba(192,98,47,.5)",
+            borderRadius: 20,
+            padding: "11px 22px",
+            fontSize: 13,
+            color: "#c8a97e",
+            fontWeight: 600,
+            whiteSpace: "nowrap",
+            zIndex: 1000,
+            pointerEvents: "none",
+            boxShadow: "0 4px 20px rgba(0,0,0,.6)",
+          }}
+        >
+          👇 Apasă pe hartă pentru a plasa restaurantul
+        </div>
+      )}
+
+      {/* PIN MANUAL - formular confirmare */}
+      {addingMode && pendingPin && (
+        <div
+          style={{
+            position: "fixed",
+            bottom: 0,
+            left: 0,
+            right: 0,
+            background: "#1a1510",
+            border: "1px solid rgba(192,98,47,.4)",
+            borderRadius: "20px 20px 0 0",
+            padding: "20px 20px 36px",
+            boxShadow: "0 -8px 40px rgba(0,0,0,.7)",
+            zIndex: 99999,
+          }}
+        >
+          <div
+            style={{
+              fontSize: 14,
+              color: "#c8a97e",
+              marginBottom: 12,
+              fontWeight: 700,
+            }}
+          >
+            📍 Confirmă locația restaurantului
+          </div>
+          <input
+            placeholder="Numele restaurantului tău..."
+            value={pinName}
+            onChange={(e) => setPinName(e.target.value)}
+            maxLength={80}
+            autoFocus
+            style={{
+              width: "100%",
+              background: "#1e1a14",
+              border: "1px solid #2a2218",
+              borderRadius: 12,
+              padding: "12px 16px",
+              color: "#f0ebe3",
+              fontFamily: "inherit",
+              fontSize: 14,
+              outline: "none",
+              boxSizing: "border-box",
+              marginBottom: 8,
+            }}
+          />
+          <div
+            style={{ fontSize: 11, color: "#6b6050", marginBottom: 14 }}
+          >
+            📍 {pendingPin.lat.toFixed(5)}, {pendingPin.lon.toFixed(5)} ·{" "}
+            {mapCity}
+          </div>
+          <div style={{ display: "flex", gap: 10 }}>
+            <button
+              onClick={() => setPendingPin(null)}
+              style={{
+                flex: 1,
+                padding: 13,
+                background: "#1e1a14",
+                border: "1px solid #2a2218",
+                borderRadius: 12,
+                color: "#f0ebe3",
+                fontSize: 13,
+                fontWeight: 600,
+                cursor: "pointer",
+                fontFamily: "inherit",
+              }}
+            >
+              ← Repoziționează
+            </button>
+            <button
+              onClick={submitPinRequest}
+              disabled={!pinName.trim() || submitting}
+              style={{
+                flex: 2,
+                padding: 13,
+                background:
+                  pinName.trim() && !submitting
+                    ? "linear-gradient(135deg,#c0622f,#8b3a18)"
+                    : "#2a2218",
+                border: "none",
+                borderRadius: 12,
+                color: pinName.trim() && !submitting ? "#fff" : "#6b6050",
+                fontSize: 13,
+                fontWeight: 700,
+                cursor: pinName.trim() && !submitting ? "pointer" : "not-allowed",
+                fontFamily: "inherit",
+              }}
+            >
+              {submitting ? "Se trimite..." : "📨 Trimite cererea"}
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* POPUP CONFIRMARE - fix jos */}
-      {confirming && (
+      {!addingMode && confirming && (
         <div
           style={{
             position: "fixed",
@@ -615,7 +826,7 @@ function RestaurantLocationPicker({ city, onSelect, onClose }) {
         </div>
       )}
 
-      <style>{`.leaflet-container{background:#1a1510!important}.leaflet-control-attribution{display:none!important}.leaflet-control-zoom{margin-bottom:${confirming ? "200px" : "20px"}!important}`}</style>
+      <style>{`.leaflet-container{background:#1a1510!important}.leaflet-control-attribution{display:none!important}.leaflet-control-zoom{margin-bottom:${confirming || (addingMode && pendingPin) ? "220px" : "20px"}!important}`}</style>
     </div>,
     document.body
   );
@@ -1068,6 +1279,7 @@ export default function NewRestaurant() {
             {showLocationMap && (
               <RestaurantLocationPicker
                 city={form.city}
+                showToast={showToast}
                 onSelect={(loc) => {
                   setRestLocation(loc);
                   setShowLocationMap(false);

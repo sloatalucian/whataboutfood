@@ -136,17 +136,24 @@ export default function HartaPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(false);
   const [registeredRestaurants, setRegisteredRestaurants] = useState([]);
+  const [approvedPins, setApprovedPins] = useState([]);
   const [selectedMarker, setSelectedMarker] = useState(null);
   const [overpassPOIs, setOverpassPOIs] = useState([]);
   const [mapReady, setMapReady] = useState(false);
   const [currentZoom, setCurrentZoom] = useState(15);
 
-  // Incarca restaurante din DB
+  // Incarca restaurante din DB + pinuri aprobate
   useEffect(() => {
     supabase
       .from("restaurants")
       .select("id, name, address, city, rating, type, latitude, longitude")
       .then(({ data }) => setRegisteredRestaurants(data || []));
+
+    supabase
+      .from("map_pin_requests")
+      .select("id, name, lat, lon, city")
+      .eq("status", "approved")
+      .then(({ data }) => setApprovedPins(data || []));
   }, []);
 
   // Injecteaza CSS global
@@ -164,11 +171,11 @@ export default function HartaPage() {
 
     const css = document.createElement("link");
     css.rel = "stylesheet";
-    css.href = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.css";
+    css.href = "https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.min.css";
     document.head.appendChild(css);
 
     const js = document.createElement("script");
-    js.src = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.js";
+    js.src = "https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.min.js";
     js.onload = () => {
       if (!mapRef.current || leafletMap.current) return;
       const L = window.L;
@@ -204,26 +211,14 @@ export default function HartaPage() {
 
   // Adauga markeri inregistrati cand harta si datele sunt gata
   useEffect(() => {
-    if (
-      !mapReady ||
-      !registeredLayer.current ||
-      !window.L ||
-      registeredRestaurants.length === 0
-    )
-      return;
+    if (!mapReady || !registeredLayer.current || !window.L) return;
     addRegisteredMarkers(currentZoom);
-    fetchForCity(selectedCity);
-  }, [mapReady, registeredRestaurants]);
+    if (registeredRestaurants.length > 0) fetchForCity(selectedCity);
+  }, [mapReady, registeredRestaurants, approvedPins]);
 
   // Re-randeaza markerii inregistrati la zoom
   useEffect(() => {
-    if (
-      !mapReady ||
-      !registeredLayer.current ||
-      !window.L ||
-      registeredRestaurants.length === 0
-    )
-      return;
+    if (!mapReady || !registeredLayer.current || !window.L) return;
     addRegisteredMarkers(currentZoom);
   }, [currentZoom]);
 
@@ -276,8 +271,26 @@ export default function HartaPage() {
           )
           .addTo(registeredLayer.current);
       });
+
+      // Pinuri aprobate manual (din map_pin_requests)
+      approvedPins.forEach((pin) => {
+        if (!pin.lat || !pin.lon) return;
+        const icon = makeIcon(pin.name, true, zoom);
+        L.marker([pin.lat, pin.lon], { icon, zIndexOffset: 1000 })
+          .on("click", () =>
+            setSelectedMarker({
+              id: `pin_${pin.id}`,
+              name: pin.name,
+              lat: pin.lat,
+              lon: pin.lon,
+              isRegistered: true,
+              registeredData: { name: pin.name, city: pin.city },
+            }),
+          )
+          .addTo(registeredLayer.current);
+      });
     },
-    [registeredRestaurants, makeIcon],
+    [registeredRestaurants, approvedPins, makeIcon],
   );
 
   // Incarca TOATE restaurantele din oras o singura data
@@ -297,32 +310,25 @@ export default function HartaPage() {
       setLoading(true);
       overpassLayer.current?.clearLayers();
 
-      // Bbox ~7km radius in jurul centrului orasului
       const r = 0.07;
       const s = coords[0] - r,
         n = coords[0] + r;
       const w = coords[1] - r,
         e = coords[1] + r;
-      const query = `[out:json][timeout:20];(node["amenity"~"restaurant|cafe|bar|fast_food|pub|bistro"](${s},${w},${n},${e}););out 200;`;
-      const url = `https://overpass.kumi.systems/api/interpreter?data=${encodeURIComponent(query)}`;
+      const query = `[out:json][timeout:15];(node["amenity"~"restaurant|cafe|bar|fast_food|pub|bistro"](${s},${w},${n},${e}););out 200;`;
+
+      const tryFetch = (url) =>
+        fetch(url).then((r) => (r.ok ? r.json() : Promise.reject()));
 
       try {
-        let data = null;
-        // Incercam primul server
-        try {
-          const res = await fetch(url);
-          if (res.ok) data = await res.json();
-        } catch (_) {}
-
-        // Fallback server
-        if (!data) {
-          const res2 = await fetch(
+        const data = await Promise.any([
+          tryFetch(
+            `https://overpass.kumi.systems/api/interpreter?data=${encodeURIComponent(query)}`,
+          ),
+          tryFetch(
             `https://lz4.overpass-api.de/api/interpreter?data=${encodeURIComponent(query)}`,
-          );
-          if (res2.ok) data = await res2.json();
-        }
-
-        if (!data) throw new Error("Ambele servere au eșuat");
+          ),
+        ]);
 
         const registeredNames = registeredRestaurants.map((rr) =>
           rr.name.toLowerCase(),
