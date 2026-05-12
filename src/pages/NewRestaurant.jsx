@@ -772,6 +772,19 @@ function RestaurantLocationPicker({ city, onSelect, onClose, showToast }) {
               📍 {confirming.address}
             </div>
           )}
+          <div
+            style={{
+              fontSize: 11,
+              color: "#c8a97e",
+              textAlign: "center",
+              marginBottom: 14,
+              padding: "8px 12px",
+              background: "rgba(192,98,47,.08)",
+              borderRadius: 10,
+            }}
+          >
+            ⏳ Locația va fi vizibilă pe hartă după aprobare SuperAdmin
+          </div>
           <div style={{ display: "flex", gap: 10 }}>
             <button
               onClick={() => {
@@ -969,6 +982,7 @@ export default function NewRestaurant() {
         return;
       }
 
+      // Cream restaurantul fara coordonate — apar pe harta doar dupa aprobare
       const { error } = await supabase.from("restaurants").insert({
         owner_id: userId,
         name: form.name,
@@ -982,13 +996,34 @@ export default function NewRestaurant() {
         description: form.description || null,
         plan: user?.plan || "free",
         is_active: true,
-        latitude: restLocation?.lat || null,
-        longitude: restLocation?.lon || null,
+        latitude: null,
+        longitude: null,
         location_name: restLocation?.name || null,
       });
 
       if (error) throw error;
-      showToast(`🎉 Restaurantul „${form.name}" a fost creat!`);
+
+      // Daca a ales o locatie pe harta, trimitem cerere de aprobare catre SuperAdmin
+      if (restLocation) {
+        await supabase.from("map_pin_requests").insert({
+          owner_id: userId,
+          owner_name:
+            session?.user?.user_metadata?.full_name ||
+            session?.user?.email ||
+            "Proprietar",
+          name: form.name,
+          lat: restLocation.lat,
+          lon: restLocation.lon,
+          city: form.city,
+          status: "pending",
+        });
+        showToast(
+          `🎉 Restaurantul creat! Locația va apărea pe hartă după aprobare.`,
+        );
+      } else {
+        showToast(`🎉 Restaurantul „${form.name}" a fost creat!`);
+      }
+
       navigate("adminFloor");
     } catch (err) {
       console.log("Create restaurant error:", err);
@@ -1233,6 +1268,9 @@ export default function NewRestaurant() {
                     <div style={{ fontSize: 11, color: "#6b6050" }}>
                       {restLocation.lat?.toFixed(5)},{" "}
                       {restLocation.lon?.toFixed(5)}
+                    </div>
+                    <div style={{ fontSize: 11, color: "#c8a97e", marginTop: 4 }}>
+                      ⏳ Necesită aprobare SuperAdmin
                     </div>
                   </div>
                   <button

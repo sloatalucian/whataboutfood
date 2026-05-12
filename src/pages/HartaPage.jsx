@@ -121,7 +121,7 @@ const PIN_STYLE = `
 `;
 
 export default function HartaPage() {
-  const { navigate } = useApp();
+  const { navigate, dispatch } = useApp();
   const mapRef = useRef(null);
   const leafletMap = useRef(null);
   const registeredLayer = useRef(null);
@@ -275,16 +275,21 @@ export default function HartaPage() {
       // Pinuri aprobate manual (din map_pin_requests)
       approvedPins.forEach((pin) => {
         if (!pin.lat || !pin.lon) return;
+        // Cauta restaurantul din DB care corespunde acestui pin (dupa nume)
+        const matchingRest = registeredRestaurants.find(
+          (r) => r.name.toLowerCase() === pin.name.toLowerCase(),
+        );
+        const fullData = matchingRest || { name: pin.name, city: pin.city };
         const icon = makeIcon(pin.name, true, zoom);
         L.marker([pin.lat, pin.lon], { icon, zIndexOffset: 1000 })
           .on("click", () =>
             setSelectedMarker({
-              id: `pin_${pin.id}`,
+              id: matchingRest ? matchingRest.id : `pin_${pin.id}`,
               name: pin.name,
               lat: pin.lat,
               lon: pin.lon,
               isRegistered: true,
-              registeredData: { name: pin.name, city: pin.city },
+              registeredData: fullData,
             }),
           )
           .addTo(registeredLayer.current);
@@ -742,9 +747,14 @@ export default function HartaPage() {
             </button>
           </div>
 
-          {selectedMarker.isRegistered ? (
+          {selectedMarker.isRegistered && selectedMarker.registeredData?.id ? (
             <button
-              onClick={() => navigate("restaurant")}
+              onClick={() =>
+                dispatch({
+                  type: "SET_REST",
+                  payload: selectedMarker.registeredData,
+                })
+              }
               style={{
                 width: "100%",
                 padding: "12px",
@@ -760,6 +770,19 @@ export default function HartaPage() {
             >
               🍽️ Vezi locația în aplicație
             </button>
+          ) : selectedMarker.isRegistered ? (
+            <div
+              style={{
+                background: "rgba(255,255,255,.04)",
+                borderRadius: 12,
+                padding: "12px",
+                textAlign: "center",
+              }}
+            >
+              <div style={{ fontSize: 13, color: "#c8a97e" }}>
+                📍 Locație înregistrată pe WhataboutFood
+              </div>
+            </div>
           ) : (
             <div
               style={{
