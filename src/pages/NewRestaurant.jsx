@@ -73,7 +73,11 @@ function RestaurantLocationPicker({ city, onSelect, onClose }) {
       }).addTo(leafletMap.current);
       L.control.zoom({ position: "bottomright" }).addTo(leafletMap.current);
       markersLayer.current = L.layerGroup().addTo(leafletMap.current);
-      leafletMap.current.on("moveend zoomend", fetchPOIs);
+      leafletMap.current.on("zoomend", () => {
+        const z = leafletMap.current.getZoom();
+        if (allPOIs.current.length > 0) renderPOIs(allPOIs.current, z);
+      });
+      leafletMap.current.on("moveend", () => {});
       setTimeout(fetchPOIs, 600);
     };
 
@@ -86,19 +90,45 @@ function RestaurantLocationPicker({ city, onSelect, onClose }) {
     }
   }, []);
 
+  const allPOIs = useRef([]);
+  const loadedCity = useRef(null);
+
   const fetchPOIs = useCallback(async () => {
     if (!leafletMap.current || !window.L) return;
-    const zoom = leafletMap.current.getZoom();
-    if (zoom < 13) return;
-    const b = leafletMap.current.getBounds();
-    const query = `[out:json][timeout:15];(node["amenity"~"restaurant|cafe|bar|fast_food|pub|bistro"](${b.getSouth()},${b.getWest()},${b.getNorth()},${b.getEast()}););out 80;`;
+    const cityKey = city || "Iași";
+
+    // Cache per oras - nu re-incarcam daca orasul e acelasi
+    if (loadedCity.current === cityKey && allPOIs.current.length > 0) {
+      const zoom = leafletMap.current.getZoom();
+      renderPOIs(allPOIs.current, zoom);
+      return;
+    }
+
+    const coords = CITY_COORDS_MAP[cityKey] || [47.1585, 27.6014];
+    const r = 0.07;
+    const s = coords[0] - r,
+      n = coords[0] + r,
+      w = coords[1] - r,
+      e = coords[1] + r;
+    const query = `[out:json][timeout:20];(node["amenity"~"restaurant|cafe|bar|fast_food|pub|bistro"](${s},${w},${n},${e}););out 200;`;
+
     setLoading(true);
     try {
-      const res = await fetch(
-        `https://overpass.kumi.systems/api/interpreter?data=${encodeURIComponent(query)}`,
-      );
-      if (!res.ok) throw new Error();
-      const data = await res.json();
+      let data = null;
+      try {
+        const res = await fetch(
+          `https://overpass.kumi.systems/api/interpreter?data=${encodeURIComponent(query)}`,
+        );
+        if (res.ok) data = await res.json();
+      } catch (_) {}
+      if (!data) {
+        const res2 = await fetch(
+          `https://lz4.overpass-api.de/api/interpreter?data=${encodeURIComponent(query)}`,
+        );
+        if (res2.ok) data = await res2.json();
+      }
+      if (!data) throw new Error();
+
       const pois = (data.elements || [])
         .filter((el) => el.tags?.name && el.lat && el.lon)
         .map((el) => ({
@@ -108,10 +138,14 @@ function RestaurantLocationPicker({ city, onSelect, onClose }) {
           lon: el.lon,
           address: el.tags["addr:street"] || "",
         }));
+
+      allPOIs.current = pois;
+      loadedCity.current = cityKey;
+      const zoom = leafletMap.current.getZoom();
       renderPOIs(pois, zoom);
     } catch (e) {}
     setLoading(false);
-  }, []);
+  }, [city]);
 
   const renderPOIs = useCallback((pois, zoom) => {
     if (!markersLayer.current || !window.L) return;
@@ -156,11 +190,16 @@ function RestaurantLocationPicker({ city, onSelect, onClose }) {
     });
   }, []);
 
+  const searchTimer = useRef(null);
   const searchOverpass = async (q) => {
     if (q.trim().length < 2) {
       setSearchResults([]);
       return;
     }
+    if (searchTimer.current) clearTimeout(searchTimer.current);
+    await new Promise((r) => {
+      searchTimer.current = setTimeout(r, 500);
+    });
     setLoading(true);
     try {
       const query = `[out:json][timeout:10];node["name"~"${q}","i"]["amenity"~"restaurant|cafe|bar|fast_food|pub"](44.0,20.0,48.5,30.0);out 8;`;
@@ -358,7 +397,7 @@ function RestaurantLocationPicker({ city, onSelect, onClose }) {
             borderRadius: 20,
             padding: "18px 20px",
             boxShadow: "0 -4px 32px rgba(0,0,0,.6)",
-            zIndex: 200,
+            zIndex: 9999,
           }}
         >
           <div
