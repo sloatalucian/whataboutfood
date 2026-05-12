@@ -145,7 +145,7 @@ export default function HartaPage() {
   useEffect(() => {
     supabase
       .from("restaurants")
-      .select("id, name, address, city, rating, type")
+      .select("id, name, address, city, rating, type, latitude, longitude")
       .then(({ data }) => setRegisteredRestaurants(data || []));
   }, []);
 
@@ -255,7 +255,11 @@ export default function HartaPage() {
       registeredLayer.current.clearLayers();
 
       registeredRestaurants.forEach((rest) => {
-        const coords = RESTAURANT_COORDS[rest.name];
+        // Folosim coordonatele din DB daca exista, altfel coordonatele demo
+        const coords =
+          rest.latitude && rest.longitude
+            ? [rest.latitude, rest.longitude]
+            : RESTAURANT_COORDS[rest.name];
         if (!coords) return;
 
         const icon = makeIcon(rest.name, true, zoom);

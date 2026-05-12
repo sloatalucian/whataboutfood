@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
+import { createPortal } from "react-dom";
 import { useApp } from "../context/AppContext";
 import { supabase } from "../supabase";
 
@@ -95,9 +96,8 @@ function RestaurantLocationPicker({ city, onSelect, onClose }) {
 
   const fetchPOIs = useCallback(async () => {
     if (!leafletMap.current || !window.L) return;
-    const cityKey = city || "Iași";
+    const cityKey = mapCityRef.current;
 
-    // Cache per oras - nu re-incarcam daca orasul e acelasi
     if (loadedCity.current === cityKey && allPOIs.current.length > 0) {
       const zoom = leafletMap.current.getZoom();
       renderPOIs(allPOIs.current, zoom);
@@ -105,29 +105,26 @@ function RestaurantLocationPicker({ city, onSelect, onClose }) {
     }
 
     const coords = CITY_COORDS_MAP[cityKey] || [47.1585, 27.6014];
-    const r = 0.07;
+    const r = 0.09;
     const s = coords[0] - r,
       n = coords[0] + r,
       w = coords[1] - r,
       e = coords[1] + r;
-    const query = `[out:json][timeout:20];(node["amenity"~"restaurant|cafe|bar|fast_food|pub|bistro"](${s},${w},${n},${e}););out 200;`;
+    const query = `[out:json][timeout:25];(node["amenity"~"restaurant|cafe|bar|fast_food|pub|bistro"](${s},${w},${n},${e}););out 300;`;
+
+    const tryFetch = (url) =>
+      fetch(url).then((r) => (r.ok ? r.json() : Promise.reject()));
 
     setLoading(true);
     try {
-      let data = null;
-      try {
-        const res = await fetch(
+      const data = await Promise.any([
+        tryFetch(
           `https://overpass.kumi.systems/api/interpreter?data=${encodeURIComponent(query)}`,
-        );
-        if (res.ok) data = await res.json();
-      } catch (_) {}
-      if (!data) {
-        const res2 = await fetch(
+        ),
+        tryFetch(
           `https://lz4.overpass-api.de/api/interpreter?data=${encodeURIComponent(query)}`,
-        );
-        if (res2.ok) data = await res2.json();
-      }
-      if (!data) throw new Error();
+        ),
+      ]);
 
       const pois = (data.elements || [])
         .filter((el) => el.tags?.name && el.lat && el.lon)
@@ -145,7 +142,7 @@ function RestaurantLocationPicker({ city, onSelect, onClose }) {
       renderPOIs(pois, zoom);
     } catch (e) {}
     setLoading(false);
-  }, [city]);
+  }, []);
 
   const renderPOIs = useCallback((pois, zoom) => {
     if (!markersLayer.current || !window.L) return;
@@ -237,12 +234,14 @@ function RestaurantLocationPicker({ city, onSelect, onClose }) {
 
   const [showCityDrop, setShowCityDrop] = useState(false);
   const [mapCity, setMapCity] = useState(city || "Iași");
+  const mapCityRef = useRef(city || "Iași");
 
   // Schimba orasul pe harta
   const changeCity = (newCity) => {
+    mapCityRef.current = newCity;
     setMapCity(newCity);
     setShowCityDrop(false);
-    loadedCity.current = null; // reset cache
+    loadedCity.current = null;
     allPOIs.current = [];
     if (leafletMap.current && CITY_COORDS_MAP[newCity]) {
       leafletMap.current.setView(CITY_COORDS_MAP[newCity], 15);
@@ -250,7 +249,7 @@ function RestaurantLocationPicker({ city, onSelect, onClose }) {
     }
   };
 
-  return (
+  return createPortal(
     <div
       style={{
         position: "fixed",
@@ -617,7 +616,8 @@ function RestaurantLocationPicker({ city, onSelect, onClose }) {
       )}
 
       <style>{`.leaflet-container{background:#1a1510!important}.leaflet-control-attribution{display:none!important}.leaflet-control-zoom{margin-bottom:${confirming ? "200px" : "20px"}!important}`}</style>
-    </div>
+    </div>,
+    document.body
   );
 }
 

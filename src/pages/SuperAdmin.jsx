@@ -228,6 +228,29 @@ export default function SuperAdmin() {
         .from("profiles")
         .update({ status: "approved", approved_at: new Date().toISOString() })
         .eq("id", id);
+
+      // Salvam coordonatele in tabelul restaurants daca proprietarul le-a ales
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("rest_location")
+        .eq("id", id)
+        .single();
+
+      if (profile?.rest_location) {
+        try {
+          const loc =
+            typeof profile.rest_location === "string"
+              ? JSON.parse(profile.rest_location)
+              : profile.rest_location;
+          if (loc?.lat && loc?.lon) {
+            await supabase
+              .from("restaurants")
+              .update({ latitude: loc.lat, longitude: loc.lon })
+              .eq("owner_id", id);
+          }
+        } catch (_) {}
+      }
+
       setCereri((prev) => prev.filter((c) => c.id !== id));
       showToast(`✅ ${name} aprobat!`);
       loadAll();
