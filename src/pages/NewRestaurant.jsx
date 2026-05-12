@@ -222,6 +222,21 @@ function RestaurantLocationPicker({ city, onSelect, onClose }) {
     setLoading(false);
   };
 
+  const [showCityDrop, setShowCityDrop] = useState(false);
+  const [mapCity, setMapCity] = useState(city || "Iași");
+
+  // Schimba orasul pe harta
+  const changeCity = (newCity) => {
+    setMapCity(newCity);
+    setShowCityDrop(false);
+    loadedCity.current = null; // reset cache
+    allPOIs.current = [];
+    if (leafletMap.current && CITY_COORDS_MAP[newCity]) {
+      leafletMap.current.setView(CITY_COORDS_MAP[newCity], 15);
+      setTimeout(fetchPOIs, 300);
+    }
+  };
+
   return (
     <div
       style={{
@@ -233,6 +248,7 @@ function RestaurantLocationPicker({ city, onSelect, onClose }) {
         background: "#0a0805",
       }}
     >
+      {/* HEADER FIX SUS */}
       <div
         style={{
           background: "#0d0a07",
@@ -244,10 +260,11 @@ function RestaurantLocationPicker({ city, onSelect, onClose }) {
           flexShrink: 0,
           position: "relative",
           overflow: "visible",
-          zIndex: 100,
+          zIndex: 500,
         }}
       >
-        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+        {/* Rand 1: back + titlu + dropdown oras */}
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <button
             onClick={onClose}
             style={{
@@ -262,6 +279,7 @@ function RestaurantLocationPicker({ city, onSelect, onClose }) {
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
+              flexShrink: 0,
             }}
           >
             ←
@@ -269,19 +287,90 @@ function RestaurantLocationPicker({ city, onSelect, onClose }) {
           <span
             style={{
               fontFamily: "'Fraunces',serif",
-              fontSize: 16,
+              fontSize: 15,
               fontWeight: 900,
               color: "#f0ebe3",
               flex: 1,
             }}
           >
-            📍 Alege locația restaurantului
+            📍 Alege locația
           </span>
           {loading && (
-            <span style={{ fontSize: 11, color: "#c8a97e" }}>⏳</span>
+            <span style={{ fontSize: 11, color: "#c8a97e", flexShrink: 0 }}>
+              ⏳
+            </span>
           )}
+
+          {/* Dropdown oras */}
+          <div style={{ position: "relative", flexShrink: 0 }}>
+            <button
+              onClick={() => setShowCityDrop(!showCityDrop)}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 5,
+                padding: "7px 12px",
+                background: "#c0622f",
+                border: "none",
+                borderRadius: 20,
+                color: "#fff",
+                fontSize: 12,
+                fontWeight: 700,
+                cursor: "pointer",
+              }}
+            >
+              <span>📍</span>
+              <span
+                style={{
+                  maxWidth: 70,
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                {mapCity}
+              </span>
+              <span style={{ fontSize: 9 }}>▾</span>
+            </button>
+            {showCityDrop && (
+              <div
+                style={{
+                  position: "fixed",
+                  top: 60,
+                  right: 16,
+                  background: "#1a1510",
+                  border: "1px solid #2a2218",
+                  borderRadius: 14,
+                  width: 200,
+                  maxHeight: 300,
+                  overflowY: "auto",
+                  zIndex: 99999,
+                  boxShadow: "0 8px 32px rgba(0,0,0,.9)",
+                }}
+              >
+                {Object.keys(CITY_COORDS_MAP).map((oras) => (
+                  <div
+                    key={oras}
+                    onClick={() => changeCity(oras)}
+                    style={{
+                      padding: "10px 16px",
+                      cursor: "pointer",
+                      fontSize: 13,
+                      color: oras === mapCity ? "#c0622f" : "#c8a97e",
+                      fontWeight: oras === mapCity ? 700 : 400,
+                      borderBottom: "1px solid rgba(255,255,255,.04)",
+                    }}
+                  >
+                    {oras === mapCity ? "✓ " : ""}
+                    {oras}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
 
+        {/* Rand 2: search */}
         <div style={{ position: "relative", zIndex: 9999 }}>
           <div
             style={{
@@ -343,7 +432,7 @@ function RestaurantLocationPicker({ city, onSelect, onClose }) {
                 border: "1px solid #2a2218",
                 borderRadius: 14,
                 overflow: "hidden",
-                boxShadow: "0 8px 24px rgba(0,0,0,.7)",
+                boxShadow: "0 8px 24px rgba(0,0,0,.8)",
                 zIndex: 99999,
               }}
             >
@@ -378,26 +467,25 @@ function RestaurantLocationPicker({ city, onSelect, onClose }) {
             </div>
           )}
         </div>
-        <div style={{ fontSize: 11, color: "#6b6050", textAlign: "center" }}>
-          Dă click pe un pin pentru a selecta restaurantul
-        </div>
       </div>
 
-      <div ref={mapRef} style={{ flex: 1 }} />
+      {/* HARTA */}
+      <div ref={mapRef} style={{ flex: 1, width: "100%" }} />
 
+      {/* POPUP CONFIRMARE - fix jos */}
       {confirming && (
         <div
           style={{
-            position: "absolute",
-            bottom: 16,
-            left: 16,
-            right: 16,
+            position: "fixed",
+            bottom: 0,
+            left: 0,
+            right: 0,
             background: "#1a1510",
             border: "1px solid rgba(192,98,47,.4)",
-            borderRadius: 20,
-            padding: "18px 20px",
-            boxShadow: "0 -4px 32px rgba(0,0,0,.6)",
-            zIndex: 9999,
+            borderRadius: "20px 20px 0 0",
+            padding: "20px 20px 32px",
+            boxShadow: "0 -8px 40px rgba(0,0,0,.7)",
+            zIndex: 99999,
           }}
         >
           <div
@@ -414,7 +502,7 @@ function RestaurantLocationPicker({ city, onSelect, onClose }) {
           <div
             style={{
               fontFamily: "'Fraunces',serif",
-              fontSize: 17,
+              fontSize: 18,
               fontWeight: 900,
               color: "#f0ebe3",
               marginBottom: 4,
@@ -429,7 +517,7 @@ function RestaurantLocationPicker({ city, onSelect, onClose }) {
                 fontSize: 12,
                 color: "#6b6050",
                 textAlign: "center",
-                marginBottom: 14,
+                marginBottom: 16,
               }}
             >
               📍 {confirming.address}
@@ -449,7 +537,7 @@ function RestaurantLocationPicker({ city, onSelect, onClose }) {
               }}
               style={{
                 flex: 1,
-                padding: "12px",
+                padding: "14px",
                 background: "#1e1a14",
                 border: "1px solid #2a2218",
                 borderRadius: 14,
@@ -472,7 +560,7 @@ function RestaurantLocationPicker({ city, onSelect, onClose }) {
               }
               style={{
                 flex: 2,
-                padding: "12px",
+                padding: "14px",
                 background: "linear-gradient(135deg,#c0622f,#8b3a18)",
                 border: "none",
                 borderRadius: 14,
@@ -488,7 +576,8 @@ function RestaurantLocationPicker({ city, onSelect, onClose }) {
           </div>
         </div>
       )}
-      <style>{`.leaflet-container{background:#1a1510!important}.leaflet-control-attribution{display:none!important}`}</style>
+
+      <style>{`.leaflet-container{background:#1a1510!important}.leaflet-control-attribution{display:none!important}.leaflet-control-zoom{margin-bottom:${confirming ? "200px" : "20px"}!important}`}</style>
     </div>
   );
 }
