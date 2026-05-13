@@ -68,10 +68,13 @@ const PIN_CSS = `
     box-shadow: 0 3px 12px rgba(192,98,47,.6);
     cursor: pointer;
     position: relative;
+    display: block;
+    width: fit-content;
     max-width: 150px;
     overflow: hidden;
     text-overflow: ellipsis;
     user-select: none;
+    transform: translateX(-50%);
   }
   .waf-pin-o::after {
     content: '';
@@ -96,10 +99,13 @@ const PIN_CSS = `
     box-shadow: 0 2px 6px rgba(0,0,0,.5);
     cursor: pointer;
     position: relative;
+    display: block;
+    width: fit-content;
     max-width: 120px;
     overflow: hidden;
     text-overflow: ellipsis;
     user-select: none;
+    transform: translateX(-50%);
   }
   .waf-pin-g::after {
     content: '';
@@ -225,7 +231,7 @@ export default function HartaPage() {
           registeredData: rest,
         }),
       );
-      const anchor = isLabel ? "bottom" : "center";
+      const anchor = "center";
       const marker = new maplibregl.Marker({ element: el, anchor })
         .setLngLat([rest.longitude, rest.latitude])
         .addTo(mapRef.current);
@@ -248,7 +254,7 @@ export default function HartaPage() {
           registeredData: match || { name: pin.name, city: pin.city },
         }),
       );
-      const anchor2 = isLabel ? "bottom" : "center";
+      const anchor2 = "center";
       const marker = new maplibregl.Marker({ element: el, anchor: anchor2 })
         .setLngLat([pin.lon, pin.lat])
         .addTo(mapRef.current);
@@ -270,7 +276,7 @@ export default function HartaPage() {
         el.addEventListener("click", () =>
           setSelectedMarker({ ...poi, isRegistered: false }),
         );
-        const anchorOvp = isLabel ? "bottom" : "center";
+        const anchorOvp = "center";
         const marker = new maplibregl.Marker({ element: el, anchor: anchorOvp })
           .setLngLat([poi.lon, poi.lat])
           .addTo(mapRef.current);
@@ -358,6 +364,8 @@ export default function HartaPage() {
       style: "https://tiles.openfreemap.org/styles/bright",
       center: toLngLat(CITY_COORDS["Iași"]),
       zoom: 15,
+      minZoom: 6,
+      maxZoom: 19,
       attributionControl: false,
     });
     map.addControl(
