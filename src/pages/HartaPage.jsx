@@ -74,7 +74,6 @@ const PIN_CSS = `
     overflow: hidden;
     text-overflow: ellipsis;
     user-select: none;
-    transform: translateX(-50%);
   }
   .waf-pin-o::after {
     content: '';
@@ -105,7 +104,6 @@ const PIN_CSS = `
     overflow: hidden;
     text-overflow: ellipsis;
     user-select: none;
-    transform: translateX(-50%);
   }
   .waf-pin-g::after {
     content: '';
@@ -191,15 +189,30 @@ export default function HartaPage() {
   }, []);
 
   function makeEl(name, isReg, isLabel) {
+    // Wrapper de 0x0 — punctul de ancorare e mereu centrul wrapper-ului
+    const wrapper = document.createElement("div");
+    wrapper.dataset.name = name;
+    wrapper.style.cssText =
+      "width:0;height:0;position:relative;overflow:visible;";
+
     const el = document.createElement("div");
     el.dataset.name = name;
+
     if (isLabel) {
       el.className = isReg ? "waf-pin-o" : "waf-pin-g";
       el.textContent = name;
+      // Pinul apare deasupra punctului de ancorare, centrat orizontal
+      el.style.cssText =
+        "position:absolute;bottom:4px;left:50%;transform:translateX(-50%);";
     } else {
       el.className = isReg ? "waf-dot-o" : "waf-dot-g";
+      // Dot centrat pe punctul de ancorare
+      const size = isReg ? 14 : 10;
+      el.style.cssText = `position:absolute;top:${-size / 2}px;left:${-size / 2}px;`;
     }
-    return el;
+
+    wrapper.appendChild(el);
+    return wrapper;
   }
 
   function clearReg() {
@@ -382,7 +395,6 @@ export default function HartaPage() {
       const isLabel = map.getZoom() >= 14;
       if (isLabel === prevIsLabel) return;
       prevIsLabel = isLabel;
-      // Re-render complet cu anchor corect pentru noul zoom level
       renderRegistered(map.getZoom());
       if (overpassPOIsRef.current.length > 0)
         renderOverpass(overpassPOIsRef.current, map.getZoom());

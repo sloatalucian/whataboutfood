@@ -132,12 +132,24 @@ function RestaurantLocationPicker({ city, onSelect, onClose, showToast }) {
     const isLabel = zoom >= 14;
 
     pois.forEach((poi) => {
+      // Wrapper 0x0 - ancorare stabila la orice zoom
+      const wrapper = document.createElement("div");
+      wrapper.style.cssText =
+        "width:0;height:0;position:relative;overflow:visible;";
+
       const el = document.createElement("div");
       el.dataset.name = poi.name;
       el.className = isLabel ? "waf-pp" : "waf-pd";
-      if (isLabel) el.textContent = poi.name;
+      if (isLabel) {
+        el.textContent = poi.name;
+        el.style.cssText =
+          "position:absolute;bottom:4px;left:50%;transform:translateX(-50%);";
+      } else {
+        el.style.cssText = "position:absolute;top:-5px;left:-5px;";
+      }
+      wrapper.appendChild(el);
 
-      el.addEventListener("click", () => {
+      wrapper.addEventListener("click", () => {
         if (addingModeRef.current) return;
         if (selectedElRef.current)
           selectedElRef.current.classList.remove("sel");
@@ -147,7 +159,10 @@ function RestaurantLocationPicker({ city, onSelect, onClose, showToast }) {
         setConfirming(poi);
       });
 
-      const marker = new maplibregl.Marker({ element: el, anchor: "bottom" })
+      const marker = new maplibregl.Marker({
+        element: wrapper,
+        anchor: "center",
+      })
         .setLngLat([poi.lon, poi.lat])
         .addTo(mapRef.current);
       poiMarkersRef.current.push({ marker, el });
