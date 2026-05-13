@@ -1,4 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
+import maplibregl from "maplibre-gl";
+import "maplibre-gl/dist/maplibre-gl.css";
 import { useApp } from "../context/AppContext";
 import { supabase } from "../supabase";
 
@@ -29,38 +31,53 @@ const CITY_COORDS = {
   Deva: [45.885, 22.9108],
 };
 
-const RESTAURANT_COORDS = {
-  "Mama Mia": [47.1578, 27.5885],
-  "Sushi Zen": [47.1582, 27.5892],
-  "Verde Bistro": [47.1575, 27.5898],
-  "Burger Big": [47.1585, 27.5878],
-  "Muu Bistro": [47.1572, 27.5905],
-  "Pizza Nico": [47.1588, 27.587],
-};
-
 const ORASE = Object.keys(CITY_COORDS);
 
-// CSS injectat global pentru pini
-const PIN_STYLE = `
-  .waf-pin-orange {
-    background: #c0622f !important;
-    border: 2px solid #8b3a18 !important;
-    border-radius: 10px !important;
-    padding: 5px 10px !important;
-    font-size: 12px !important;
-    font-weight: 700 !important;
-    color: #ffffff !important;
-    font-family: sans-serif !important;
-    white-space: nowrap !important;
-    box-shadow: 0 3px 12px rgba(192,98,47,0.6) !important;
-    cursor: pointer !important;
-    position: relative !important;
-    display: inline-block !important;
-    max-width: 150px !important;
-    overflow: hidden !important;
-    text-overflow: ellipsis !important;
+// [lat, lon] → [lon, lat] for MapLibre
+const toLngLat = ([lat, lon]) => [lon, lat];
+
+// Haversine-lite: meters between two points (good enough for < 1 km)
+function distMeters(lat1, lon1, lat2, lon2) {
+  const dLat = lat2 - lat1;
+  const dLon = (lon2 - lon1) * Math.cos((lat1 * Math.PI) / 180);
+  return Math.sqrt(dLat * dLat + dLon * dLon) * 111000;
+}
+
+function dedup(pois) {
+  const kept = [];
+  for (const poi of pois) {
+    const dupe = kept.find(
+      (k) =>
+        k.name.toLowerCase() === poi.name.toLowerCase() &&
+        distMeters(k.lat, k.lon, poi.lat, poi.lon) < 200,
+    );
+    if (!dupe) kept.push(poi);
   }
-  .waf-pin-orange::after {
+  return kept;
+}
+
+const cacheKey = (city) => `pois_${city}`;
+
+const PIN_CSS = `
+  .waf-pin-o {
+    background: #c0622f;
+    border: 2px solid #8b3a18;
+    border-radius: 10px;
+    padding: 4px 10px;
+    font-size: 12px;
+    font-weight: 700;
+    color: #fff;
+    font-family: sans-serif;
+    white-space: nowrap;
+    box-shadow: 0 3px 12px rgba(192,98,47,.6);
+    cursor: pointer;
+    position: relative;
+    max-width: 150px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    user-select: none;
+  }
+  .waf-pin-o::after {
     content: '';
     position: absolute;
     bottom: -7px; left: 50%;
@@ -70,25 +87,25 @@ const PIN_STYLE = `
     border-right: 6px solid transparent;
     border-top: 7px solid #c0622f;
   }
-  .waf-pin-gray {
-    background: #2a2a2a !important;
-    border: 1.5px solid #555 !important;
-    border-radius: 8px !important;
-    padding: 3px 8px !important;
-    font-size: 11px !important;
-    font-weight: 500 !important;
-    color: #aaaaaa !important;
-    font-family: sans-serif !important;
-    white-space: nowrap !important;
-    box-shadow: 0 2px 6px rgba(0,0,0,0.5) !important;
-    cursor: pointer !important;
-    position: relative !important;
-    display: inline-block !important;
-    max-width: 120px !important;
-    overflow: hidden !important;
-    text-overflow: ellipsis !important;
+  .waf-pin-g {
+    background: #2a2a2a;
+    border: 1.5px solid #555;
+    border-radius: 8px;
+    padding: 3px 8px;
+    font-size: 11px;
+    font-weight: 500;
+    color: #aaa;
+    font-family: sans-serif;
+    white-space: nowrap;
+    box-shadow: 0 2px 6px rgba(0,0,0,.5);
+    cursor: pointer;
+    position: relative;
+    max-width: 120px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    user-select: none;
   }
-  .waf-pin-gray::after {
+  .waf-pin-g::after {
     content: '';
     position: absolute;
     bottom: -6px; left: 50%;
@@ -98,51 +115,55 @@ const PIN_STYLE = `
     border-right: 5px solid transparent;
     border-top: 6px solid #2a2a2a;
   }
-  .waf-dot-gray {
-    width: 10px !important;
-    height: 10px !important;
-    background: #555 !important;
-    border: 1.5px solid #888 !important;
-    border-radius: 50% !important;
-    cursor: pointer !important;
-    box-shadow: 0 1px 4px rgba(0,0,0,0.4) !important;
+  .waf-dot-o {
+    width: 14px; height: 14px;
+    background: #c0622f;
+    border: 2px solid #fff;
+    border-radius: 50%;
+    cursor: pointer;
+    box-shadow: 0 2px 6px rgba(192,98,47,.7);
+    user-select: none;
   }
-  .waf-dot-orange {
-    width: 14px !important;
-    height: 14px !important;
-    background: #c0622f !important;
-    border: 2px solid #fff !important;
-    border-radius: 50% !important;
-    cursor: pointer !important;
-    box-shadow: 0 2px 6px rgba(192,98,47,0.7) !important;
+  .waf-dot-g {
+    width: 10px; height: 10px;
+    background: #555;
+    border: 1.5px solid #888;
+    border-radius: 50%;
+    cursor: pointer;
+    box-shadow: 0 1px 4px rgba(0,0,0,.4);
+    user-select: none;
   }
-  .leaflet-container { background: #1a1510 !important; }
-  .leaflet-control-attribution { display: none !important; }
+  .maplibregl-ctrl-bottom-right { margin-bottom: 80px !important; }
+  .maplibregl-ctrl-attrib { display: none !important; }
 `;
 
 export default function HartaPage() {
   const { navigate, dispatch } = useApp();
+  const containerRef = useRef(null);
   const mapRef = useRef(null);
-  const leafletMap = useRef(null);
-  const registeredLayer = useRef(null);
-  const overpassLayer = useRef(null);
-  const scriptLoaded = useRef(false);
-  const fetchTimer = useRef(null);
-  const loadedCity = useRef(null);
-  const cachedPOIs = useRef([]);
+  const regMarkersRef = useRef([]);
+  const ovpMarkersRef = useRef([]);
 
+  const [mapReady, setMapReady] = useState(false);
   const [selectedCity, setSelectedCity] = useState("Iași");
   const [showCities, setShowCities] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(false);
   const [registeredRestaurants, setRegisteredRestaurants] = useState([]);
   const [approvedPins, setApprovedPins] = useState([]);
-  const [selectedMarker, setSelectedMarker] = useState(null);
   const [overpassPOIs, setOverpassPOIs] = useState([]);
-  const [mapReady, setMapReady] = useState(false);
+  const [selectedMarker, setSelectedMarker] = useState(null);
   const [currentZoom, setCurrentZoom] = useState(15);
 
-  // Incarca restaurante din DB + pinuri aprobate
+  // Inject CSS once
+  useEffect(() => {
+    const s = document.createElement("style");
+    s.textContent = PIN_CSS;
+    document.head.appendChild(s);
+    return () => { try { document.head.removeChild(s); } catch (_) {} };
+  }, []);
+
+  // Load DB data
   useEffect(() => {
     supabase
       .from("restaurants")
@@ -157,247 +178,203 @@ export default function HartaPage() {
       .then(({ data }) => setApprovedPins(data || []));
   }, []);
 
-  // Injecteaza CSS global
+  // Init map
   useEffect(() => {
-    const style = document.createElement("style");
-    style.textContent = PIN_STYLE;
-    document.head.appendChild(style);
-    return () => document.head.removeChild(style);
-  }, []);
-
-  // Initializeaza Leaflet
-  useEffect(() => {
-    if (scriptLoaded.current) return;
-    scriptLoaded.current = true;
-
-    const css = document.createElement("link");
-    css.rel = "stylesheet";
-    css.href = "https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.min.css";
-    document.head.appendChild(css);
-
-    const js = document.createElement("script");
-    js.src = "https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.min.js";
-    js.onload = () => {
-      if (!mapRef.current || leafletMap.current) return;
-      const L = window.L;
-
-      leafletMap.current = L.map(mapRef.current, {
-        center: CITY_COORDS["Iași"],
-        zoom: 15,
-        zoomControl: false,
-      });
-
-      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-        maxZoom: 19,
-      }).addTo(leafletMap.current);
-
-      L.control.zoom({ position: "bottomright" }).addTo(leafletMap.current);
-
-      registeredLayer.current = L.layerGroup().addTo(leafletMap.current);
-      overpassLayer.current = L.layerGroup().addTo(leafletMap.current);
-
-      leafletMap.current.on("zoomend", () => {
-        const z = leafletMap.current.getZoom();
-        setCurrentZoom(z);
-        // La zoom re-randam markerii din cache cu stilul potrivit
-        if (cachedPOIs.current.length > 0) {
-          renderOverpassMarkers(cachedPOIs.current, z);
-        }
-      });
-
+    if (!containerRef.current) return;
+    const center = CITY_COORDS["Iași"];
+    const map = new maplibregl.Map({
+      container: containerRef.current,
+      style: "https://tiles.openfreemap.org/styles/bright",
+      center: toLngLat(center),
+      zoom: 15,
+      attributionControl: false,
+    });
+    map.addControl(
+      new maplibregl.NavigationControl({ showCompass: false }),
+      "bottom-right",
+    );
+    map.on("load", () => {
+      mapRef.current = map;
       setMapReady(true);
+    });
+    map.on("zoomend", () => setCurrentZoom(map.getZoom()));
+    return () => {
+      map.remove();
+      mapRef.current = null;
     };
-    document.head.appendChild(js);
   }, []);
 
-  // Adauga markeri inregistrati cand harta si datele sunt gata
-  useEffect(() => {
-    if (!mapReady || !registeredLayer.current || !window.L) return;
-    addRegisteredMarkers(currentZoom);
-    if (registeredRestaurants.length > 0) fetchForCity(selectedCity);
-  }, [mapReady, registeredRestaurants, approvedPins]);
-
-  // Re-randeaza markerii inregistrati la zoom
-  useEffect(() => {
-    if (!mapReady || !registeredLayer.current || !window.L) return;
-    addRegisteredMarkers(currentZoom);
-  }, [currentZoom]);
-
-  const makeIcon = useCallback((name, isRegistered, zoom) => {
-    const L = window.L;
-    const showLabel = zoom >= 14;
-
-    if (showLabel) {
-      return L.divIcon({
-        className: "",
-        html: `<div class="${isRegistered ? "waf-pin-orange" : "waf-pin-gray"}">${name}</div>`,
-        iconSize: null,
-        iconAnchor: [0, 0],
-      });
+  // Build a marker DOM element
+  const makeEl = useCallback((name, isReg, zoom) => {
+    const el = document.createElement("div");
+    if (zoom >= 14) {
+      el.className = isReg ? "waf-pin-o" : "waf-pin-g";
+      el.textContent = name;
     } else {
-      return L.divIcon({
-        className: "",
-        html: `<div class="${isRegistered ? "waf-dot-orange" : "waf-dot-gray"}"></div>`,
-        iconSize: [isRegistered ? 14 : 10, isRegistered ? 14 : 10],
-        iconAnchor: [isRegistered ? 7 : 5, isRegistered ? 7 : 5],
-      });
+      el.className = isReg ? "waf-dot-o" : "waf-dot-g";
     }
+    return el;
   }, []);
 
-  const addRegisteredMarkers = useCallback(
+  // Clear helpers
+  const clearReg = () => { regMarkersRef.current.forEach((m) => m.remove()); regMarkersRef.current = []; };
+  const clearOvp = () => { ovpMarkersRef.current.forEach((m) => m.remove()); ovpMarkersRef.current = []; };
+
+  // Render registered + approved pins
+  const renderRegistered = useCallback(
     (zoom) => {
-      if (!registeredLayer.current || !window.L) return;
-      const L = window.L;
-      registeredLayer.current.clearLayers();
+      if (!mapRef.current) return;
+      clearReg();
+      const anchor = zoom >= 14 ? "bottom" : "center";
 
       registeredRestaurants.forEach((rest) => {
-        // Folosim coordonatele din DB daca exista, altfel coordonatele demo
-        const coords =
-          rest.latitude && rest.longitude
-            ? [rest.latitude, rest.longitude]
-            : RESTAURANT_COORDS[rest.name];
-        if (!coords) return;
-
-        const icon = makeIcon(rest.name, true, zoom);
-        L.marker(coords, { icon, zIndexOffset: 1000 })
-          .on("click", () =>
-            setSelectedMarker({
-              id: rest.id,
-              name: rest.name,
-              lat: coords[0],
-              lon: coords[1],
-              isRegistered: true,
-              registeredData: rest,
-            }),
-          )
-          .addTo(registeredLayer.current);
+        if (!rest.latitude || !rest.longitude) return;
+        const el = makeEl(rest.name, true, zoom);
+        el.addEventListener("click", () =>
+          setSelectedMarker({
+            id: rest.id,
+            name: rest.name,
+            lat: rest.latitude,
+            lon: rest.longitude,
+            isRegistered: true,
+            registeredData: rest,
+          }),
+        );
+        regMarkersRef.current.push(
+          new maplibregl.Marker({ element: el, anchor })
+            .setLngLat([rest.longitude, rest.latitude])
+            .addTo(mapRef.current),
+        );
       });
 
-      // Pinuri aprobate manual (din map_pin_requests)
       approvedPins.forEach((pin) => {
         if (!pin.lat || !pin.lon) return;
-        // Cauta restaurantul din DB care corespunde acestui pin (dupa nume)
-        const matchingRest = registeredRestaurants.find(
+        const match = registeredRestaurants.find(
           (r) => r.name.toLowerCase() === pin.name.toLowerCase(),
         );
-        const fullData = matchingRest || { name: pin.name, city: pin.city };
-        const icon = makeIcon(pin.name, true, zoom);
-        L.marker([pin.lat, pin.lon], { icon, zIndexOffset: 1000 })
-          .on("click", () =>
-            setSelectedMarker({
-              id: matchingRest ? matchingRest.id : `pin_${pin.id}`,
-              name: pin.name,
-              lat: pin.lat,
-              lon: pin.lon,
-              isRegistered: true,
-              registeredData: fullData,
-            }),
-          )
-          .addTo(registeredLayer.current);
+        const el = makeEl(pin.name, true, zoom);
+        el.addEventListener("click", () =>
+          setSelectedMarker({
+            id: match ? match.id : `pin_${pin.id}`,
+            name: pin.name,
+            lat: pin.lat,
+            lon: pin.lon,
+            isRegistered: true,
+            registeredData: match || { name: pin.name, city: pin.city },
+          }),
+        );
+        regMarkersRef.current.push(
+          new maplibregl.Marker({ element: el, anchor })
+            .setLngLat([pin.lon, pin.lat])
+            .addTo(mapRef.current),
+        );
       });
     },
-    [registeredRestaurants, approvedPins, makeIcon],
+    [registeredRestaurants, approvedPins, makeEl],
   );
 
-  // Incarca TOATE restaurantele din oras o singura data
+  // Render overpass POIs
+  const renderOverpass = useCallback(
+    (pois, zoom) => {
+      if (!mapRef.current) return;
+      clearOvp();
+      const anchor = zoom >= 14 ? "bottom" : "center";
+      const regNames = new Set(registeredRestaurants.map((r) => r.name.toLowerCase()));
+      pois
+        .filter((p) => !regNames.has(p.name.toLowerCase()))
+        .forEach((poi) => {
+          const el = makeEl(poi.name, false, zoom);
+          el.addEventListener("click", () =>
+            setSelectedMarker({ ...poi, isRegistered: false }),
+          );
+          ovpMarkersRef.current.push(
+            new maplibregl.Marker({ element: el, anchor })
+              .setLngLat([poi.lon, poi.lat])
+              .addTo(mapRef.current),
+          );
+        });
+    },
+    [registeredRestaurants, makeEl],
+  );
+
+  // Fetch Overpass (with localStorage cache)
   const fetchForCity = useCallback(
     async (city) => {
-      if (!window.L) return;
-      const coords = CITY_COORDS[city];
-      if (!coords) return;
-
-      // Nu re-incarcam daca orasul e acelasi si avem cache
-      if (loadedCity.current === city && cachedPOIs.current.length > 0) {
-        const zoom = leafletMap.current?.getZoom() || 15;
-        renderOverpassMarkers(cachedPOIs.current, zoom);
-        return;
-      }
-
-      setLoading(true);
-      overpassLayer.current?.clearLayers();
-
-      const r = 0.07;
-      const s = coords[0] - r,
-        n = coords[0] + r;
-      const w = coords[1] - r,
-        e = coords[1] + r;
-      const query = `[out:json][timeout:15];(node["amenity"~"restaurant|cafe|bar|fast_food|pub|bistro"](${s},${w},${n},${e}););out 200;`;
-
-      const tryFetch = (url) =>
-        fetch(url).then((r) => (r.ok ? r.json() : Promise.reject()));
+      const key = cacheKey(city);
+      let pois = null;
 
       try {
-        const data = await Promise.any([
-          tryFetch(
-            `https://overpass.kumi.systems/api/interpreter?data=${encodeURIComponent(query)}`,
-          ),
-          tryFetch(
-            `https://lz4.overpass-api.de/api/interpreter?data=${encodeURIComponent(query)}`,
-          ),
-        ]);
+        const raw = localStorage.getItem(key);
+        if (raw) pois = JSON.parse(raw);
+      } catch (_) {}
 
-        const registeredNames = registeredRestaurants.map((rr) =>
-          rr.name.toLowerCase(),
-        );
-        const pois = (data.elements || [])
-          .filter((el) => el.tags?.name && el.lat && el.lon)
-          .filter((el) => !registeredNames.includes(el.tags.name.toLowerCase()))
-          .map((el) => ({
-            id: el.id,
-            name: el.tags.name,
-            lat: el.lat,
-            lon: el.lon,
-            type: el.tags.amenity,
-            address: el.tags["addr:street"] || "",
-          }));
-
-        cachedPOIs.current = pois;
-        loadedCity.current = city;
-        setOverpassPOIs(pois);
-
-        const zoom = leafletMap.current?.getZoom() || 15;
-        renderOverpassMarkers(pois, zoom);
-      } catch (e) {
-        console.warn("Overpass indisponibil:", e);
+      if (!pois) {
+        const coords = CITY_COORDS[city];
+        if (!coords) return;
+        setLoading(true);
+        const r = 0.07;
+        const [clat, clon] = coords;
+        const query = `[out:json][timeout:15];(node["amenity"~"restaurant|cafe|bar|fast_food|pub|bistro"](${clat - r},${clon - r},${clat + r},${clon + r}););out 200;`;
+        const tryFetch = (url) =>
+          fetch(url).then((res) => (res.ok ? res.json() : Promise.reject()));
+        try {
+          const data = await Promise.any([
+            tryFetch(`https://overpass.kumi.systems/api/interpreter?data=${encodeURIComponent(query)}`),
+            tryFetch(`https://lz4.overpass-api.de/api/interpreter?data=${encodeURIComponent(query)}`),
+          ]);
+          const raw2 = (data.elements || [])
+            .filter((el) => el.tags?.name && el.lat && el.lon)
+            .map((el) => ({
+              id: el.id,
+              name: el.tags.name,
+              lat: el.lat,
+              lon: el.lon,
+              address: el.tags["addr:street"] || "",
+            }));
+          pois = dedup(raw2);
+          try { localStorage.setItem(key, JSON.stringify(pois)); } catch (_) {}
+        } catch (_) {
+          pois = [];
+        }
+        setLoading(false);
       }
-      setLoading(false);
+
+      setOverpassPOIs(pois);
+      renderOverpass(pois, mapRef.current?.getZoom() ?? 15);
     },
-    [registeredRestaurants],
+    [renderOverpass],
   );
 
-  const renderOverpassMarkers = useCallback(
-    (pois, zoom) => {
-      if (!overpassLayer.current || !window.L) return;
-      const L = window.L;
-      overpassLayer.current.clearLayers();
-      pois.forEach((poi) => {
-        const icon = makeIcon(poi.name, false, zoom);
-        L.marker([poi.lat, poi.lon], { icon, zIndexOffset: 0 })
-          .on("click", () => setSelectedMarker({ ...poi, isRegistered: false }))
-          .addTo(overpassLayer.current);
-      });
-    },
-    [makeIcon],
-  );
-
-  const fetchOverpass = fetchForCity;
-
-  // Schimba orasul
+  // On map ready + DB data: initial render
   useEffect(() => {
-    if (!leafletMap.current || !mapReady) return;
+    if (!mapReady) return;
+    renderRegistered(currentZoom);
+    fetchForCity(selectedCity);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mapReady, registeredRestaurants, approvedPins]);
+
+  // On zoom: re-render everything
+  useEffect(() => {
+    if (!mapReady) return;
+    renderRegistered(currentZoom);
+    if (overpassPOIs.length > 0) renderOverpass(overpassPOIs, currentZoom);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentZoom]);
+
+  // On city change: fly + fetch
+  useEffect(() => {
+    if (!mapRef.current || !mapReady) return;
     const coords = CITY_COORDS[selectedCity];
-    if (coords) {
-      leafletMap.current.setView(coords, 15);
-      fetchForCity(selectedCity);
-    }
-  }, [selectedCity, mapReady]);
+    if (!coords) return;
+    mapRef.current.flyTo({ center: toLngLat(coords), zoom: 15 });
+    fetchForCity(selectedCity);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedCity]);
 
   const searchResults =
     searchQuery.trim().length > 1
       ? overpassPOIs
-          .filter((p) =>
-            p.name.toLowerCase().includes(searchQuery.toLowerCase()),
-          )
+          .filter((p) => p.name.toLowerCase().includes(searchQuery.toLowerCase()))
           .slice(0, 6)
       : [];
 
@@ -406,7 +383,7 @@ export default function HartaPage() {
       style={{
         position: "fixed",
         inset: 0,
-        background: "#0a0805",
+        background: "#f8f4ef",
         display: "flex",
         flexDirection: "column",
         zIndex: 1000,
@@ -424,70 +401,44 @@ export default function HartaPage() {
           flexShrink: 0,
           zIndex: 9999,
           position: "relative",
-          overflow: "visible",
         }}
       >
-        {/* Rand 1 */}
+        {/* Row 1 */}
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <button
             onClick={() => navigate("home")}
             style={{
-              width: 36,
-              height: 36,
-              borderRadius: 10,
-              background: "#1a1510",
-              border: "1px solid #2a2218",
-              color: "#f0ebe3",
-              fontSize: 18,
-              cursor: "pointer",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
+              width: 36, height: 36, borderRadius: 10,
+              background: "#1a1510", border: "1px solid #2a2218",
+              color: "#f0ebe3", fontSize: 18, cursor: "pointer",
+              display: "flex", alignItems: "center", justifyContent: "center",
               flexShrink: 0,
             }}
           >
             ←
           </button>
-
           <span
             style={{
-              fontFamily: "'Fraunces',serif",
-              fontSize: 16,
-              fontWeight: 900,
-              color: "#f0ebe3",
-              flex: 1,
+              fontFamily: "'Fraunces',serif", fontSize: 16,
+              fontWeight: 900, color: "#f0ebe3", flex: 1,
             }}
           >
             🗺️ Hartă restaurante
           </span>
 
-          {/* Selector oras */}
+          {/* City selector */}
           <div style={{ position: "relative", zIndex: 500 }}>
             <button
               onClick={() => setShowCities(!showCities)}
               style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 6,
-                padding: "7px 14px",
-                background: "#c0622f",
-                border: "none",
-                borderRadius: 20,
-                color: "#fff",
-                fontSize: 12,
-                fontWeight: 700,
-                cursor: "pointer",
+                display: "flex", alignItems: "center", gap: 6,
+                padding: "7px 14px", background: "#c0622f",
+                border: "none", borderRadius: 20, color: "#fff",
+                fontSize: 12, fontWeight: 700, cursor: "pointer",
               }}
             >
               <span>📍</span>
-              <span
-                style={{
-                  maxWidth: 80,
-                  overflow: "hidden",
-                  textOverflow: "ellipsis",
-                  whiteSpace: "nowrap",
-                }}
-              >
+              <span style={{ maxWidth: 80, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                 {selectedCity}
               </span>
               <span style={{ fontSize: 10 }}>▾</span>
@@ -495,37 +446,25 @@ export default function HartaPage() {
             {showCities && (
               <div
                 style={{
-                  position: "fixed",
-                  top: 55,
-                  right: 16,
-                  background: "#1a1510",
-                  border: "1px solid #2a2218",
-                  borderRadius: 14,
-                  width: 200,
-                  maxHeight: 320,
-                  overflowY: "auto",
-                  zIndex: 9999,
+                  position: "fixed", top: 55, right: 16,
+                  background: "#1a1510", border: "1px solid #2a2218",
+                  borderRadius: 14, width: 200, maxHeight: 320,
+                  overflowY: "auto", zIndex: 9999,
                   boxShadow: "0 8px 32px rgba(0,0,0,.9)",
                 }}
               >
                 {ORASE.map((oras) => (
                   <div
                     key={oras}
-                    onClick={() => {
-                      setSelectedCity(oras);
-                      setShowCities(false);
-                    }}
+                    onClick={() => { setSelectedCity(oras); setShowCities(false); }}
                     style={{
-                      padding: "10px 16px",
-                      cursor: "pointer",
-                      fontSize: 13,
+                      padding: "10px 16px", cursor: "pointer", fontSize: 13,
                       color: oras === selectedCity ? "#c0622f" : "#c8a97e",
                       fontWeight: oras === selectedCity ? 700 : 400,
                       borderBottom: "1px solid rgba(255,255,255,.04)",
                     }}
                   >
-                    {oras === selectedCity ? "✓ " : ""}
-                    {oras}
+                    {oras === selectedCity ? "✓ " : ""}{oras}
                   </div>
                 ))}
               </div>
@@ -533,17 +472,13 @@ export default function HartaPage() {
           </div>
         </div>
 
-        {/* Rand 2: search */}
+        {/* Row 2: search */}
         <div style={{ position: "relative", zIndex: 9999 }}>
           <div
             style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 8,
-              background: "#1a1510",
-              border: "1px solid #2a2218",
-              borderRadius: 50,
-              padding: "9px 16px",
+              display: "flex", alignItems: "center", gap: 8,
+              background: "#1a1510", border: "1px solid #2a2218",
+              borderRadius: 50, padding: "9px 16px",
             }}
           >
             <span style={{ color: "#6b6050", fontSize: 14 }}>🔍</span>
@@ -554,25 +489,15 @@ export default function HartaPage() {
               onChange={(e) => setSearchQuery(e.target.value)}
               maxLength={60}
               style={{
-                flex: 1,
-                background: "none",
-                border: "none",
-                outline: "none",
-                color: "#f0ebe3",
-                fontSize: 16,
+                flex: 1, background: "none", border: "none",
+                outline: "none", color: "#f0ebe3", fontSize: 16,
                 fontFamily: "inherit",
               }}
             />
             {searchQuery && (
               <button
                 onClick={() => setSearchQuery("")}
-                style={{
-                  background: "none",
-                  border: "none",
-                  color: "#6b6050",
-                  cursor: "pointer",
-                  fontSize: 18,
-                }}
+                style={{ background: "none", border: "none", color: "#6b6050", cursor: "pointer", fontSize: 18 }}
               >
                 ×
               </button>
@@ -581,64 +506,37 @@ export default function HartaPage() {
           {searchResults.length > 0 && (
             <div
               style={{
-                position: "absolute",
-                top: "calc(100% + 6px)",
-                left: 0,
-                right: 0,
-                background: "#1a1510",
-                border: "1px solid #2a2218",
-                borderRadius: 14,
-                overflow: "hidden",
-                boxShadow: "0 8px 24px rgba(0,0,0,.7)",
-                zIndex: 99999,
+                position: "absolute", top: "calc(100% + 6px)", left: 0, right: 0,
+                background: "#1a1510", border: "1px solid #2a2218",
+                borderRadius: 14, overflow: "hidden",
+                boxShadow: "0 8px 24px rgba(0,0,0,.7)", zIndex: 99999,
               }}
             >
               {searchResults.map((r) => (
                 <div
                   key={r.id}
                   onClick={() => {
-                    if (leafletMap.current)
-                      leafletMap.current.setView([r.lat, r.lon], 17);
+                    if (mapRef.current) mapRef.current.flyTo({ center: [r.lon, r.lat], zoom: 17 });
                     setSearchQuery("");
                     setSelectedMarker({ ...r, isRegistered: false });
                   }}
                   style={{
-                    padding: "12px 16px",
-                    cursor: "pointer",
+                    padding: "12px 16px", cursor: "pointer",
                     borderBottom: "1px solid rgba(255,255,255,.04)",
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 10,
+                    display: "flex", alignItems: "center", gap: 10,
                   }}
                 >
                   <span
                     style={{
-                      width: 8,
-                      height: 8,
-                      borderRadius: "50%",
-                      flexShrink: 0,
+                      width: 8, height: 8, borderRadius: "50%", flexShrink: 0,
                       background: registeredRestaurants.some(
                         (rr) => rr.name.toLowerCase() === r.name.toLowerCase(),
-                      )
-                        ? "#c0622f"
-                        : "#555",
+                      ) ? "#c0622f" : "#555",
                     }}
-                  ></span>
+                  />
                   <div>
-                    <div
-                      style={{
-                        fontSize: 13,
-                        fontWeight: 600,
-                        color: "#f0ebe3",
-                      }}
-                    >
-                      {r.name}
-                    </div>
-                    {r.address && (
-                      <div style={{ fontSize: 11, color: "#6b6050" }}>
-                        {r.address}
-                      </div>
-                    )}
+                    <div style={{ fontSize: 13, fontWeight: 600, color: "#f0ebe3" }}>{r.name}</div>
+                    {r.address && <div style={{ fontSize: 11, color: "#6b6050" }}>{r.address}</div>}
                   </div>
                 </div>
               ))}
@@ -646,87 +544,43 @@ export default function HartaPage() {
           )}
         </div>
 
-        {/* Legenda */}
+        {/* Legend */}
         <div style={{ display: "flex", gap: 16, alignItems: "center" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-            <div
-              style={{
-                width: 10,
-                height: 10,
-                borderRadius: 3,
-                background: "#c0622f",
-              }}
-            ></div>
-            <span style={{ fontSize: 11, color: "#c8a97e", fontWeight: 600 }}>
-              Pe WhataboutFood
-            </span>
+            <div style={{ width: 10, height: 10, borderRadius: 3, background: "#c0622f" }} />
+            <span style={{ fontSize: 11, color: "#c8a97e", fontWeight: 600 }}>Pe WhataboutFood</span>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-            <div
-              style={{
-                width: 10,
-                height: 10,
-                borderRadius: 3,
-                background: "#555",
-              }}
-            ></div>
-            <span style={{ fontSize: 11, color: "#6b6050" }}>
-              Neînregistrat
-            </span>
+            <div style={{ width: 10, height: 10, borderRadius: 3, background: "#555" }} />
+            <span style={{ fontSize: 11, color: "#6b6050" }}>Neînregistrat</span>
           </div>
           {loading && (
-            <span
-              style={{ fontSize: 11, color: "#c8a97e", marginLeft: "auto" }}
-            >
-              ⏳ Se încarcă...
-            </span>
+            <span style={{ fontSize: 11, color: "#c8a97e", marginLeft: "auto" }}>⏳ Se încarcă...</span>
           )}
         </div>
       </div>
 
-      {/* Harta */}
-      <div ref={mapRef} style={{ flex: 1, width: "100%" }} />
+      {/* Map */}
+      <div ref={containerRef} style={{ flex: 1, width: "100%" }} />
 
-      {/* Popup marker */}
+      {/* Popup */}
       {selectedMarker && (
         <div
           style={{
-            position: "absolute",
-            bottom: 16,
-            left: 16,
-            right: 16,
+            position: "absolute", bottom: 16, left: 16, right: 16,
             background: "#1a1510",
             border: `1px solid ${selectedMarker.isRegistered ? "rgba(192,98,47,.5)" : "#2a2218"}`,
-            borderRadius: 20,
-            padding: "18px 20px",
-            boxShadow: "0 -4px 32px rgba(0,0,0,.6)",
-            zIndex: 500,
+            borderRadius: 20, padding: "18px 20px",
+            boxShadow: "0 -4px 32px rgba(0,0,0,.6)", zIndex: 500,
           }}
         >
-          <div
-            style={{
-              display: "flex",
-              alignItems: "flex-start",
-              justifyContent: "space-between",
-              marginBottom: 12,
-            }}
-          >
+          <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 12 }}>
             <div>
-              <div
-                style={{
-                  fontFamily: "'Fraunces',serif",
-                  fontSize: 18,
-                  fontWeight: 900,
-                  color: "#f0ebe3",
-                  marginBottom: 4,
-                }}
-              >
+              <div style={{ fontFamily: "'Fraunces',serif", fontSize: 18, fontWeight: 900, color: "#f0ebe3", marginBottom: 4 }}>
                 {selectedMarker.name}
               </div>
               {selectedMarker.address && (
-                <div style={{ fontSize: 12, color: "#6b6050" }}>
-                  📍 {selectedMarker.address}
-                </div>
+                <div style={{ fontSize: 12, color: "#6b6050" }}>📍 {selectedMarker.address}</div>
               )}
               {selectedMarker.registeredData?.rating && (
                 <div style={{ fontSize: 12, color: "#c8a97e", marginTop: 4 }}>
@@ -736,13 +590,7 @@ export default function HartaPage() {
             </div>
             <button
               onClick={() => setSelectedMarker(null)}
-              style={{
-                background: "none",
-                border: "none",
-                color: "#6b6050",
-                fontSize: 22,
-                cursor: "pointer",
-              }}
+              style={{ background: "none", border: "none", color: "#6b6050", fontSize: 22, cursor: "pointer" }}
             >
               ×
             </button>
@@ -750,52 +598,23 @@ export default function HartaPage() {
 
           {selectedMarker.isRegistered && selectedMarker.registeredData?.id ? (
             <button
-              onClick={() =>
-                dispatch({
-                  type: "SET_REST",
-                  payload: selectedMarker.registeredData,
-                })
-              }
+              onClick={() => dispatch({ type: "SET_REST", payload: selectedMarker.registeredData })}
               style={{
-                width: "100%",
-                padding: "12px",
+                width: "100%", padding: "12px",
                 background: "linear-gradient(135deg,#c0622f,#8b3a18)",
-                border: "none",
-                borderRadius: 14,
-                color: "#fff",
-                fontSize: 14,
-                fontWeight: 700,
-                cursor: "pointer",
-                fontFamily: "inherit",
+                border: "none", borderRadius: 14, color: "#fff",
+                fontSize: 14, fontWeight: 700, cursor: "pointer", fontFamily: "inherit",
               }}
             >
               🍽️ Vezi locația în aplicație
             </button>
           ) : selectedMarker.isRegistered ? (
-            <div
-              style={{
-                background: "rgba(255,255,255,.04)",
-                borderRadius: 12,
-                padding: "12px",
-                textAlign: "center",
-              }}
-            >
-              <div style={{ fontSize: 13, color: "#c8a97e" }}>
-                📍 Locație înregistrată pe WhataboutFood
-              </div>
+            <div style={{ background: "rgba(255,255,255,.04)", borderRadius: 12, padding: "12px", textAlign: "center" }}>
+              <div style={{ fontSize: 13, color: "#c8a97e" }}>📍 Locație înregistrată pe WhataboutFood</div>
             </div>
           ) : (
-            <div
-              style={{
-                background: "rgba(255,255,255,.04)",
-                borderRadius: 12,
-                padding: "12px",
-                textAlign: "center",
-              }}
-            >
-              <div style={{ fontSize: 13, color: "#6b6050" }}>
-                😔 Încă nu face parte din această aplicație
-              </div>
+            <div style={{ background: "rgba(255,255,255,.04)", borderRadius: 12, padding: "12px", textAlign: "center" }}>
+              <div style={{ fontSize: 13, color: "#6b6050" }}>😔 Încă nu face parte din această aplicație</div>
             </div>
           )}
         </div>
