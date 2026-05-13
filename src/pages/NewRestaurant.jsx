@@ -115,7 +115,11 @@ function RestaurantLocationPicker({ city, onSelect, onClose, showToast }) {
     const s = document.createElement("style");
     s.textContent = PICKER_CSS;
     document.head.appendChild(s);
-    return () => { try { document.head.removeChild(s); } catch (_) {} };
+    return () => {
+      try {
+        document.head.removeChild(s);
+      } catch (_) {}
+    };
   }, []);
 
   // Render POI markers — called only on initial load or city change
@@ -135,7 +139,8 @@ function RestaurantLocationPicker({ city, onSelect, onClose, showToast }) {
 
       el.addEventListener("click", () => {
         if (addingModeRef.current) return;
-        if (selectedElRef.current) selectedElRef.current.classList.remove("sel");
+        if (selectedElRef.current)
+          selectedElRef.current.classList.remove("sel");
         el.classList.add("sel");
         selectedElRef.current = el;
         mapRef.current?.flyTo({ center: [poi.lon, poi.lat], speed: 1.5 });
@@ -171,20 +176,38 @@ function RestaurantLocationPicker({ city, onSelect, onClose, showToast }) {
         const ctrl = new AbortController();
         const tid = setTimeout(() => ctrl.abort(), 10000);
         return fetch(url, { signal: ctrl.signal })
-          .then((res) => { clearTimeout(tid); return res.ok ? res.json() : Promise.reject(); })
-          .catch((e) => { clearTimeout(tid); throw e; });
+          .then((res) => {
+            clearTimeout(tid);
+            return res.ok ? res.json() : Promise.reject();
+          })
+          .catch((e) => {
+            clearTimeout(tid);
+            throw e;
+          });
       };
       setLoading(true);
       try {
         const data = await Promise.any([
-          fetchWithTimeout(`https://overpass.kumi.systems/api/interpreter?data=${encodeURIComponent(query)}`),
-          fetchWithTimeout(`https://lz4.overpass-api.de/api/interpreter?data=${encodeURIComponent(query)}`),
+          fetchWithTimeout(
+            `https://overpass.kumi.systems/api/interpreter?data=${encodeURIComponent(query)}`,
+          ),
+          fetchWithTimeout(
+            `https://overpass.kumi.systems/api/interpreter?data=${encodeURIComponent(query)}`,
+          ),
         ]);
         const raw2 = (data.elements || [])
           .filter((el) => el.tags?.name && el.lat && el.lon)
-          .map((el) => ({ id: el.id, name: el.tags.name, lat: el.lat, lon: el.lon, address: el.tags["addr:street"] || "" }));
+          .map((el) => ({
+            id: el.id,
+            name: el.tags.name,
+            lat: el.lat,
+            lon: el.lon,
+            address: el.tags["addr:street"] || "",
+          }));
         pois = dedup(raw2);
-        try { localStorage.setItem(cKey, JSON.stringify(pois)); } catch (_) {}
+        try {
+          localStorage.setItem(cKey, JSON.stringify(pois));
+        } catch (_) {}
       } catch (_) {
         pois = [];
       }
@@ -206,7 +229,10 @@ function RestaurantLocationPicker({ city, onSelect, onClose, showToast }) {
       zoom: 15,
       attributionControl: false,
     });
-    map.addControl(new maplibregl.NavigationControl({ showCompass: false }), "bottom-right");
+    map.addControl(
+      new maplibregl.NavigationControl({ showCompass: false }),
+      "bottom-right",
+    );
 
     map.on("load", () => {
       mapRef.current = map;
@@ -231,18 +257,28 @@ function RestaurantLocationPicker({ city, onSelect, onClose, showToast }) {
       if (!addingModeRef.current) return;
       const { lat, lng } = e.lngLat;
 
-      if (manualMarkerRef.current) { manualMarkerRef.current.remove(); manualMarkerRef.current = null; }
+      if (manualMarkerRef.current) {
+        manualMarkerRef.current.remove();
+        manualMarkerRef.current = null;
+      }
 
       const el = document.createElement("div");
-      el.style.cssText = "width:24px;height:24px;background:#c0622f;border:3px solid #fff;border-radius:50%;box-shadow:0 2px 14px rgba(192,98,47,.8);cursor:crosshair;";
-      manualMarkerRef.current = new maplibregl.Marker({ element: el, anchor: "center" })
+      el.style.cssText =
+        "width:24px;height:24px;background:#c0622f;border:3px solid #fff;border-radius:50%;box-shadow:0 2px 14px rgba(192,98,47,.8);cursor:crosshair;";
+      manualMarkerRef.current = new maplibregl.Marker({
+        element: el,
+        anchor: "center",
+      })
         .setLngLat([lng, lat])
         .addTo(map);
       setPendingPin({ lat, lon: lng });
     });
 
-    return () => { map.remove(); mapRef.current = null; };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    return () => {
+      map.remove();
+      mapRef.current = null;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Sync addingMode ref + cursor
@@ -253,7 +289,10 @@ function RestaurantLocationPicker({ city, onSelect, onClose, showToast }) {
     if (!addingMode) {
       setPendingPin(null);
       setPinName("");
-      if (manualMarkerRef.current) { manualMarkerRef.current.remove(); manualMarkerRef.current = null; }
+      if (manualMarkerRef.current) {
+        manualMarkerRef.current.remove();
+        manualMarkerRef.current = null;
+      }
     }
   }, [addingMode]);
 
@@ -272,25 +311,37 @@ function RestaurantLocationPicker({ city, onSelect, onClose, showToast }) {
   };
 
   const searchNominatim = async (q) => {
-    if (q.trim().length < 2) { setSearchResults([]); return; }
+    if (q.trim().length < 2) {
+      setSearchResults([]);
+      return;
+    }
     if (searchTimer.current) clearTimeout(searchTimer.current);
-    await new Promise((r) => { searchTimer.current = setTimeout(r, 400); });
+    await new Promise((r) => {
+      searchTimer.current = setTimeout(r, 400);
+    });
     if (searchController.current) searchController.current.abort();
     searchController.current = new AbortController();
     setLoading(true);
     try {
       const hint = mapCityRef.current ? `, ${mapCityRef.current}` : "";
       const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q + hint)}&format=json&limit=6&countrycodes=ro&addressdetails=1`;
-      const res = await fetch(url, { signal: searchController.current.signal, headers: { "Accept-Language": "ro" } });
+      const res = await fetch(url, {
+        signal: searchController.current.signal,
+        headers: { "Accept-Language": "ro" },
+      });
       const data = await res.json();
-      setSearchResults(data.map((el) => ({
-        id: el.place_id,
-        name: el.name || el.display_name.split(",")[0],
-        lat: parseFloat(el.lat),
-        lon: parseFloat(el.lon),
-        address: el.display_name,
-      })));
-    } catch (e) { if (e.name !== "AbortError") setSearchResults([]); }
+      setSearchResults(
+        data.map((el) => ({
+          id: el.place_id,
+          name: el.name || el.display_name.split(",")[0],
+          lat: parseFloat(el.lat),
+          lon: parseFloat(el.lon),
+          address: el.display_name,
+        })),
+      );
+    } catch (e) {
+      if (e.name !== "AbortError") setSearchResults([]);
+    }
     setLoading(false);
   };
 
@@ -298,11 +349,20 @@ function RestaurantLocationPicker({ city, onSelect, onClose, showToast }) {
     if (!pinName.trim() || !pendingPin || submitting) return;
     setSubmitting(true);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.user?.id) { showToast?.("❌ Trebuie să fii autentificat!"); setSubmitting(false); return; }
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      if (!session?.user?.id) {
+        showToast?.("❌ Trebuie să fii autentificat!");
+        setSubmitting(false);
+        return;
+      }
       const { error } = await supabase.from("map_pin_requests").insert({
         owner_id: session.user.id,
-        owner_name: session.user.user_metadata?.full_name || session.user.email || "Proprietar",
+        owner_name:
+          session.user.user_metadata?.full_name ||
+          session.user.email ||
+          "Proprietar",
         name: pinName.trim(),
         lat: pendingPin.lat,
         lon: pendingPin.lon,
@@ -312,14 +372,25 @@ function RestaurantLocationPicker({ city, onSelect, onClose, showToast }) {
       if (error) throw error;
       showToast?.("✅ Cererea a fost trimisă! Apare pe hartă după aprobare.");
       setAddingMode(false);
-    } catch { showToast?.("❌ Eroare la trimitere. Încearcă din nou."); }
+    } catch {
+      showToast?.("❌ Eroare la trimitere. Încearcă din nou.");
+    }
     setSubmitting(false);
   };
 
   const hasBottomSheet = confirming || (addingMode && pendingPin);
 
   return createPortal(
-    <div style={{ position: "fixed", inset: 0, zIndex: 9999, display: "flex", flexDirection: "column", background: "#f8f4ef" }}>
+    <div
+      style={{
+        position: "fixed",
+        inset: 0,
+        zIndex: 9999,
+        display: "flex",
+        flexDirection: "column",
+        background: "#f8f4ef",
+      }}
+    >
       {/* Header */}
       <div
         style={{
@@ -339,32 +410,66 @@ function RestaurantLocationPicker({ city, onSelect, onClose, showToast }) {
           <button
             onClick={onClose}
             style={{
-              width: 36, height: 36, borderRadius: 10,
-              background: "#1a1510", border: "1px solid #2a2218",
-              color: "#f0ebe3", fontSize: 18, cursor: "pointer",
-              display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
+              width: 36,
+              height: 36,
+              borderRadius: 10,
+              background: "#1a1510",
+              border: "1px solid #2a2218",
+              color: "#f0ebe3",
+              fontSize: 18,
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              flexShrink: 0,
             }}
           >
             ←
           </button>
-          <span style={{ fontFamily: "'Fraunces',serif", fontSize: 15, fontWeight: 900, color: "#f0ebe3", flex: 1 }}>
+          <span
+            style={{
+              fontFamily: "'Fraunces',serif",
+              fontSize: 15,
+              fontWeight: 900,
+              color: "#f0ebe3",
+              flex: 1,
+            }}
+          >
             📍 Alege locația
           </span>
-          {loading && <span style={{ fontSize: 11, color: "#c8a97e", flexShrink: 0 }}>⏳</span>}
+          {loading && (
+            <span style={{ fontSize: 11, color: "#c8a97e", flexShrink: 0 }}>
+              ⏳
+            </span>
+          )}
 
           {/* City dropdown */}
           <div style={{ position: "relative", flexShrink: 0 }}>
             <button
               onClick={() => setShowCityDrop(!showCityDrop)}
               style={{
-                display: "flex", alignItems: "center", gap: 5,
-                padding: "7px 12px", background: "#c0622f",
-                border: "none", borderRadius: 20, color: "#fff",
-                fontSize: 12, fontWeight: 700, cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                gap: 5,
+                padding: "7px 12px",
+                background: "#c0622f",
+                border: "none",
+                borderRadius: 20,
+                color: "#fff",
+                fontSize: 12,
+                fontWeight: 700,
+                cursor: "pointer",
               }}
             >
               <span>📍</span>
-              <span style={{ maxWidth: 70, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+              <span
+                style={{
+                  maxWidth: 70,
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  whiteSpace: "nowrap",
+                }}
+              >
                 {mapCity}
               </span>
               <span style={{ fontSize: 9 }}>▾</span>
@@ -372,10 +477,16 @@ function RestaurantLocationPicker({ city, onSelect, onClose, showToast }) {
             {showCityDrop && (
               <div
                 style={{
-                  position: "fixed", top: 60, right: 16,
-                  background: "#1a1510", border: "1px solid #2a2218",
-                  borderRadius: 14, width: 200, maxHeight: 300,
-                  overflowY: "auto", zIndex: 99999,
+                  position: "fixed",
+                  top: 60,
+                  right: 16,
+                  background: "#1a1510",
+                  border: "1px solid #2a2218",
+                  borderRadius: 14,
+                  width: 200,
+                  maxHeight: 300,
+                  overflowY: "auto",
+                  zIndex: 99999,
                   boxShadow: "0 8px 32px rgba(0,0,0,.9)",
                 }}
               >
@@ -384,13 +495,16 @@ function RestaurantLocationPicker({ city, onSelect, onClose, showToast }) {
                     key={oras}
                     onClick={() => changeCity(oras)}
                     style={{
-                      padding: "10px 16px", cursor: "pointer", fontSize: 13,
+                      padding: "10px 16px",
+                      cursor: "pointer",
+                      fontSize: 13,
                       color: oras === mapCity ? "#c0622f" : "#c8a97e",
                       fontWeight: oras === mapCity ? 700 : 400,
                       borderBottom: "1px solid rgba(255,255,255,.04)",
                     }}
                   >
-                    {oras === mapCity ? "✓ " : ""}{oras}
+                    {oras === mapCity ? "✓ " : ""}
+                    {oras}
                   </div>
                 ))}
               </div>
@@ -399,15 +513,24 @@ function RestaurantLocationPicker({ city, onSelect, onClose, showToast }) {
 
           {/* Add mode toggle */}
           <button
-            onClick={() => { setConfirming(null); setAddingMode((v) => !v); }}
+            onClick={() => {
+              setConfirming(null);
+              setAddingMode((v) => !v);
+            }}
             style={{
               padding: "7px 11px",
-              background: addingMode ? "rgba(192,57,43,.2)" : "rgba(74,110,74,.15)",
+              background: addingMode
+                ? "rgba(192,57,43,.2)"
+                : "rgba(74,110,74,.15)",
               border: `1px solid ${addingMode ? "rgba(192,57,43,.5)" : "rgba(74,110,74,.35)"}`,
               borderRadius: 20,
               color: addingMode ? "#e05050" : "#6b9e6b",
-              fontSize: 11, fontWeight: 700, cursor: "pointer",
-              flexShrink: 0, whiteSpace: "nowrap", fontFamily: "inherit",
+              fontSize: 11,
+              fontWeight: 700,
+              cursor: "pointer",
+              flexShrink: 0,
+              whiteSpace: "nowrap",
+              fontFamily: "inherit",
             }}
           >
             {addingMode ? "✕ Anulează" : "📍 Adaugă"}
@@ -416,39 +539,123 @@ function RestaurantLocationPicker({ city, onSelect, onClose, showToast }) {
 
         {/* Row 2: search */}
         <div style={{ position: "relative", zIndex: 9999 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 8, background: "#1a1510", border: "1px solid #2a2218", borderRadius: 50, padding: "9px 16px" }}>
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
+              background: "#1a1510",
+              border: "1px solid #2a2218",
+              borderRadius: 50,
+              padding: "9px 16px",
+            }}
+          >
             <span style={{ color: "#6b6050" }}>🔍</span>
             <input
               type="text"
               placeholder="Caută restaurantul tău..."
               value={searchQ}
-              onChange={(e) => { setSearchQ(e.target.value); searchNominatim(e.target.value); }}
+              onChange={(e) => {
+                setSearchQ(e.target.value);
+                searchNominatim(e.target.value);
+              }}
               maxLength={60}
-              style={{ flex: 1, background: "none", border: "none", outline: "none", color: "#f0ebe3", fontSize: 16, fontFamily: "inherit" }}
+              style={{
+                flex: 1,
+                background: "none",
+                border: "none",
+                outline: "none",
+                color: "#f0ebe3",
+                fontSize: 16,
+                fontFamily: "inherit",
+              }}
             />
             {searchQ && (
-              <button onClick={() => { setSearchQ(""); setSearchResults([]); }} style={{ background: "none", border: "none", color: "#6b6050", cursor: "pointer", fontSize: 18 }}>×</button>
+              <button
+                onClick={() => {
+                  setSearchQ("");
+                  setSearchResults([]);
+                }}
+                style={{
+                  background: "none",
+                  border: "none",
+                  color: "#6b6050",
+                  cursor: "pointer",
+                  fontSize: 18,
+                }}
+              >
+                ×
+              </button>
             )}
           </div>
           {searchResults.length > 0 && (
-            <div style={{ position: "absolute", top: "calc(100% + 6px)", left: 0, right: 0, background: "#1a1510", border: "1px solid #2a2218", borderRadius: 14, overflow: "hidden", boxShadow: "0 8px 24px rgba(0,0,0,.8)", zIndex: 99999 }}>
+            <div
+              style={{
+                position: "absolute",
+                top: "calc(100% + 6px)",
+                left: 0,
+                right: 0,
+                background: "#1a1510",
+                border: "1px solid #2a2218",
+                borderRadius: 14,
+                overflow: "hidden",
+                boxShadow: "0 8px 24px rgba(0,0,0,.8)",
+                zIndex: 99999,
+              }}
+            >
               {searchResults.map((r, i) => {
-                const addrParts = r.address ? r.address.split(",").slice(1, 3).join(",").trim() : "";
+                const addrParts = r.address
+                  ? r.address.split(",").slice(1, 3).join(",").trim()
+                  : "";
                 return (
                   <div
                     key={i}
                     onClick={() => {
                       setSearchResults([]);
                       setSearchQ(r.name);
-                      if (mapRef.current) mapRef.current.flyTo({ center: [r.lon, r.lat], zoom: 17 });
+                      if (mapRef.current)
+                        mapRef.current.flyTo({
+                          center: [r.lon, r.lat],
+                          zoom: 17,
+                        });
                       setConfirming(r);
                     }}
-                    style={{ padding: "11px 16px", cursor: "pointer", borderBottom: "1px solid rgba(255,255,255,.04)", display: "flex", alignItems: "center", gap: 10 }}
+                    style={{
+                      padding: "11px 16px",
+                      cursor: "pointer",
+                      borderBottom: "1px solid rgba(255,255,255,.04)",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 10,
+                    }}
                   >
                     <span style={{ fontSize: 15, flexShrink: 0 }}>📍</span>
                     <div style={{ minWidth: 0 }}>
-                      <div style={{ fontSize: 13, fontWeight: 600, color: "#f0ebe3", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.name}</div>
-                      {addrParts && <div style={{ fontSize: 11, color: "#6b6050", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{addrParts}</div>}
+                      <div
+                        style={{
+                          fontSize: 13,
+                          fontWeight: 600,
+                          color: "#f0ebe3",
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                          whiteSpace: "nowrap",
+                        }}
+                      >
+                        {r.name}
+                      </div>
+                      {addrParts && (
+                        <div
+                          style={{
+                            fontSize: 11,
+                            color: "#6b6050",
+                            overflow: "hidden",
+                            textOverflow: "ellipsis",
+                            whiteSpace: "nowrap",
+                          }}
+                        >
+                          {addrParts}
+                        </div>
+                      )}
                     </div>
                   </div>
                 );
@@ -468,11 +675,21 @@ function RestaurantLocationPicker({ city, onSelect, onClose, showToast }) {
       {addingMode && !pendingPin && (
         <div
           style={{
-            position: "fixed", bottom: 30, left: "50%", transform: "translateX(-50%)",
-            background: "rgba(10,8,5,.92)", border: "1px solid rgba(192,98,47,.5)",
-            borderRadius: 20, padding: "11px 22px", fontSize: 13, color: "#c8a97e",
-            fontWeight: 600, whiteSpace: "nowrap", zIndex: 1000,
-            pointerEvents: "none", boxShadow: "0 4px 20px rgba(0,0,0,.6)",
+            position: "fixed",
+            bottom: 30,
+            left: "50%",
+            transform: "translateX(-50%)",
+            background: "rgba(10,8,5,.92)",
+            border: "1px solid rgba(192,98,47,.5)",
+            borderRadius: 20,
+            padding: "11px 22px",
+            fontSize: 13,
+            color: "#c8a97e",
+            fontWeight: 600,
+            whiteSpace: "nowrap",
+            zIndex: 1000,
+            pointerEvents: "none",
+            boxShadow: "0 4px 20px rgba(0,0,0,.6)",
           }}
         >
           👇 Apasă pe hartă pentru a plasa restaurantul
@@ -483,13 +700,26 @@ function RestaurantLocationPicker({ city, onSelect, onClose, showToast }) {
       {addingMode && pendingPin && (
         <div
           style={{
-            position: "fixed", bottom: 0, left: 0, right: 0,
-            background: "#1a1510", border: "1px solid rgba(192,98,47,.4)",
-            borderRadius: "20px 20px 0 0", padding: "20px 20px 36px",
-            boxShadow: "0 -8px 40px rgba(0,0,0,.7)", zIndex: 99999,
+            position: "fixed",
+            bottom: 0,
+            left: 0,
+            right: 0,
+            background: "#1a1510",
+            border: "1px solid rgba(192,98,47,.4)",
+            borderRadius: "20px 20px 0 0",
+            padding: "20px 20px 36px",
+            boxShadow: "0 -8px 40px rgba(0,0,0,.7)",
+            zIndex: 99999,
           }}
         >
-          <div style={{ fontSize: 14, color: "#c8a97e", marginBottom: 12, fontWeight: 700 }}>
+          <div
+            style={{
+              fontSize: 14,
+              color: "#c8a97e",
+              marginBottom: 12,
+              fontWeight: 700,
+            }}
+          >
             📍 Confirmă locația restaurantului
           </div>
           <input
@@ -498,15 +728,39 @@ function RestaurantLocationPicker({ city, onSelect, onClose, showToast }) {
             onChange={(e) => setPinName(e.target.value)}
             maxLength={80}
             autoFocus
-            style={{ width: "100%", background: "#1e1a14", border: "1px solid #2a2218", borderRadius: 12, padding: "12px 16px", color: "#f0ebe3", fontFamily: "inherit", fontSize: 14, outline: "none", boxSizing: "border-box", marginBottom: 8 }}
+            style={{
+              width: "100%",
+              background: "#1e1a14",
+              border: "1px solid #2a2218",
+              borderRadius: 12,
+              padding: "12px 16px",
+              color: "#f0ebe3",
+              fontFamily: "inherit",
+              fontSize: 14,
+              outline: "none",
+              boxSizing: "border-box",
+              marginBottom: 8,
+            }}
           />
           <div style={{ fontSize: 11, color: "#6b6050", marginBottom: 14 }}>
-            📍 {pendingPin.lat.toFixed(5)}, {pendingPin.lon.toFixed(5)} · {mapCity}
+            📍 {pendingPin.lat.toFixed(5)}, {pendingPin.lon.toFixed(5)} ·{" "}
+            {mapCity}
           </div>
           <div style={{ display: "flex", gap: 10 }}>
             <button
               onClick={() => setPendingPin(null)}
-              style={{ flex: 1, padding: 13, background: "#1e1a14", border: "1px solid #2a2218", borderRadius: 12, color: "#f0ebe3", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}
+              style={{
+                flex: 1,
+                padding: 13,
+                background: "#1e1a14",
+                border: "1px solid #2a2218",
+                borderRadius: 12,
+                color: "#f0ebe3",
+                fontSize: 13,
+                fontWeight: 600,
+                cursor: "pointer",
+                fontFamily: "inherit",
+              }}
             >
               ← Repoziționează
             </button>
@@ -514,12 +768,19 @@ function RestaurantLocationPicker({ city, onSelect, onClose, showToast }) {
               onClick={submitPinRequest}
               disabled={!pinName.trim() || submitting}
               style={{
-                flex: 2, padding: 13,
-                background: pinName.trim() && !submitting ? "linear-gradient(135deg,#c0622f,#8b3a18)" : "#2a2218",
-                border: "none", borderRadius: 12,
+                flex: 2,
+                padding: 13,
+                background:
+                  pinName.trim() && !submitting
+                    ? "linear-gradient(135deg,#c0622f,#8b3a18)"
+                    : "#2a2218",
+                border: "none",
+                borderRadius: 12,
                 color: pinName.trim() && !submitting ? "#fff" : "#6b6050",
-                fontSize: 13, fontWeight: 700,
-                cursor: pinName.trim() && !submitting ? "pointer" : "not-allowed",
+                fontSize: 13,
+                fontWeight: 700,
+                cursor:
+                  pinName.trim() && !submitting ? "pointer" : "not-allowed",
                 fontFamily: "inherit",
               }}
             >
@@ -533,27 +794,62 @@ function RestaurantLocationPicker({ city, onSelect, onClose, showToast }) {
       {!addingMode && confirming && (
         <div
           style={{
-            position: "fixed", bottom: 0, left: 0, right: 0,
-            background: "#1a1510", border: "1px solid rgba(192,98,47,.4)",
-            borderRadius: "20px 20px 0 0", padding: "20px 20px 32px",
-            boxShadow: "0 -8px 40px rgba(0,0,0,.7)", zIndex: 99999,
+            position: "fixed",
+            bottom: 0,
+            left: 0,
+            right: 0,
+            background: "#1a1510",
+            border: "1px solid rgba(192,98,47,.4)",
+            borderRadius: "20px 20px 0 0",
+            padding: "20px 20px 32px",
+            boxShadow: "0 -8px 40px rgba(0,0,0,.7)",
+            zIndex: 99999,
           }}
         >
-          <div style={{ fontSize: 14, color: "#c8a97e", marginBottom: 8, textAlign: "center", fontWeight: 600 }}>
+          <div
+            style={{
+              fontSize: 14,
+              color: "#c8a97e",
+              marginBottom: 8,
+              textAlign: "center",
+              fontWeight: 600,
+            }}
+          >
             Ești sigur că acesta este restaurantul dumneavoastră?
           </div>
-          <div style={{ fontFamily: "'Fraunces',serif", fontSize: 18, fontWeight: 900, color: "#f0ebe3", marginBottom: 4, textAlign: "center" }}>
+          <div
+            style={{
+              fontFamily: "'Fraunces',serif",
+              fontSize: 18,
+              fontWeight: 900,
+              color: "#f0ebe3",
+              marginBottom: 4,
+              textAlign: "center",
+            }}
+          >
             {confirming.name}
           </div>
           {confirming.address && (
-            <div style={{ fontSize: 12, color: "#6b6050", textAlign: "center", marginBottom: 12 }}>
+            <div
+              style={{
+                fontSize: 12,
+                color: "#6b6050",
+                textAlign: "center",
+                marginBottom: 12,
+              }}
+            >
               📍 {confirming.address}
             </div>
           )}
           <div
             style={{
-              fontSize: 11, color: "#c8a97e", textAlign: "center", marginBottom: 14,
-              padding: "8px 12px", background: "rgba(192,98,47,.08)", borderRadius: 10,
+              fontSize: 11,
+              color: "#c8a97e",
+              textAlign: "center",
+              marginBottom: 14,
+              padding: "8px 12px",
+              background: "rgba(192,98,47,.08)",
+              borderRadius: 10,
             }}
           >
             ⏳ Locația va fi vizibilă pe hartă după aprobare SuperAdmin
@@ -561,16 +857,47 @@ function RestaurantLocationPicker({ city, onSelect, onClose, showToast }) {
           <div style={{ display: "flex", gap: 10 }}>
             <button
               onClick={() => {
-                if (selectedElRef.current) { selectedElRef.current.classList.remove("sel"); selectedElRef.current = null; }
+                if (selectedElRef.current) {
+                  selectedElRef.current.classList.remove("sel");
+                  selectedElRef.current = null;
+                }
                 setConfirming(null);
               }}
-              style={{ flex: 1, padding: "14px", background: "#1e1a14", border: "1px solid #2a2218", borderRadius: 14, color: "#f0ebe3", fontSize: 14, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}
+              style={{
+                flex: 1,
+                padding: "14px",
+                background: "#1e1a14",
+                border: "1px solid #2a2218",
+                borderRadius: 14,
+                color: "#f0ebe3",
+                fontSize: 14,
+                fontWeight: 600,
+                cursor: "pointer",
+                fontFamily: "inherit",
+              }}
             >
               Nu
             </button>
             <button
-              onClick={() => onSelect({ lat: confirming.lat, lon: confirming.lon, name: confirming.name })}
-              style={{ flex: 2, padding: "14px", background: "linear-gradient(135deg,#c0622f,#8b3a18)", border: "none", borderRadius: 14, color: "#fff", fontSize: 14, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}
+              onClick={() =>
+                onSelect({
+                  lat: confirming.lat,
+                  lon: confirming.lon,
+                  name: confirming.name,
+                })
+              }
+              style={{
+                flex: 2,
+                padding: "14px",
+                background: "linear-gradient(135deg,#c0622f,#8b3a18)",
+                border: "none",
+                borderRadius: 14,
+                color: "#fff",
+                fontSize: 14,
+                fontWeight: 700,
+                cursor: "pointer",
+                fontFamily: "inherit",
+              }}
             >
               Da, acesta este!
             </button>
@@ -645,8 +972,20 @@ const ORASE = [
 ].sort();
 
 const EMOJIS_REST = [
-  "🍝", "🍕", "🍣", "🥩", "🍔", "🥗", "🍜",
-  "🥘", "🫕", "🍱", "🥐", "☕", "🍺", "🍷",
+  "🍝",
+  "🍕",
+  "🍣",
+  "🥩",
+  "🍔",
+  "🥗",
+  "🍜",
+  "🥘",
+  "🫕",
+  "🍱",
+  "🥐",
+  "☕",
+  "🍺",
+  "🍷",
 ];
 
 export default function NewRestaurant() {
@@ -676,19 +1015,37 @@ export default function NewRestaurant() {
       showToast("Numele restaurantului nu poate conține emoji.");
       return;
     }
-    if (!form.name) { showToast("⚠️ Completează numele restaurantului!"); return; }
-    if (!form.type) { showToast("⚠️ Selectează tipul bucătăriei!"); return; }
-    if (!form.address) { showToast("⚠️ Completează adresa!"); return; }
-    if (!form.city) { showToast("⚠️ Selectează orașul!"); return; }
+    if (!form.name) {
+      showToast("⚠️ Completează numele restaurantului!");
+      return;
+    }
+    if (!form.type) {
+      showToast("⚠️ Selectează tipul bucătăriei!");
+      return;
+    }
+    if (!form.address) {
+      showToast("⚠️ Completează adresa!");
+      return;
+    }
+    if (!form.city) {
+      showToast("⚠️ Selectează orașul!");
+      return;
+    }
     setStep(2);
   };
 
   const handleCreate = async () => {
     setLoading(true);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
       const userId = user?.id || session?.user?.id;
-      if (!userId) { showToast("❌ Trebuie să fii logat!"); setLoading(false); return; }
+      if (!userId) {
+        showToast("❌ Trebuie să fii logat!");
+        setLoading(false);
+        return;
+      }
 
       // Restaurantul porneste inactiv — devine activ dupa aprobare SuperAdmin
       const { error } = await supabase.from("restaurants").insert({
@@ -715,14 +1072,19 @@ export default function NewRestaurant() {
       if (restLocation) {
         await supabase.from("map_pin_requests").insert({
           owner_id: userId,
-          owner_name: session?.user?.user_metadata?.full_name || session?.user?.email || "Proprietar",
+          owner_name:
+            session?.user?.user_metadata?.full_name ||
+            session?.user?.email ||
+            "Proprietar",
           name: form.name,
           lat: restLocation.lat,
           lon: restLocation.lon,
           city: form.city,
           status: "pending",
         });
-        showToast(`🎉 Restaurantul creat! Locația va apărea pe hartă după aprobare.`);
+        showToast(
+          `🎉 Restaurantul creat! Locația va apărea pe hartă după aprobare.`,
+        );
       } else {
         showToast(`🎉 Restaurantul „${form.name}" a fost creat!`);
       }
@@ -738,38 +1100,121 @@ export default function NewRestaurant() {
   return (
     <div className="page fade-in" style={{ paddingBottom: 100 }}>
       {/* Header */}
-      <div style={{ padding: "44px 20px 24px", background: "linear-gradient(135deg,#100a05,#0d0a07)", borderBottom: "1px solid #2a2218" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 14 }}>
+      <div
+        style={{
+          padding: "44px 20px 24px",
+          background: "linear-gradient(135deg,#100a05,#0d0a07)",
+          borderBottom: "1px solid #2a2218",
+        }}
+      >
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 12,
+            marginBottom: 14,
+          }}
+        >
           <button
             onClick={() => (step === 1 ? navigate("home") : setStep(1))}
-            style={{ width: 38, height: 38, borderRadius: 12, background: "rgba(255,255,255,.05)", border: "1px solid #2a2218", color: "#f0ebe3", fontSize: 17, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
+            style={{
+              width: 38,
+              height: 38,
+              borderRadius: 12,
+              background: "rgba(255,255,255,.05)",
+              border: "1px solid #2a2218",
+              color: "#f0ebe3",
+              fontSize: 17,
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
           >
             ←
           </button>
           <div>
-            <div style={{ fontFamily: "'Fraunces',serif", fontSize: 22, fontWeight: 900 }}>🏪 Restaurant Nou</div>
-            <div style={{ fontSize: 12, color: "#6b6050", marginTop: 2 }}>Pasul {step} din 2</div>
+            <div
+              style={{
+                fontFamily: "'Fraunces',serif",
+                fontSize: 22,
+                fontWeight: 900,
+              }}
+            >
+              🏪 Restaurant Nou
+            </div>
+            <div style={{ fontSize: 12, color: "#6b6050", marginTop: 2 }}>
+              Pasul {step} din 2
+            </div>
           </div>
         </div>
-        <div style={{ height: 4, background: "#2a2218", borderRadius: 20, overflow: "hidden" }}>
-          <div style={{ height: "100%", width: step === 1 ? "50%" : "100%", background: "linear-gradient(90deg,#c0622f,#e07a47)", borderRadius: 20, transition: "width .3s" }} />
+        <div
+          style={{
+            height: 4,
+            background: "#2a2218",
+            borderRadius: 20,
+            overflow: "hidden",
+          }}
+        >
+          <div
+            style={{
+              height: "100%",
+              width: step === 1 ? "50%" : "100%",
+              background: "linear-gradient(90deg,#c0622f,#e07a47)",
+              borderRadius: 20,
+              transition: "width .3s",
+            }}
+          />
         </div>
       </div>
 
       <div style={{ padding: 20 }}>
         {step === 1 ? (
           <>
-            <div style={{ fontSize: 11, letterSpacing: 2, textTransform: "uppercase", color: "#6b6050", marginBottom: 16 }}>Informații de bază</div>
+            <div
+              style={{
+                fontSize: 11,
+                letterSpacing: 2,
+                textTransform: "uppercase",
+                color: "#6b6050",
+                marginBottom: 16,
+              }}
+            >
+              Informații de bază
+            </div>
 
             {/* Emoji */}
             <div style={{ marginBottom: 20 }}>
-              <label style={{ fontSize: 11, letterSpacing: 1.5, textTransform: "uppercase", color: "#6b6050", marginBottom: 10, display: "block" }}>Emoji reprezentativ</label>
+              <label
+                style={{
+                  fontSize: 11,
+                  letterSpacing: 1.5,
+                  textTransform: "uppercase",
+                  color: "#6b6050",
+                  marginBottom: 10,
+                  display: "block",
+                }}
+              >
+                Emoji reprezentativ
+              </label>
               <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                 {EMOJIS_REST.map((e) => (
                   <div
                     key={e}
                     onClick={() => set("emoji", e)}
-                    style={{ width: 44, height: 44, borderRadius: 12, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 24, cursor: "pointer", background: form.emoji === e ? "rgba(192,98,47,.3)" : "#1e1a14", border: `2px solid ${form.emoji === e ? "#c0622f" : "#2a2218"}` }}
+                    style={{
+                      width: 44,
+                      height: 44,
+                      borderRadius: 12,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      fontSize: 24,
+                      cursor: "pointer",
+                      background:
+                        form.emoji === e ? "rgba(192,98,47,.3)" : "#1e1a14",
+                      border: `2px solid ${form.emoji === e ? "#c0622f" : "#2a2218"}`,
+                    }}
                   >
                     {e}
                   </div>
@@ -779,25 +1224,67 @@ export default function NewRestaurant() {
 
             {/* Nume */}
             <div style={{ marginBottom: 16 }}>
-              <label style={{ fontSize: 11, letterSpacing: 1.5, textTransform: "uppercase", color: "#6b6050", marginBottom: 7, display: "block" }}>Numele restaurantului *</label>
+              <label
+                style={{
+                  fontSize: 11,
+                  letterSpacing: 1.5,
+                  textTransform: "uppercase",
+                  color: "#6b6050",
+                  marginBottom: 7,
+                  display: "block",
+                }}
+              >
+                Numele restaurantului *
+              </label>
               <input
                 placeholder="Ex: Mama Mia, La Fontana..."
                 value={form.name}
                 maxLength={80}
                 onChange={(e) => set("name", e.target.value)}
-                style={{ width: "100%", background: "#1e1a14", border: "1px solid #2a2218", borderRadius: 14, padding: "13px 16px", color: "#f0ebe3", fontFamily: "'Plus Jakarta Sans',sans-serif", fontSize: 14, outline: "none", boxSizing: "border-box" }}
+                style={{
+                  width: "100%",
+                  background: "#1e1a14",
+                  border: "1px solid #2a2218",
+                  borderRadius: 14,
+                  padding: "13px 16px",
+                  color: "#f0ebe3",
+                  fontFamily: "'Plus Jakarta Sans',sans-serif",
+                  fontSize: 14,
+                  outline: "none",
+                  boxSizing: "border-box",
+                }}
               />
             </div>
 
             {/* Tip bucătărie */}
             <div style={{ marginBottom: 16 }}>
-              <label style={{ fontSize: 11, letterSpacing: 1.5, textTransform: "uppercase", color: "#6b6050", marginBottom: 10, display: "block" }}>Tipul bucătăriei *</label>
+              <label
+                style={{
+                  fontSize: 11,
+                  letterSpacing: 1.5,
+                  textTransform: "uppercase",
+                  color: "#6b6050",
+                  marginBottom: 10,
+                  display: "block",
+                }}
+              >
+                Tipul bucătăriei *
+              </label>
               <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                 {TIPURI.map((t) => (
                   <div
                     key={t}
                     onClick={() => set("type", t)}
-                    style={{ padding: "7px 14px", borderRadius: 20, cursor: "pointer", background: form.type === t ? "#c0622f" : "#1e1a14", border: `1px solid ${form.type === t ? "#c0622f" : "#2a2218"}`, color: form.type === t ? "#fff" : "#6b6050", fontSize: 12, fontWeight: form.type === t ? 700 : 400 }}
+                    style={{
+                      padding: "7px 14px",
+                      borderRadius: 20,
+                      cursor: "pointer",
+                      background: form.type === t ? "#c0622f" : "#1e1a14",
+                      border: `1px solid ${form.type === t ? "#c0622f" : "#2a2218"}`,
+                      color: form.type === t ? "#fff" : "#6b6050",
+                      fontSize: 12,
+                      fontWeight: form.type === t ? 700 : 400,
+                    }}
                   >
                     {t}
                   </div>
@@ -807,20 +1294,86 @@ export default function NewRestaurant() {
 
             {/* Locație hartă */}
             <div style={{ marginBottom: 16 }}>
-              <label style={{ fontSize: 11, letterSpacing: 1.5, textTransform: "uppercase", color: "#6b6050", marginBottom: 7, display: "block" }}>Locația pe hartă (opțional)</label>
+              <label
+                style={{
+                  fontSize: 11,
+                  letterSpacing: 1.5,
+                  textTransform: "uppercase",
+                  color: "#6b6050",
+                  marginBottom: 7,
+                  display: "block",
+                }}
+              >
+                Locația pe hartă (opțional)
+              </label>
               {restLocation ? (
-                <div style={{ background: "rgba(192,98,47,.08)", border: "1px solid rgba(192,98,47,.3)", borderRadius: 12, padding: "12px 14px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
+                <div
+                  style={{
+                    background: "rgba(192,98,47,.08)",
+                    border: "1px solid rgba(192,98,47,.3)",
+                    borderRadius: 12,
+                    padding: "12px 14px",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    gap: 10,
+                  }}
+                >
                   <div>
-                    <div style={{ fontSize: 13, fontWeight: 700, color: "#f0ebe3", marginBottom: 2 }}>📍 {restLocation.name}</div>
-                    <div style={{ fontSize: 11, color: "#6b6050" }}>{restLocation.lat?.toFixed(5)}, {restLocation.lon?.toFixed(5)}</div>
-                    <div style={{ fontSize: 11, color: "#c8a97e", marginTop: 4 }}>⏳ Necesită aprobare SuperAdmin</div>
+                    <div
+                      style={{
+                        fontSize: 13,
+                        fontWeight: 700,
+                        color: "#f0ebe3",
+                        marginBottom: 2,
+                      }}
+                    >
+                      📍 {restLocation.name}
+                    </div>
+                    <div style={{ fontSize: 11, color: "#6b6050" }}>
+                      {restLocation.lat?.toFixed(5)},{" "}
+                      {restLocation.lon?.toFixed(5)}
+                    </div>
+                    <div
+                      style={{ fontSize: 11, color: "#c8a97e", marginTop: 4 }}
+                    >
+                      ⏳ Necesită aprobare SuperAdmin
+                    </div>
                   </div>
-                  <button onClick={() => setShowLocationMap(true)} style={{ background: "none", border: "1px solid #2a2218", borderRadius: 8, padding: "6px 12px", color: "#c8a97e", fontSize: 12, cursor: "pointer", fontFamily: "inherit" }}>Modifică</button>
+                  <button
+                    onClick={() => setShowLocationMap(true)}
+                    style={{
+                      background: "none",
+                      border: "1px solid #2a2218",
+                      borderRadius: 8,
+                      padding: "6px 12px",
+                      color: "#c8a97e",
+                      fontSize: 12,
+                      cursor: "pointer",
+                      fontFamily: "inherit",
+                    }}
+                  >
+                    Modifică
+                  </button>
                 </div>
               ) : (
                 <button
                   onClick={() => setShowLocationMap(true)}
-                  style={{ width: "100%", padding: "12px", background: "#1e1a14", border: "1px dashed #2a2218", borderRadius: 12, color: "#6b6050", fontSize: 13, cursor: "pointer", fontFamily: "inherit", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}
+                  style={{
+                    width: "100%",
+                    padding: "12px",
+                    background: "#1e1a14",
+                    border: "1px dashed #2a2218",
+                    borderRadius: 12,
+                    color: "#6b6050",
+                    fontSize: 13,
+                    cursor: "pointer",
+                    fontFamily: "inherit",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: 8,
+                  }}
                 >
                   🗺️ Alege locația pe hartă
                 </button>
@@ -831,48 +1384,143 @@ export default function NewRestaurant() {
               <RestaurantLocationPicker
                 city={form.city}
                 showToast={showToast}
-                onSelect={(loc) => { setRestLocation(loc); setShowLocationMap(false); }}
+                onSelect={(loc) => {
+                  setRestLocation(loc);
+                  setShowLocationMap(false);
+                }}
                 onClose={() => setShowLocationMap(false)}
               />
             )}
 
             {/* Adresă */}
             <div style={{ marginBottom: 16 }}>
-              <label style={{ fontSize: 11, letterSpacing: 1.5, textTransform: "uppercase", color: "#6b6050", marginBottom: 7, display: "block" }}>Adresa *</label>
+              <label
+                style={{
+                  fontSize: 11,
+                  letterSpacing: 1.5,
+                  textTransform: "uppercase",
+                  color: "#6b6050",
+                  marginBottom: 7,
+                  display: "block",
+                }}
+              >
+                Adresa *
+              </label>
               <input
                 placeholder="Ex: Str. Floreasca nr. 42"
                 value={form.address}
                 maxLength={120}
                 onChange={(e) => set("address", e.target.value)}
-                style={{ width: "100%", background: "#1e1a14", border: "1px solid #2a2218", borderRadius: 14, padding: "13px 16px", color: "#f0ebe3", fontFamily: "'Plus Jakarta Sans',sans-serif", fontSize: 14, outline: "none", boxSizing: "border-box" }}
+                style={{
+                  width: "100%",
+                  background: "#1e1a14",
+                  border: "1px solid #2a2218",
+                  borderRadius: 14,
+                  padding: "13px 16px",
+                  color: "#f0ebe3",
+                  fontFamily: "'Plus Jakarta Sans',sans-serif",
+                  fontSize: 14,
+                  outline: "none",
+                  boxSizing: "border-box",
+                }}
               />
             </div>
 
             {/* Oraș */}
             <div style={{ marginBottom: 24 }}>
-              <label style={{ fontSize: 11, letterSpacing: 1.5, textTransform: "uppercase", color: "#6b6050", marginBottom: 7, display: "block" }}>Orașul *</label>
+              <label
+                style={{
+                  fontSize: 11,
+                  letterSpacing: 1.5,
+                  textTransform: "uppercase",
+                  color: "#6b6050",
+                  marginBottom: 7,
+                  display: "block",
+                }}
+              >
+                Orașul *
+              </label>
               <select
                 value={form.city}
                 onChange={(e) => set("city", e.target.value)}
                 size={8}
-                style={{ width: "100%", background: "#1e1a14", border: `1px solid ${form.city ? "#c0622f" : "#2a2218"}`, borderRadius: 14, color: "#f0ebe3", fontFamily: "'Plus Jakarta Sans',sans-serif", fontSize: 14, outline: "none", cursor: "pointer", padding: "4px 0" }}
+                style={{
+                  width: "100%",
+                  background: "#1e1a14",
+                  border: `1px solid ${form.city ? "#c0622f" : "#2a2218"}`,
+                  borderRadius: 14,
+                  color: "#f0ebe3",
+                  fontFamily: "'Plus Jakarta Sans',sans-serif",
+                  fontSize: 14,
+                  outline: "none",
+                  cursor: "pointer",
+                  padding: "4px 0",
+                }}
               >
-                <option value="" disabled style={{ color: "#6b6050", padding: "10px 16px" }}>Selectează orașul...</option>
+                <option
+                  value=""
+                  disabled
+                  style={{ color: "#6b6050", padding: "10px 16px" }}
+                >
+                  Selectează orașul...
+                </option>
                 {ORASE.map((oras) => (
-                  <option key={oras} value={oras} style={{ padding: "10px 16px", background: form.city === oras ? "#c0622f" : "#1e1a14", color: form.city === oras ? "#fff" : "#f0ebe3" }}>{oras}</option>
+                  <option
+                    key={oras}
+                    value={oras}
+                    style={{
+                      padding: "10px 16px",
+                      background: form.city === oras ? "#c0622f" : "#1e1a14",
+                      color: form.city === oras ? "#fff" : "#f0ebe3",
+                    }}
+                  >
+                    {oras}
+                  </option>
                 ))}
               </select>
               {form.city && (
-                <div style={{ marginTop: 8, display: "flex", alignItems: "center", gap: 6 }}>
-                  <span style={{ fontSize: 13, color: "#e07a47" }}>📍 {form.city} selectat</span>
-                  <button onClick={() => set("city", "")} style={{ background: "none", border: "none", color: "#6b6050", fontSize: 11, cursor: "pointer", padding: 0 }}>✕</button>
+                <div
+                  style={{
+                    marginTop: 8,
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 6,
+                  }}
+                >
+                  <span style={{ fontSize: 13, color: "#e07a47" }}>
+                    📍 {form.city} selectat
+                  </span>
+                  <button
+                    onClick={() => set("city", "")}
+                    style={{
+                      background: "none",
+                      border: "none",
+                      color: "#6b6050",
+                      fontSize: 11,
+                      cursor: "pointer",
+                      padding: 0,
+                    }}
+                  >
+                    ✕
+                  </button>
                 </div>
               )}
             </div>
 
             <button
               onClick={handleNext}
-              style={{ width: "100%", padding: 15, background: "linear-gradient(135deg,#c0622f,#8b3a18)", border: "none", borderRadius: 16, color: "#fff", fontFamily: "'Fraunces',serif", fontSize: 17, fontWeight: 700, cursor: "pointer" }}
+              style={{
+                width: "100%",
+                padding: 15,
+                background: "linear-gradient(135deg,#c0622f,#8b3a18)",
+                border: "none",
+                borderRadius: 16,
+                color: "#fff",
+                fontFamily: "'Fraunces',serif",
+                fontSize: 17,
+                fontWeight: 700,
+                cursor: "pointer",
+              }}
             >
               Continuă →
             </button>
@@ -880,56 +1528,166 @@ export default function NewRestaurant() {
         ) : (
           <>
             {/* Preview */}
-            <div style={{ marginBottom: 20, background: "rgba(192,98,47,.08)", border: "1px solid rgba(192,98,47,.2)", borderRadius: 16, padding: 16, display: "flex", alignItems: "center", gap: 12 }}>
+            <div
+              style={{
+                marginBottom: 20,
+                background: "rgba(192,98,47,.08)",
+                border: "1px solid rgba(192,98,47,.2)",
+                borderRadius: 16,
+                padding: 16,
+                display: "flex",
+                alignItems: "center",
+                gap: 12,
+              }}
+            >
               <span style={{ fontSize: 36 }}>{form.emoji}</span>
               <div>
-                <div style={{ fontFamily: "'Fraunces',serif", fontSize: 18, fontWeight: 700 }}>{form.name}</div>
-                <div style={{ fontSize: 12, color: "#6b6050" }}>{form.type} • {form.city}</div>
-                <div style={{ fontSize: 11, color: "#6b6050", marginTop: 2 }}>📍 {form.address}</div>
+                <div
+                  style={{
+                    fontFamily: "'Fraunces',serif",
+                    fontSize: 18,
+                    fontWeight: 700,
+                  }}
+                >
+                  {form.name}
+                </div>
+                <div style={{ fontSize: 12, color: "#6b6050" }}>
+                  {form.type} • {form.city}
+                </div>
+                <div style={{ fontSize: 11, color: "#6b6050", marginTop: 2 }}>
+                  📍 {form.address}
+                </div>
               </div>
             </div>
 
-            <div style={{ fontSize: 11, letterSpacing: 2, textTransform: "uppercase", color: "#6b6050", marginBottom: 16 }}>Date de contact (opțional)</div>
+            <div
+              style={{
+                fontSize: 11,
+                letterSpacing: 2,
+                textTransform: "uppercase",
+                color: "#6b6050",
+                marginBottom: 16,
+              }}
+            >
+              Date de contact (opțional)
+            </div>
 
             {[
-              { key: "phone", label: "Telefon", type: "tel", placeholder: "0721 234 567" },
-              { key: "email", label: "Email restaurant", type: "email", placeholder: "contact@restaurant.ro" },
-              { key: "website", label: "Website", type: "text", placeholder: "www.restaurantul-meu.ro" },
+              {
+                key: "phone",
+                label: "Telefon",
+                type: "tel",
+                placeholder: "0721 234 567",
+              },
+              {
+                key: "email",
+                label: "Email restaurant",
+                type: "email",
+                placeholder: "contact@restaurant.ro",
+              },
+              {
+                key: "website",
+                label: "Website",
+                type: "text",
+                placeholder: "www.restaurantul-meu.ro",
+              },
             ].map((f) => (
               <div key={f.key} style={{ marginBottom: 14 }}>
-                <label style={{ fontSize: 11, letterSpacing: 1.5, textTransform: "uppercase", color: "#6b6050", marginBottom: 7, display: "block" }}>{f.label}</label>
+                <label
+                  style={{
+                    fontSize: 11,
+                    letterSpacing: 1.5,
+                    textTransform: "uppercase",
+                    color: "#6b6050",
+                    marginBottom: 7,
+                    display: "block",
+                  }}
+                >
+                  {f.label}
+                </label>
                 <input
                   type={f.type}
                   placeholder={f.placeholder}
                   value={form[f.key]}
                   onChange={(e) => set(f.key, e.target.value)}
                   maxLength={100}
-                  style={{ width: "100%", background: "#1e1a14", border: "1px solid #2a2218", borderRadius: 14, padding: "13px 16px", color: "#f0ebe3", fontFamily: "'Plus Jakarta Sans',sans-serif", fontSize: 14, outline: "none", boxSizing: "border-box" }}
+                  style={{
+                    width: "100%",
+                    background: "#1e1a14",
+                    border: "1px solid #2a2218",
+                    borderRadius: 14,
+                    padding: "13px 16px",
+                    color: "#f0ebe3",
+                    fontFamily: "'Plus Jakarta Sans',sans-serif",
+                    fontSize: 14,
+                    outline: "none",
+                    boxSizing: "border-box",
+                  }}
                 />
               </div>
             ))}
 
             <div style={{ marginBottom: 24 }}>
-              <label style={{ fontSize: 11, letterSpacing: 1.5, textTransform: "uppercase", color: "#6b6050", marginBottom: 7, display: "block" }}>Descriere scurtă</label>
+              <label
+                style={{
+                  fontSize: 11,
+                  letterSpacing: 1.5,
+                  textTransform: "uppercase",
+                  color: "#6b6050",
+                  marginBottom: 7,
+                  display: "block",
+                }}
+              >
+                Descriere scurtă
+              </label>
               <textarea
                 placeholder="Ex: Restaurant cu specific italian, în inima orașului..."
                 value={form.description}
                 onChange={(e) => set("description", e.target.value)}
                 maxLength={500}
                 rows={3}
-                style={{ width: "100%", background: "#1e1a14", border: "1px solid #2a2218", borderRadius: 14, padding: "13px 16px", color: "#f0ebe3", fontFamily: "'Plus Jakarta Sans',sans-serif", fontSize: 13, outline: "none", resize: "none", boxSizing: "border-box" }}
+                style={{
+                  width: "100%",
+                  background: "#1e1a14",
+                  border: "1px solid #2a2218",
+                  borderRadius: 14,
+                  padding: "13px 16px",
+                  color: "#f0ebe3",
+                  fontFamily: "'Plus Jakarta Sans',sans-serif",
+                  fontSize: 13,
+                  outline: "none",
+                  resize: "none",
+                  boxSizing: "border-box",
+                }}
               />
             </div>
 
             <button
               onClick={handleCreate}
               disabled={loading}
-              style={{ width: "100%", padding: 15, background: loading ? "#2a2218" : "linear-gradient(135deg,#4a6e4a,#2d4a2d)", border: "none", borderRadius: 16, color: loading ? "#6b6050" : "#fff", fontFamily: "'Fraunces',serif", fontSize: 17, fontWeight: 700, cursor: loading ? "not-allowed" : "pointer", marginBottom: 12 }}
+              style={{
+                width: "100%",
+                padding: 15,
+                background: loading
+                  ? "#2a2218"
+                  : "linear-gradient(135deg,#4a6e4a,#2d4a2d)",
+                border: "none",
+                borderRadius: 16,
+                color: loading ? "#6b6050" : "#fff",
+                fontFamily: "'Fraunces',serif",
+                fontSize: 17,
+                fontWeight: 700,
+                cursor: loading ? "not-allowed" : "pointer",
+                marginBottom: 12,
+              }}
             >
               {loading ? "Se creează..." : "🎉 Creează restaurantul"}
             </button>
-            <div style={{ fontSize: 11, color: "#6b6050", textAlign: "center" }}>
-              Vei fi dus la <b style={{ color: "#c8a97e" }}>Editor Planșeu</b> după creare.
+            <div
+              style={{ fontSize: 11, color: "#6b6050", textAlign: "center" }}
+            >
+              Vei fi dus la <b style={{ color: "#c8a97e" }}>Editor Planșeu</b>{" "}
+              după creare.
             </div>
           </>
         )}
