@@ -166,7 +166,11 @@ export default function HartaPage() {
     const s = document.createElement("style");
     s.textContent = PIN_CSS;
     document.head.appendChild(s);
-    return () => { try { document.head.removeChild(s); } catch (_) {} };
+    return () => {
+      try {
+        document.head.removeChild(s);
+      } catch (_) {}
+    };
   }, []);
 
   // Load DB data
@@ -177,11 +181,7 @@ export default function HartaPage() {
       .eq("is_active", true)
       .then(({ data }) => setRegisteredRestaurants(data || []));
 
-    supabase
-      .from("map_pin_requests")
-      .select("id, name, lat, lon, city")
-      .eq("status", "approved")
-      .then(({ data }) => setApprovedPins(data || []));
+    // map_pin_requests not implemented yet
   }, []);
 
   function makeEl(name, isReg, isLabel) {
@@ -233,7 +233,9 @@ export default function HartaPage() {
 
     apins.forEach((pin) => {
       if (!pin.lat || !pin.lon) return;
-      const match = regs.find((r) => r.name.toLowerCase() === pin.name.toLowerCase());
+      const match = regs.find(
+        (r) => r.name.toLowerCase() === pin.name.toLowerCase(),
+      );
       const el = makeEl(pin.name, true, isLabel);
       el.addEventListener("click", () =>
         setSelectedMarker({
@@ -256,12 +258,16 @@ export default function HartaPage() {
     if (!mapRef.current) return;
     clearOvp();
     const isLabel = zoom >= 14;
-    const regNames = new Set(registeredRestaurantsRef.current.map((r) => r.name.toLowerCase()));
+    const regNames = new Set(
+      registeredRestaurantsRef.current.map((r) => r.name.toLowerCase()),
+    );
     pois
       .filter((p) => !regNames.has(p.name.toLowerCase()))
       .forEach((poi) => {
         const el = makeEl(poi.name, false, isLabel);
-        el.addEventListener("click", () => setSelectedMarker({ ...poi, isRegistered: false }));
+        el.addEventListener("click", () =>
+          setSelectedMarker({ ...poi, isRegistered: false }),
+        );
         const marker = new maplibregl.Marker({ element: el, anchor: "bottom" })
           .setLngLat([poi.lon, poi.lat])
           .addTo(mapRef.current);
@@ -270,54 +276,75 @@ export default function HartaPage() {
   }
 
   async function fetchForCity(city) {
-    const key = `pois_v2_${city}`;
-    let pois = null;
+    // Cheia pentru localStorage cache
+    const cacheKey = `waf_pois_v3_${city}`;
+
+    // 1. Incercam din localStorage - instant
     try {
-      const raw = localStorage.getItem(key);
-      if (raw) pois = JSON.parse(raw);
+      const cached = localStorage.getItem(cacheKey);
+      if (cached) {
+        const pois = JSON.parse(cached);
+        setOverpassPOIs(pois);
+        renderOverpass(pois, mapRef.current?.getZoom() ?? 15);
+        return;
+      }
     } catch (_) {}
 
-    if (!pois) {
-      const coords = CITY_COORDS[city];
-      if (!coords) return;
-      setLoading(true);
-      const r = 0.09;
-      const [clat, clon] = coords;
-      const query = `[out:json][timeout:20];(node["amenity"~"restaurant|cafe|bar|fast_food|pub|bistro"](${clat - r},${clon - r},${clat + r},${clon + r}););out 500;`;
+    // 2. Nu e in cache - descarcam din Supabase Storage
+    setLoading(true);
 
-      // Fetch with 10s client-side timeout to prevent infinite loading
-      const fetchWithTimeout = (url) => {
-        const ctrl = new AbortController();
-        const tid = setTimeout(() => ctrl.abort(), 10000);
-        return fetch(url, { signal: ctrl.signal })
-          .then((res) => { clearTimeout(tid); return res.ok ? res.json() : Promise.reject(); })
-          .catch((e) => { clearTimeout(tid); throw e; });
-      };
+    // Mapam numele orasului la numele fisierului JSON
+    const cityFileMap = {
+      Iași: "iasi",
+      București: "bucuresti",
+      "Cluj-Napoca": "cluj-napoca",
+      Timișoara: "timisoara",
+      Constanța: "constanta",
+      Brașov: "brasov",
+      Galați: "galati",
+      Craiova: "craiova",
+      Ploiești: "ploiesti",
+      Oradea: "oradea",
+      Brăila: "braila",
+      Arad: "arad",
+      Pitești: "pitesti",
+      Sibiu: "sibiu",
+      Bacău: "bacau",
+      "Târgu Mureș": "targu-mures",
+      "Baia Mare": "baia-mare",
+      Buzău: "buzau",
+      Botoșani: "botosani",
+      "Satu Mare": "satu-mare",
+      "Râmnicu Vâlcea": "ramnicu-valcea",
+      Suceava: "suceava",
+      "Piatra Neamț": "piatra-neamt",
+      Deva: "deva",
+    };
 
-      try {
-        const data = await Promise.any([
-          fetchWithTimeout(`https://overpass.kumi.systems/api/interpreter?data=${encodeURIComponent(query)}`),
-          fetchWithTimeout(`https://lz4.overpass-api.de/api/interpreter?data=${encodeURIComponent(query)}`),
-        ]);
-        const raw2 = (data.elements || [])
-          .filter((el) => el.tags?.name && el.lat && el.lon)
-          .map((el) => ({
-            id: el.id,
-            name: el.tags.name,
-            lat: el.lat,
-            lon: el.lon,
-            address: el.tags["addr:street"] || "",
-          }));
-        pois = dedup(raw2);
-        try { localStorage.setItem(key, JSON.stringify(pois)); } catch (_) {}
-      } catch (_) {
-        pois = [];
-      }
+    const fileKey = cityFileMap[city];
+    if (!fileKey) {
       setLoading(false);
+      return;
     }
 
-    setOverpassPOIs(pois);
-    renderOverpass(pois, mapRef.current?.getZoom() ?? 15);
+    const url = `https://dsqkqqaojwxouimcacgy.supabase.co/storage/v1/object/public/maps/pois_${fileKey}.json`;
+
+    try {
+      const res = await fetch(url);
+      if (!res.ok) throw new Error("Nu am putut descarca datele");
+      const pois = await res.json();
+
+      // Salvam in localStorage pentru data viitoare
+      try {
+        localStorage.setItem(cacheKey, JSON.stringify(pois));
+      } catch (_) {}
+
+      setOverpassPOIs(pois);
+      renderOverpass(pois, mapRef.current?.getZoom() ?? 15);
+    } catch (e) {
+      console.warn("Eroare la descarcarea datelor:", e);
+    }
+    setLoading(false);
   }
 
   // Init map — zoom handler updates DOM directly, zero React re-renders
@@ -346,13 +373,19 @@ export default function HartaPage() {
       const isLabel = map.getZoom() >= 14;
       if (isLabel === prevIsLabel) return; // only act when crossing threshold
       prevIsLabel = isLabel;
-      [...regMarkersRef.current, ...ovpMarkersRef.current].forEach(({ el, isReg }) => {
-        const name = el.dataset.name;
-        el.className = isLabel
-          ? (isReg ? "waf-pin-o" : "waf-pin-g")
-          : (isReg ? "waf-dot-o" : "waf-dot-g");
-        el.textContent = isLabel ? name : "";
-      });
+      [...regMarkersRef.current, ...ovpMarkersRef.current].forEach(
+        ({ el, isReg }) => {
+          const name = el.dataset.name;
+          el.className = isLabel
+            ? isReg
+              ? "waf-pin-o"
+              : "waf-pin-g"
+            : isReg
+              ? "waf-dot-o"
+              : "waf-dot-g";
+          el.textContent = isLabel ? name : "";
+        },
+      );
     });
     return () => {
       map.remove();
@@ -365,7 +398,8 @@ export default function HartaPage() {
     if (!mapReady || !mapRef.current) return;
     const zoom = mapRef.current.getZoom();
     renderRegistered(zoom);
-    if (overpassPOIsRef.current.length > 0) renderOverpass(overpassPOIsRef.current, zoom);
+    if (overpassPOIsRef.current.length > 0)
+      renderOverpass(overpassPOIsRef.current, zoom);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mapReady, registeredRestaurants, approvedPins]);
 
@@ -392,7 +426,9 @@ export default function HartaPage() {
   const searchResults =
     searchQuery.trim().length > 1
       ? overpassPOIs
-          .filter((p) => p.name.toLowerCase().includes(searchQuery.toLowerCase()))
+          .filter((p) =>
+            p.name.toLowerCase().includes(searchQuery.toLowerCase()),
+          )
           .slice(0, 6)
       : [];
 
@@ -426,10 +462,17 @@ export default function HartaPage() {
           <button
             onClick={() => navigate("home")}
             style={{
-              width: 36, height: 36, borderRadius: 10,
-              background: "#1a1510", border: "1px solid #2a2218",
-              color: "#f0ebe3", fontSize: 18, cursor: "pointer",
-              display: "flex", alignItems: "center", justifyContent: "center",
+              width: 36,
+              height: 36,
+              borderRadius: 10,
+              background: "#1a1510",
+              border: "1px solid #2a2218",
+              color: "#f0ebe3",
+              fontSize: 18,
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
               flexShrink: 0,
             }}
           >
@@ -437,8 +480,11 @@ export default function HartaPage() {
           </button>
           <span
             style={{
-              fontFamily: "'Fraunces',serif", fontSize: 16,
-              fontWeight: 900, color: "#f0ebe3", flex: 1,
+              fontFamily: "'Fraunces',serif",
+              fontSize: 16,
+              fontWeight: 900,
+              color: "#f0ebe3",
+              flex: 1,
             }}
           >
             🗺️ Hartă restaurante
@@ -449,14 +495,28 @@ export default function HartaPage() {
             <button
               onClick={() => setShowCities(!showCities)}
               style={{
-                display: "flex", alignItems: "center", gap: 6,
-                padding: "7px 14px", background: "#c0622f",
-                border: "none", borderRadius: 20, color: "#fff",
-                fontSize: 12, fontWeight: 700, cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                gap: 6,
+                padding: "7px 14px",
+                background: "#c0622f",
+                border: "none",
+                borderRadius: 20,
+                color: "#fff",
+                fontSize: 12,
+                fontWeight: 700,
+                cursor: "pointer",
               }}
             >
               <span>📍</span>
-              <span style={{ maxWidth: 80, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+              <span
+                style={{
+                  maxWidth: 80,
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  whiteSpace: "nowrap",
+                }}
+              >
                 {selectedCity}
               </span>
               <span style={{ fontSize: 10 }}>▾</span>
@@ -464,25 +524,37 @@ export default function HartaPage() {
             {showCities && (
               <div
                 style={{
-                  position: "fixed", top: 55, right: 16,
-                  background: "#1a1510", border: "1px solid #2a2218",
-                  borderRadius: 14, width: 200, maxHeight: 320,
-                  overflowY: "auto", zIndex: 9999,
+                  position: "fixed",
+                  top: 55,
+                  right: 16,
+                  background: "#1a1510",
+                  border: "1px solid #2a2218",
+                  borderRadius: 14,
+                  width: 200,
+                  maxHeight: 320,
+                  overflowY: "auto",
+                  zIndex: 9999,
                   boxShadow: "0 8px 32px rgba(0,0,0,.9)",
                 }}
               >
                 {ORASE.map((oras) => (
                   <div
                     key={oras}
-                    onClick={() => { setSelectedCity(oras); setShowCities(false); }}
+                    onClick={() => {
+                      setSelectedCity(oras);
+                      setShowCities(false);
+                    }}
                     style={{
-                      padding: "10px 16px", cursor: "pointer", fontSize: 13,
+                      padding: "10px 16px",
+                      cursor: "pointer",
+                      fontSize: 13,
                       color: oras === selectedCity ? "#c0622f" : "#c8a97e",
                       fontWeight: oras === selectedCity ? 700 : 400,
                       borderBottom: "1px solid rgba(255,255,255,.04)",
                     }}
                   >
-                    {oras === selectedCity ? "✓ " : ""}{oras}
+                    {oras === selectedCity ? "✓ " : ""}
+                    {oras}
                   </div>
                 ))}
               </div>
@@ -494,9 +566,13 @@ export default function HartaPage() {
         <div style={{ position: "relative", zIndex: 9999 }}>
           <div
             style={{
-              display: "flex", alignItems: "center", gap: 8,
-              background: "#1a1510", border: "1px solid #2a2218",
-              borderRadius: 50, padding: "9px 16px",
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
+              background: "#1a1510",
+              border: "1px solid #2a2218",
+              borderRadius: 50,
+              padding: "9px 16px",
             }}
           >
             <span style={{ color: "#6b6050", fontSize: 14 }}>🔍</span>
@@ -507,15 +583,25 @@ export default function HartaPage() {
               onChange={(e) => setSearchQuery(e.target.value)}
               maxLength={60}
               style={{
-                flex: 1, background: "none", border: "none",
-                outline: "none", color: "#f0ebe3", fontSize: 16,
+                flex: 1,
+                background: "none",
+                border: "none",
+                outline: "none",
+                color: "#f0ebe3",
+                fontSize: 16,
                 fontFamily: "inherit",
               }}
             />
             {searchQuery && (
               <button
                 onClick={() => setSearchQuery("")}
-                style={{ background: "none", border: "none", color: "#6b6050", cursor: "pointer", fontSize: 18 }}
+                style={{
+                  background: "none",
+                  border: "none",
+                  color: "#6b6050",
+                  cursor: "pointer",
+                  fontSize: 18,
+                }}
               >
                 ×
               </button>
@@ -524,37 +610,67 @@ export default function HartaPage() {
           {searchResults.length > 0 && (
             <div
               style={{
-                position: "absolute", top: "calc(100% + 6px)", left: 0, right: 0,
-                background: "#1a1510", border: "1px solid #2a2218",
-                borderRadius: 14, overflow: "hidden",
-                boxShadow: "0 8px 24px rgba(0,0,0,.7)", zIndex: 99999,
+                position: "absolute",
+                top: "calc(100% + 6px)",
+                left: 0,
+                right: 0,
+                background: "#1a1510",
+                border: "1px solid #2a2218",
+                borderRadius: 14,
+                overflow: "hidden",
+                boxShadow: "0 8px 24px rgba(0,0,0,.7)",
+                zIndex: 99999,
               }}
             >
               {searchResults.map((r) => (
                 <div
                   key={r.id}
                   onClick={() => {
-                    if (mapRef.current) mapRef.current.flyTo({ center: [r.lon, r.lat], zoom: 17 });
+                    if (mapRef.current)
+                      mapRef.current.flyTo({
+                        center: [r.lon, r.lat],
+                        zoom: 17,
+                      });
                     setSearchQuery("");
                     setSelectedMarker({ ...r, isRegistered: false });
                   }}
                   style={{
-                    padding: "12px 16px", cursor: "pointer",
+                    padding: "12px 16px",
+                    cursor: "pointer",
                     borderBottom: "1px solid rgba(255,255,255,.04)",
-                    display: "flex", alignItems: "center", gap: 10,
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 10,
                   }}
                 >
                   <span
                     style={{
-                      width: 8, height: 8, borderRadius: "50%", flexShrink: 0,
+                      width: 8,
+                      height: 8,
+                      borderRadius: "50%",
+                      flexShrink: 0,
                       background: registeredRestaurants.some(
                         (rr) => rr.name.toLowerCase() === r.name.toLowerCase(),
-                      ) ? "#c0622f" : "#555",
+                      )
+                        ? "#c0622f"
+                        : "#555",
                     }}
                   />
                   <div>
-                    <div style={{ fontSize: 13, fontWeight: 600, color: "#f0ebe3" }}>{r.name}</div>
-                    {r.address && <div style={{ fontSize: 11, color: "#6b6050" }}>{r.address}</div>}
+                    <div
+                      style={{
+                        fontSize: 13,
+                        fontWeight: 600,
+                        color: "#f0ebe3",
+                      }}
+                    >
+                      {r.name}
+                    </div>
+                    {r.address && (
+                      <div style={{ fontSize: 11, color: "#6b6050" }}>
+                        {r.address}
+                      </div>
+                    )}
                   </div>
                 </div>
               ))}
@@ -565,15 +681,37 @@ export default function HartaPage() {
         {/* Legend */}
         <div style={{ display: "flex", gap: 16, alignItems: "center" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-            <div style={{ width: 10, height: 10, borderRadius: 3, background: "#c0622f" }} />
-            <span style={{ fontSize: 11, color: "#c8a97e", fontWeight: 600 }}>Pe WhataboutFood</span>
+            <div
+              style={{
+                width: 10,
+                height: 10,
+                borderRadius: 3,
+                background: "#c0622f",
+              }}
+            />
+            <span style={{ fontSize: 11, color: "#c8a97e", fontWeight: 600 }}>
+              Pe WhataboutFood
+            </span>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-            <div style={{ width: 10, height: 10, borderRadius: 3, background: "#555" }} />
-            <span style={{ fontSize: 11, color: "#6b6050" }}>Neînregistrat</span>
+            <div
+              style={{
+                width: 10,
+                height: 10,
+                borderRadius: 3,
+                background: "#555",
+              }}
+            />
+            <span style={{ fontSize: 11, color: "#6b6050" }}>
+              Neînregistrat
+            </span>
           </div>
           {loading && (
-            <span style={{ fontSize: 11, color: "#c8a97e", marginLeft: "auto" }}>⏳ Se încarcă...</span>
+            <span
+              style={{ fontSize: 11, color: "#c8a97e", marginLeft: "auto" }}
+            >
+              ⏳ Se încarcă...
+            </span>
           )}
         </div>
       </div>
@@ -585,20 +723,42 @@ export default function HartaPage() {
       {selectedMarker && (
         <div
           style={{
-            position: "absolute", bottom: 16, left: 16, right: 16,
+            position: "absolute",
+            bottom: 16,
+            left: 16,
+            right: 16,
             background: "#1a1510",
             border: `1px solid ${selectedMarker.isRegistered ? "rgba(192,98,47,.5)" : "#2a2218"}`,
-            borderRadius: 20, padding: "18px 20px",
-            boxShadow: "0 -4px 32px rgba(0,0,0,.6)", zIndex: 500,
+            borderRadius: 20,
+            padding: "18px 20px",
+            boxShadow: "0 -4px 32px rgba(0,0,0,.6)",
+            zIndex: 500,
           }}
         >
-          <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 12 }}>
+          <div
+            style={{
+              display: "flex",
+              alignItems: "flex-start",
+              justifyContent: "space-between",
+              marginBottom: 12,
+            }}
+          >
             <div>
-              <div style={{ fontFamily: "'Fraunces',serif", fontSize: 18, fontWeight: 900, color: "#f0ebe3", marginBottom: 4 }}>
+              <div
+                style={{
+                  fontFamily: "'Fraunces',serif",
+                  fontSize: 18,
+                  fontWeight: 900,
+                  color: "#f0ebe3",
+                  marginBottom: 4,
+                }}
+              >
                 {selectedMarker.name}
               </div>
               {selectedMarker.address && (
-                <div style={{ fontSize: 12, color: "#6b6050" }}>📍 {selectedMarker.address}</div>
+                <div style={{ fontSize: 12, color: "#6b6050" }}>
+                  📍 {selectedMarker.address}
+                </div>
               )}
               {selectedMarker.registeredData?.rating && (
                 <div style={{ fontSize: 12, color: "#c8a97e", marginTop: 4 }}>
@@ -608,7 +768,13 @@ export default function HartaPage() {
             </div>
             <button
               onClick={() => setSelectedMarker(null)}
-              style={{ background: "none", border: "none", color: "#6b6050", fontSize: 22, cursor: "pointer" }}
+              style={{
+                background: "none",
+                border: "none",
+                color: "#6b6050",
+                fontSize: 22,
+                cursor: "pointer",
+              }}
             >
               ×
             </button>
@@ -616,23 +782,52 @@ export default function HartaPage() {
 
           {selectedMarker.isRegistered && selectedMarker.registeredData?.id ? (
             <button
-              onClick={() => dispatch({ type: "SET_REST", payload: selectedMarker.registeredData })}
+              onClick={() =>
+                dispatch({
+                  type: "SET_REST",
+                  payload: selectedMarker.registeredData,
+                })
+              }
               style={{
-                width: "100%", padding: "12px",
+                width: "100%",
+                padding: "12px",
                 background: "linear-gradient(135deg,#c0622f,#8b3a18)",
-                border: "none", borderRadius: 14, color: "#fff",
-                fontSize: 14, fontWeight: 700, cursor: "pointer", fontFamily: "inherit",
+                border: "none",
+                borderRadius: 14,
+                color: "#fff",
+                fontSize: 14,
+                fontWeight: 700,
+                cursor: "pointer",
+                fontFamily: "inherit",
               }}
             >
               🍽️ Vezi locația în aplicație
             </button>
           ) : selectedMarker.isRegistered ? (
-            <div style={{ background: "rgba(255,255,255,.04)", borderRadius: 12, padding: "12px", textAlign: "center" }}>
-              <div style={{ fontSize: 13, color: "#c8a97e" }}>📍 Locație înregistrată pe WhataboutFood</div>
+            <div
+              style={{
+                background: "rgba(255,255,255,.04)",
+                borderRadius: 12,
+                padding: "12px",
+                textAlign: "center",
+              }}
+            >
+              <div style={{ fontSize: 13, color: "#c8a97e" }}>
+                📍 Locație înregistrată pe WhataboutFood
+              </div>
             </div>
           ) : (
-            <div style={{ background: "rgba(255,255,255,.04)", borderRadius: 12, padding: "12px", textAlign: "center" }}>
-              <div style={{ fontSize: 13, color: "#6b6050" }}>😔 Încă nu face parte din această aplicație</div>
+            <div
+              style={{
+                background: "rgba(255,255,255,.04)",
+                borderRadius: 12,
+                padding: "12px",
+                textAlign: "center",
+              }}
+            >
+              <div style={{ fontSize: 13, color: "#6b6050" }}>
+                😔 Încă nu face parte din această aplicație
+              </div>
             </div>
           )}
         </div>
