@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef } from "react";
 import maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { useApp } from "../context/AppContext";
@@ -33,10 +33,8 @@ const CITY_COORDS = {
 
 const ORASE = Object.keys(CITY_COORDS);
 
-// [lat, lon] → [lon, lat] for MapLibre
 const toLngLat = ([lat, lon]) => [lon, lat];
 
-// Haversine-lite: meters between two points (good enough for < 1 km)
 function distMeters(lat1, lon1, lat2, lon2) {
   const dLat = lat2 - lat1;
   const dLon = (lon2 - lon1) * Math.cos((lat1 * Math.PI) / 180);
@@ -55,8 +53,6 @@ function dedup(pois) {
   }
   return kept;
 }
-
-const cacheKey = (city) => `pois_${city}`;
 
 const PIN_CSS = `
   .waf-pin-o {
@@ -141,8 +137,14 @@ export default function HartaPage() {
   const { navigate, dispatch } = useApp();
   const containerRef = useRef(null);
   const mapRef = useRef(null);
+  // Store {marker, el, isReg} so we can update DOM on zoom without recreating markers
   const regMarkersRef = useRef([]);
   const ovpMarkersRef = useRef([]);
+
+  // Always-fresh data refs (updated synchronously in render body before any effect runs)
+  const registeredRestaurantsRef = useRef([]);
+  const approvedPinsRef = useRef([]);
+  const overpassPOIsRef = useRef([]);
 
   const [mapReady, setMapReady] = useState(false);
   const [selectedCity, setSelectedCity] = useState("Iași");
@@ -153,7 +155,11 @@ export default function HartaPage() {
   const [approvedPins, setApprovedPins] = useState([]);
   const [overpassPOIs, setOverpassPOIs] = useState([]);
   const [selectedMarker, setSelectedMarker] = useState(null);
-  const [currentZoom, setCurrentZoom] = useState(15);
+
+  // Keep refs in sync — runs on every render before effects
+  registeredRestaurantsRef.current = registeredRestaurants;
+  approvedPinsRef.current = approvedPins;
+  overpassPOIsRef.current = overpassPOIs;
 
   // Inject CSS once
   useEffect(() => {
@@ -178,14 +184,141 @@ export default function HartaPage() {
       .then(({ data }) => setApprovedPins(data || []));
   }, []);
 
-  // Init map
+  function makeEl(name, isReg, isLabel) {
+    const el = document.createElement("div");
+    el.dataset.name = name;
+    if (isLabel) {
+      el.className = isReg ? "waf-pin-o" : "waf-pin-g";
+      el.textContent = name;
+    } else {
+      el.className = isReg ? "waf-dot-o" : "waf-dot-g";
+    }
+    return el;
+  }
+
+  function clearReg() {
+    regMarkersRef.current.forEach(({ marker }) => marker.remove());
+    regMarkersRef.current = [];
+  }
+  function clearOvp() {
+    ovpMarkersRef.current.forEach(({ marker }) => marker.remove());
+    ovpMarkersRef.current = [];
+  }
+
+  function renderRegistered(zoom) {
+    if (!mapRef.current) return;
+    clearReg();
+    const isLabel = zoom >= 14;
+    const regs = registeredRestaurantsRef.current;
+    const apins = approvedPinsRef.current;
+
+    regs.forEach((rest) => {
+      if (!rest.latitude || !rest.longitude) return;
+      const el = makeEl(rest.name, true, isLabel);
+      el.addEventListener("click", () =>
+        setSelectedMarker({
+          id: rest.id,
+          name: rest.name,
+          lat: rest.latitude,
+          lon: rest.longitude,
+          isRegistered: true,
+          registeredData: rest,
+        }),
+      );
+      const marker = new maplibregl.Marker({ element: el, anchor: "bottom" })
+        .setLngLat([rest.longitude, rest.latitude])
+        .addTo(mapRef.current);
+      regMarkersRef.current.push({ marker, el, isReg: true });
+    });
+
+    apins.forEach((pin) => {
+      if (!pin.lat || !pin.lon) return;
+      const match = regs.find((r) => r.name.toLowerCase() === pin.name.toLowerCase());
+      const el = makeEl(pin.name, true, isLabel);
+      el.addEventListener("click", () =>
+        setSelectedMarker({
+          id: match ? match.id : `pin_${pin.id}`,
+          name: pin.name,
+          lat: pin.lat,
+          lon: pin.lon,
+          isRegistered: true,
+          registeredData: match || { name: pin.name, city: pin.city },
+        }),
+      );
+      const marker = new maplibregl.Marker({ element: el, anchor: "bottom" })
+        .setLngLat([pin.lon, pin.lat])
+        .addTo(mapRef.current);
+      regMarkersRef.current.push({ marker, el, isReg: true });
+    });
+  }
+
+  function renderOverpass(pois, zoom) {
+    if (!mapRef.current) return;
+    clearOvp();
+    const isLabel = zoom >= 14;
+    const regNames = new Set(registeredRestaurantsRef.current.map((r) => r.name.toLowerCase()));
+    pois
+      .filter((p) => !regNames.has(p.name.toLowerCase()))
+      .forEach((poi) => {
+        const el = makeEl(poi.name, false, isLabel);
+        el.addEventListener("click", () => setSelectedMarker({ ...poi, isRegistered: false }));
+        const marker = new maplibregl.Marker({ element: el, anchor: "bottom" })
+          .setLngLat([poi.lon, poi.lat])
+          .addTo(mapRef.current);
+        ovpMarkersRef.current.push({ marker, el, isReg: false });
+      });
+  }
+
+  async function fetchForCity(city) {
+    const key = `pois_${city}`;
+    let pois = null;
+    try {
+      const raw = localStorage.getItem(key);
+      if (raw) pois = JSON.parse(raw);
+    } catch (_) {}
+
+    if (!pois) {
+      const coords = CITY_COORDS[city];
+      if (!coords) return;
+      setLoading(true);
+      const r = 0.07;
+      const [clat, clon] = coords;
+      const query = `[out:json][timeout:15];(node["amenity"~"restaurant|cafe|bar|fast_food|pub|bistro"](${clat - r},${clon - r},${clat + r},${clon + r}););out 200;`;
+      const tryFetch = (url) =>
+        fetch(url).then((res) => (res.ok ? res.json() : Promise.reject()));
+      try {
+        const data = await Promise.any([
+          tryFetch(`https://overpass.kumi.systems/api/interpreter?data=${encodeURIComponent(query)}`),
+          tryFetch(`https://lz4.overpass-api.de/api/interpreter?data=${encodeURIComponent(query)}`),
+        ]);
+        const raw2 = (data.elements || [])
+          .filter((el) => el.tags?.name && el.lat && el.lon)
+          .map((el) => ({
+            id: el.id,
+            name: el.tags.name,
+            lat: el.lat,
+            lon: el.lon,
+            address: el.tags["addr:street"] || "",
+          }));
+        pois = dedup(raw2);
+        try { localStorage.setItem(key, JSON.stringify(pois)); } catch (_) {}
+      } catch (_) {
+        pois = [];
+      }
+      setLoading(false);
+    }
+
+    setOverpassPOIs(pois);
+    renderOverpass(pois, mapRef.current?.getZoom() ?? 15);
+  }
+
+  // Init map — zoom handler updates DOM directly, zero React re-renders
   useEffect(() => {
     if (!containerRef.current) return;
-    const center = CITY_COORDS["Iași"];
     const map = new maplibregl.Map({
       container: containerRef.current,
       style: "https://tiles.openfreemap.org/styles/bright",
-      center: toLngLat(center),
+      center: toLngLat(CITY_COORDS["Iași"]),
       zoom: 15,
       attributionControl: false,
     });
@@ -197,175 +330,50 @@ export default function HartaPage() {
       mapRef.current = map;
       setMapReady(true);
     });
-    map.on("zoomend", () => setCurrentZoom(map.getZoom()));
+    // On zoom: just flip CSS classes on existing elements — no marker recreation
+    map.on("zoomend", () => {
+      const isLabel = map.getZoom() >= 14;
+      const update = (items) =>
+        items.forEach(({ el, isReg }) => {
+          const name = el.dataset.name;
+          el.className = isLabel
+            ? (isReg ? "waf-pin-o" : "waf-pin-g")
+            : (isReg ? "waf-dot-o" : "waf-dot-g");
+          el.textContent = isLabel ? name : "";
+        });
+      update(regMarkersRef.current);
+      update(ovpMarkersRef.current);
+    });
     return () => {
       map.remove();
       mapRef.current = null;
     };
   }, []);
 
-  // Build a marker DOM element
-  const makeEl = useCallback((name, isReg, zoom) => {
-    const el = document.createElement("div");
-    if (zoom >= 14) {
-      el.className = isReg ? "waf-pin-o" : "waf-pin-g";
-      el.textContent = name;
-    } else {
-      el.className = isReg ? "waf-dot-o" : "waf-dot-g";
-    }
-    return el;
-  }, []);
-
-  // Clear helpers
-  const clearReg = () => { regMarkersRef.current.forEach((m) => m.remove()); regMarkersRef.current = []; };
-  const clearOvp = () => { ovpMarkersRef.current.forEach((m) => m.remove()); ovpMarkersRef.current = []; };
-
-  // Render registered + approved pins
-  const renderRegistered = useCallback(
-    (zoom) => {
-      if (!mapRef.current) return;
-      clearReg();
-      const anchor = zoom >= 14 ? "bottom" : "center";
-
-      registeredRestaurants.forEach((rest) => {
-        if (!rest.latitude || !rest.longitude) return;
-        const el = makeEl(rest.name, true, zoom);
-        el.addEventListener("click", () =>
-          setSelectedMarker({
-            id: rest.id,
-            name: rest.name,
-            lat: rest.latitude,
-            lon: rest.longitude,
-            isRegistered: true,
-            registeredData: rest,
-          }),
-        );
-        regMarkersRef.current.push(
-          new maplibregl.Marker({ element: el, anchor })
-            .setLngLat([rest.longitude, rest.latitude])
-            .addTo(mapRef.current),
-        );
-      });
-
-      approvedPins.forEach((pin) => {
-        if (!pin.lat || !pin.lon) return;
-        const match = registeredRestaurants.find(
-          (r) => r.name.toLowerCase() === pin.name.toLowerCase(),
-        );
-        const el = makeEl(pin.name, true, zoom);
-        el.addEventListener("click", () =>
-          setSelectedMarker({
-            id: match ? match.id : `pin_${pin.id}`,
-            name: pin.name,
-            lat: pin.lat,
-            lon: pin.lon,
-            isRegistered: true,
-            registeredData: match || { name: pin.name, city: pin.city },
-          }),
-        );
-        regMarkersRef.current.push(
-          new maplibregl.Marker({ element: el, anchor })
-            .setLngLat([pin.lon, pin.lat])
-            .addTo(mapRef.current),
-        );
-      });
-    },
-    [registeredRestaurants, approvedPins, makeEl],
-  );
-
-  // Render overpass POIs
-  const renderOverpass = useCallback(
-    (pois, zoom) => {
-      if (!mapRef.current) return;
-      clearOvp();
-      const anchor = zoom >= 14 ? "bottom" : "center";
-      const regNames = new Set(registeredRestaurants.map((r) => r.name.toLowerCase()));
-      pois
-        .filter((p) => !regNames.has(p.name.toLowerCase()))
-        .forEach((poi) => {
-          const el = makeEl(poi.name, false, zoom);
-          el.addEventListener("click", () =>
-            setSelectedMarker({ ...poi, isRegistered: false }),
-          );
-          ovpMarkersRef.current.push(
-            new maplibregl.Marker({ element: el, anchor })
-              .setLngLat([poi.lon, poi.lat])
-              .addTo(mapRef.current),
-          );
-        });
-    },
-    [registeredRestaurants, makeEl],
-  );
-
-  // Fetch Overpass (with localStorage cache)
-  const fetchForCity = useCallback(
-    async (city) => {
-      const key = cacheKey(city);
-      let pois = null;
-
-      try {
-        const raw = localStorage.getItem(key);
-        if (raw) pois = JSON.parse(raw);
-      } catch (_) {}
-
-      if (!pois) {
-        const coords = CITY_COORDS[city];
-        if (!coords) return;
-        setLoading(true);
-        const r = 0.07;
-        const [clat, clon] = coords;
-        const query = `[out:json][timeout:15];(node["amenity"~"restaurant|cafe|bar|fast_food|pub|bistro"](${clat - r},${clon - r},${clat + r},${clon + r}););out 200;`;
-        const tryFetch = (url) =>
-          fetch(url).then((res) => (res.ok ? res.json() : Promise.reject()));
-        try {
-          const data = await Promise.any([
-            tryFetch(`https://overpass.kumi.systems/api/interpreter?data=${encodeURIComponent(query)}`),
-            tryFetch(`https://lz4.overpass-api.de/api/interpreter?data=${encodeURIComponent(query)}`),
-          ]);
-          const raw2 = (data.elements || [])
-            .filter((el) => el.tags?.name && el.lat && el.lon)
-            .map((el) => ({
-              id: el.id,
-              name: el.tags.name,
-              lat: el.lat,
-              lon: el.lon,
-              address: el.tags["addr:street"] || "",
-            }));
-          pois = dedup(raw2);
-          try { localStorage.setItem(key, JSON.stringify(pois)); } catch (_) {}
-        } catch (_) {
-          pois = [];
-        }
-        setLoading(false);
-      }
-
-      setOverpassPOIs(pois);
-      renderOverpass(pois, mapRef.current?.getZoom() ?? 15);
-    },
-    [renderOverpass],
-  );
-
-  // On map ready + DB data: initial render
+  // On map ready + DB data: (re-)render registered markers
   useEffect(() => {
-    if (!mapReady) return;
-    renderRegistered(currentZoom);
-    fetchForCity(selectedCity);
+    if (!mapReady || !mapRef.current) return;
+    const zoom = mapRef.current.getZoom();
+    renderRegistered(zoom);
+    if (overpassPOIsRef.current.length > 0) renderOverpass(overpassPOIsRef.current, zoom);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mapReady, registeredRestaurants, approvedPins]);
 
-  // On zoom: re-render everything
+  // On map ready: initial Overpass fetch
   useEffect(() => {
     if (!mapReady) return;
-    renderRegistered(currentZoom);
-    if (overpassPOIs.length > 0) renderOverpass(overpassPOIs, currentZoom);
+    fetchForCity(selectedCity);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentZoom]);
+  }, [mapReady]);
 
-  // On city change: fly + fetch
+  // On city change: clear overpass, fly, fetch
   useEffect(() => {
     if (!mapRef.current || !mapReady) return;
     const coords = CITY_COORDS[selectedCity];
     if (!coords) return;
+    clearOvp();
+    overpassPOIsRef.current = [];
+    setOverpassPOIs([]);
     mapRef.current.flyTo({ center: toLngLat(coords), zoom: 15 });
     fetchForCity(selectedCity);
     // eslint-disable-next-line react-hooks/exhaustive-deps

@@ -109,7 +109,6 @@ function RestaurantLocationPicker({ city, onSelect, onClose, showToast }) {
   const [pendingPin, setPendingPin] = useState(null);
   const [pinName, setPinName] = useState("");
   const [submitting, setSubmitting] = useState(false);
-  const [currentZoom, setCurrentZoom] = useState(15);
 
   // Inject CSS
   useEffect(() => {
@@ -119,19 +118,20 @@ function RestaurantLocationPicker({ city, onSelect, onClose, showToast }) {
     return () => { try { document.head.removeChild(s); } catch (_) {} };
   }, []);
 
-  // Render POI markers (called on zoom change too via ref)
+  // Render POI markers — called only on initial load or city change
   const renderPOIsRef = useRef(null);
   renderPOIsRef.current = (pois, zoom) => {
     if (!mapRef.current) return;
-    poiMarkersRef.current.forEach((m) => m.remove());
+    poiMarkersRef.current.forEach(({ marker }) => marker.remove());
     poiMarkersRef.current = [];
     selectedElRef.current = null;
-    const anchor = zoom >= 14 ? "bottom" : "center";
+    const isLabel = zoom >= 14;
 
     pois.forEach((poi) => {
       const el = document.createElement("div");
-      el.className = zoom >= 14 ? "waf-pp" : "waf-pd";
-      if (zoom >= 14) el.textContent = poi.name;
+      el.dataset.name = poi.name;
+      el.className = isLabel ? "waf-pp" : "waf-pd";
+      if (isLabel) el.textContent = poi.name;
 
       el.addEventListener("click", () => {
         if (addingModeRef.current) return;
@@ -142,11 +142,10 @@ function RestaurantLocationPicker({ city, onSelect, onClose, showToast }) {
         setConfirming(poi);
       });
 
-      poiMarkersRef.current.push(
-        new maplibregl.Marker({ element: el, anchor })
-          .setLngLat([poi.lon, poi.lat])
-          .addTo(mapRef.current),
-      );
+      const marker = new maplibregl.Marker({ element: el, anchor: "bottom" })
+        .setLngLat([poi.lon, poi.lat])
+        .addTo(mapRef.current);
+      poiMarkersRef.current.push({ marker, el });
     });
   };
 
@@ -208,10 +207,16 @@ function RestaurantLocationPicker({ city, onSelect, onClose, showToast }) {
       fetchPOIs();
     });
 
+    // On zoom: update DOM classes only — no marker recreation
     map.on("zoomend", () => {
-      const z = map.getZoom();
-      setCurrentZoom(z);
-      if (allPOIsRef.current.length > 0) renderPOIsRef.current(allPOIsRef.current, z);
+      const isLabel = map.getZoom() >= 14;
+      poiMarkersRef.current.forEach(({ el }) => {
+        const name = el.dataset.name;
+        el.className = isLabel ? "waf-pp" : "waf-pd";
+        el.textContent = isLabel ? name : "";
+        // Preserve .sel if this was the selected marker
+        if (selectedElRef.current === el && isLabel) el.classList.add("sel");
+      });
     });
 
     map.on("click", (e) => {
@@ -251,7 +256,7 @@ function RestaurantLocationPicker({ city, onSelect, onClose, showToast }) {
     const coords = CITY_COORDS_MAP[newCity];
     if (mapRef.current && coords) {
       mapRef.current.flyTo({ center: ll(coords), zoom: 15 });
-      poiMarkersRef.current.forEach((m) => m.remove());
+      poiMarkersRef.current.forEach(({ marker }) => marker.remove());
       poiMarkersRef.current = [];
       allPOIsRef.current = [];
       setTimeout(fetchPOIs, 300);
