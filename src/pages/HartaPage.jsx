@@ -225,7 +225,8 @@ export default function HartaPage() {
           registeredData: rest,
         }),
       );
-      const marker = new maplibregl.Marker({ element: el, anchor: "bottom" })
+      const anchor = isLabel ? "bottom" : "center";
+      const marker = new maplibregl.Marker({ element: el, anchor })
         .setLngLat([rest.longitude, rest.latitude])
         .addTo(mapRef.current);
       regMarkersRef.current.push({ marker, el, isReg: true });
@@ -247,7 +248,8 @@ export default function HartaPage() {
           registeredData: match || { name: pin.name, city: pin.city },
         }),
       );
-      const marker = new maplibregl.Marker({ element: el, anchor: "bottom" })
+      const anchor2 = isLabel ? "bottom" : "center";
+      const marker = new maplibregl.Marker({ element: el, anchor: anchor2 })
         .setLngLat([pin.lon, pin.lat])
         .addTo(mapRef.current);
       regMarkersRef.current.push({ marker, el, isReg: true });
@@ -268,7 +270,8 @@ export default function HartaPage() {
         el.addEventListener("click", () =>
           setSelectedMarker({ ...poi, isRegistered: false }),
         );
-        const marker = new maplibregl.Marker({ element: el, anchor: "bottom" })
+        const anchorOvp = isLabel ? "bottom" : "center";
+        const marker = new maplibregl.Marker({ element: el, anchor: anchorOvp })
           .setLngLat([poi.lon, poi.lat])
           .addTo(mapRef.current);
         ovpMarkersRef.current.push({ marker, el, isReg: false });
@@ -365,27 +368,16 @@ export default function HartaPage() {
       mapRef.current = map;
       setMapReady(true);
     });
-    // Update marker classes during zoom animation — fires only when crossing zoom=14 threshold
-    // Using 'zoom' (not 'zoomend') so changes happen in real time; MapLibre recalculates anchor
-    // offsets on the next render frame automatically
+    // La crossover zoom 14, re-render complet cu anchor corect
     let prevIsLabel = map.getZoom() >= 14;
-    map.on("zoom", () => {
+    map.on("zoomend", () => {
       const isLabel = map.getZoom() >= 14;
-      if (isLabel === prevIsLabel) return; // only act when crossing threshold
+      if (isLabel === prevIsLabel) return;
       prevIsLabel = isLabel;
-      [...regMarkersRef.current, ...ovpMarkersRef.current].forEach(
-        ({ el, isReg }) => {
-          const name = el.dataset.name;
-          el.className = isLabel
-            ? isReg
-              ? "waf-pin-o"
-              : "waf-pin-g"
-            : isReg
-              ? "waf-dot-o"
-              : "waf-dot-g";
-          el.textContent = isLabel ? name : "";
-        },
-      );
+      // Re-render complet cu anchor corect pentru noul zoom level
+      renderRegistered(map.getZoom());
+      if (overpassPOIsRef.current.length > 0)
+        renderOverpass(overpassPOIsRef.current, map.getZoom());
     });
     return () => {
       map.remove();
