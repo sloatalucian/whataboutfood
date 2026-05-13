@@ -154,7 +154,7 @@ function RestaurantLocationPicker({ city, onSelect, onClose, showToast }) {
   const fetchPOIs = useCallback(async () => {
     if (!mapRef.current) return;
     const cityKey = mapCityRef.current;
-    const cKey = `pois_picker_${cityKey}`;
+    const cKey = `pois_picker_v2_${cityKey}`;
     let pois = null;
 
     try {
@@ -166,13 +166,19 @@ function RestaurantLocationPicker({ city, onSelect, onClose, showToast }) {
       const coords = CITY_COORDS_MAP[cityKey] || [47.1585, 27.6014];
       const r = 0.09;
       const [clat, clon] = coords;
-      const query = `[out:json][timeout:25];(node["amenity"~"restaurant|cafe|bar|fast_food|pub|bistro"](${clat - r},${clon - r},${clat + r},${clon + r}););out 300;`;
-      const tryF = (url) => fetch(url).then((res) => (res.ok ? res.json() : Promise.reject()));
+      const query = `[out:json][timeout:20];(node["amenity"~"restaurant|cafe|bar|fast_food|pub|bistro"](${clat - r},${clon - r},${clat + r},${clon + r}););out 500;`;
+      const fetchWithTimeout = (url) => {
+        const ctrl = new AbortController();
+        const tid = setTimeout(() => ctrl.abort(), 10000);
+        return fetch(url, { signal: ctrl.signal })
+          .then((res) => { clearTimeout(tid); return res.ok ? res.json() : Promise.reject(); })
+          .catch((e) => { clearTimeout(tid); throw e; });
+      };
       setLoading(true);
       try {
         const data = await Promise.any([
-          tryF(`https://overpass.kumi.systems/api/interpreter?data=${encodeURIComponent(query)}`),
-          tryF(`https://lz4.overpass-api.de/api/interpreter?data=${encodeURIComponent(query)}`),
+          fetchWithTimeout(`https://overpass.kumi.systems/api/interpreter?data=${encodeURIComponent(query)}`),
+          fetchWithTimeout(`https://lz4.overpass-api.de/api/interpreter?data=${encodeURIComponent(query)}`),
         ]);
         const raw2 = (data.elements || [])
           .filter((el) => el.tags?.name && el.lat && el.lon)
@@ -207,14 +213,16 @@ function RestaurantLocationPicker({ city, onSelect, onClose, showToast }) {
       fetchPOIs();
     });
 
-    // On zoom: update DOM classes only — no marker recreation
-    map.on("zoomend", () => {
+    // Update classes during animation when crossing zoom=14 threshold
+    let prevIsLabel = map.getZoom() >= 14;
+    map.on("zoom", () => {
       const isLabel = map.getZoom() >= 14;
+      if (isLabel === prevIsLabel) return;
+      prevIsLabel = isLabel;
       poiMarkersRef.current.forEach(({ el }) => {
         const name = el.dataset.name;
         el.className = isLabel ? "waf-pp" : "waf-pd";
         el.textContent = isLabel ? name : "";
-        // Preserve .sel if this was the selected marker
         if (selectedElRef.current === el && isLabel) el.classList.add("sel");
       });
     });
