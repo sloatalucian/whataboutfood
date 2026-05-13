@@ -159,55 +159,57 @@ function RestaurantLocationPicker({ city, onSelect, onClose, showToast }) {
   const fetchPOIs = useCallback(async () => {
     if (!mapRef.current) return;
     const cityKey = mapCityRef.current;
-    const cKey = `pois_picker_v2_${cityKey}`;
+    const cKey = `waf_pois_v3_${cityKey}`;
     let pois = null;
 
+    // 1. Verificam localStorage - instant
     try {
       const raw = localStorage.getItem(cKey);
       if (raw) pois = JSON.parse(raw);
     } catch (_) {}
 
     if (!pois) {
-      const coords = CITY_COORDS_MAP[cityKey] || [47.1585, 27.6014];
-      const r = 0.09;
-      const [clat, clon] = coords;
-      const query = `[out:json][timeout:20];(node["amenity"~"restaurant|cafe|bar|fast_food|pub|bistro"](${clat - r},${clon - r},${clat + r},${clon + r}););out 500;`;
-      const fetchWithTimeout = (url) => {
-        const ctrl = new AbortController();
-        const tid = setTimeout(() => ctrl.abort(), 10000);
-        return fetch(url, { signal: ctrl.signal })
-          .then((res) => {
-            clearTimeout(tid);
-            return res.ok ? res.json() : Promise.reject();
-          })
-          .catch((e) => {
-            clearTimeout(tid);
-            throw e;
-          });
+      // 2. Descarcam din Supabase Storage
+      const cityFileMap = {
+        Iași: "iasi",
+        București: "bucuresti",
+        "Cluj-Napoca": "cluj-napoca",
+        Timișoara: "timisoara",
+        Constanța: "constanta",
+        Brașov: "brasov",
+        Galați: "galati",
+        Craiova: "craiova",
+        Ploiești: "ploiesti",
+        Oradea: "oradea",
+        Brăila: "braila",
+        Arad: "arad",
+        Pitești: "pitesti",
+        Sibiu: "sibiu",
+        Bacău: "bacau",
+        "Târgu Mureș": "targu-mures",
+        "Baia Mare": "baia-mare",
+        Buzău: "buzau",
+        Botoșani: "botosani",
+        "Satu Mare": "satu-mare",
+        "Râmnicu Vâlcea": "ramnicu-valcea",
+        Suceava: "suceava",
+        "Piatra Neamț": "piatra-neamt",
+        Deva: "deva",
       };
+      const fileKey = cityFileMap[cityKey];
       setLoading(true);
       try {
-        const data = await Promise.any([
-          fetchWithTimeout(
-            `https://overpass.kumi.systems/api/interpreter?data=${encodeURIComponent(query)}`,
-          ),
-          fetchWithTimeout(
-            `https://overpass.kumi.systems/api/interpreter?data=${encodeURIComponent(query)}`,
-          ),
-        ]);
-        const raw2 = (data.elements || [])
-          .filter((el) => el.tags?.name && el.lat && el.lon)
-          .map((el) => ({
-            id: el.id,
-            name: el.tags.name,
-            lat: el.lat,
-            lon: el.lon,
-            address: el.tags["addr:street"] || "",
-          }));
-        pois = dedup(raw2);
-        try {
-          localStorage.setItem(cKey, JSON.stringify(pois));
-        } catch (_) {}
+        if (fileKey) {
+          const url = `https://dsqkqqaojwxouimcacgy.supabase.co/storage/v1/object/public/maps/pois_${fileKey}.json`;
+          const res = await fetch(url);
+          if (res.ok) {
+            pois = await res.json();
+            try {
+              localStorage.setItem(cKey, JSON.stringify(pois));
+            } catch (_) {}
+          }
+        }
+        if (!pois) pois = [];
       } catch (_) {
         pois = [];
       }
