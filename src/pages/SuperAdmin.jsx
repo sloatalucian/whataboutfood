@@ -154,11 +154,7 @@ export default function SuperAdmin() {
           .from("subscriptions")
           .select("*")
           .order("created_at", { ascending: false }),
-        supabase
-          .from("map_pin_requests")
-          .select("*")
-          .eq("status", "pending")
-          .order("created_at", { ascending: false }),
+        Promise.resolve({ data: [] }), // map_pin_requests not used
         supabase
           .from("profiles")
           .select("*", { count: "exact", head: true })
@@ -291,29 +287,13 @@ export default function SuperAdmin() {
   };
 
   const approvePin = async (id, name) => {
-    try {
-      await supabase
-        .from("map_pin_requests")
-        .update({ status: "approved" })
-        .eq("id", id);
-      setMapPinRequests((prev) => prev.filter((p) => p.id !== id));
-      showToast(`✅ Pinul „${name}" aprobat! Apare pe hartă.`);
-    } catch {
-      showToast("❌ Eroare.");
-    }
+    // map_pin_requests not used - pins handled via profiles.rest_location
+    showToast("❌ Funcție dezactivată.");
   };
 
   const rejectPin = async (id, name) => {
-    try {
-      await supabase
-        .from("map_pin_requests")
-        .update({ status: "rejected" })
-        .eq("id", id);
-      setMapPinRequests((prev) => prev.filter((p) => p.id !== id));
-      showToast(`❌ Pinul „${name}" respins.`);
-    } catch {
-      showToast("❌ Eroare.");
-    }
+    // map_pin_requests not used - pins handled via profiles.rest_location
+    showToast("❌ Funcție dezactivată.");
   };
 
   const toggleOwner = async (id, status) => {
