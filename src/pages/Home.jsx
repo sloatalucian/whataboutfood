@@ -3,6 +3,7 @@ import { ProgramEditorModal } from "./Restaurant";
 import { useApp } from "../context/AppContext";
 import RestaurantCard from "../components/RestaurantCard";
 import { RESTAURANTS } from "../data/restaurants";
+import { RestaurantLocationPicker } from "./NewRestaurant";
 import { supabase } from "../supabase";
 
 const ORASE = [
@@ -1320,6 +1321,7 @@ function HomeOwner({ onLogout }) {
   const [myRestaurants, setMyRestaurants] = useState([]);
   const [loading, setLoading] = useState(true);
   const [deleteModal, setDeleteModal] = useState(null);
+  const [locationEditRest, setLocationEditRest] = useState(null);
   const [todayStats, setTodayStats] = useState({
     orders: "—",
     reservations: "—",
@@ -1424,6 +1426,38 @@ function HomeOwner({ onLogout }) {
           restaurant={deleteModal}
           onConfirm={handleDeleteRestaurant}
           onClose={() => setDeleteModal(null)}
+        />
+      )}
+
+      {locationEditRest && (
+        <RestaurantLocationPicker
+          city={locationEditRest.city}
+          restaurantId={locationEditRest.id}
+          showToast={showToast}
+          onSelect={async (loc) => {
+            try {
+              const {
+                data: { session },
+              } = await supabase.auth.getSession();
+              await supabase.from("location_requests").insert({
+                owner_id: session?.user?.id,
+                restaurant_id: locationEditRest.id,
+                restaurant_name: locationEditRest.name,
+                lat: loc.lat,
+                lon: loc.lon,
+                city: locationEditRest.city,
+                type: "update",
+                status: "pending",
+              });
+              showToast(
+                "✅ Cerere de modificare locație trimisă! Vei fi notificat după aprobare.",
+              );
+            } catch (e) {
+              showToast("❌ Eroare la trimitere.");
+            }
+            setLocationEditRest(null);
+          }}
+          onClose={() => setLocationEditRest(null)}
         />
       )}
 
@@ -1761,7 +1795,9 @@ function HomeOwner({ onLogout }) {
                 <div
                   key={r.id}
                   style={{
-                    background: r.is_active ? "#161210" : "rgba(224,122,71,.04)",
+                    background: r.is_active
+                      ? "#161210"
+                      : "rgba(224,122,71,.04)",
                     border: `1px solid ${r.is_active ? "#2a2218" : "rgba(224,122,71,.3)"}`,
                     borderRadius: 16,
                     padding: "14px 16px",
@@ -1792,7 +1828,12 @@ function HomeOwner({ onLogout }) {
                       style={{ fontSize: 11, color: "#6b6050", marginTop: 2 }}
                     >
                       {r.city} • Plan {r.plan?.toUpperCase() || "FREE"} •{" "}
-                      <span style={{ color: r.is_active ? "#6b9e6b" : "#e07a47", fontWeight: 600 }}>
+                      <span
+                        style={{
+                          color: r.is_active ? "#6b9e6b" : "#e07a47",
+                          fontWeight: 600,
+                        }}
+                      >
                         {r.is_active ? "✅ Activ" : "⏳ În așteptare"}
                       </span>
                     </div>
@@ -1815,6 +1856,25 @@ function HomeOwner({ onLogout }) {
                       }}
                     >
                       ✏️
+                    </button>
+                    <button
+                      onClick={() => setLocationEditRest(r)}
+                      title="Modifică locația pe hartă"
+                      style={{
+                        width: 32,
+                        height: 32,
+                        borderRadius: 8,
+                        background: "rgba(200,169,126,.1)",
+                        border: "1px solid rgba(200,169,126,.25)",
+                        color: "#c8a97e",
+                        fontSize: 14,
+                        cursor: "pointer",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                      }}
+                    >
+                      📍
                     </button>
                     <button
                       onClick={() => setDeleteModal(r)}
