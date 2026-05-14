@@ -374,21 +374,30 @@ function RestaurantLocationPicker({ city, onSelect, onClose, showToast }) {
         setSubmitting(false);
         return;
       }
-      const { error } = await supabase.from("map_pin_requests").insert({
-        owner_id: session.user.id,
-        owner_name:
-          session.user.user_metadata?.full_name ||
-          session.user.email ||
-          "Proprietar",
+
+      // Salvam locatia in profiles.rest_location ca JSON
+      const locationData = {
         name: pinName.trim(),
         lat: pendingPin.lat,
         lon: pendingPin.lon,
         city: mapCityRef.current,
-        status: "pending",
-      });
+        isManualPin: true,
+      };
+
+      const { error } = await supabase
+        .from("profiles")
+        .update({ rest_location: JSON.stringify(locationData) })
+        .eq("id", session.user.id);
+
       if (error) throw error;
       showToast?.("✅ Cererea a fost trimisă! Apare pe hartă după aprobare.");
       setAddingMode(false);
+      // Informam componenta parinte despre locatia selectata
+      onSelect({
+        lat: pendingPin.lat,
+        lon: pendingPin.lon,
+        name: pinName.trim(),
+      });
     } catch {
       showToast?.("❌ Eroare la trimitere. Încearcă din nou.");
     }
@@ -1078,27 +1087,27 @@ export default function NewRestaurant() {
         description: form.description || null,
         plan: user?.plan || "free",
         is_active: false,
-        latitude: null,
-        longitude: null,
+        latitude: restLocation?.lat || null,
+        longitude: restLocation?.lon || null,
         location_name: restLocation?.name || null,
       });
 
       if (error) throw error;
 
-      // Daca a ales o locatie pe harta, trimitem cerere de aprobare catre SuperAdmin
+      // Daca a ales o locatie pe harta, salvam in profiles pentru aprobare
       if (restLocation) {
-        await supabase.from("map_pin_requests").insert({
-          owner_id: userId,
-          owner_name:
-            session?.user?.user_metadata?.full_name ||
-            session?.user?.email ||
-            "Proprietar",
-          name: form.name,
-          lat: restLocation.lat,
-          lon: restLocation.lon,
-          city: form.city,
-          status: "pending",
-        });
+        await supabase
+          .from("profiles")
+          .update({
+            rest_location: JSON.stringify({
+              name: form.name,
+              lat: restLocation.lat,
+              lon: restLocation.lon,
+              city: form.city,
+              isManualPin: false,
+            }),
+          })
+          .eq("id", userId);
         showToast(
           `🎉 Restaurantul creat! Locația va apărea pe hartă după aprobare.`,
         );
