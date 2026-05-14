@@ -154,7 +154,11 @@ export default function SuperAdmin() {
           .from("subscriptions")
           .select("*")
           .order("created_at", { ascending: false }),
-        Promise.resolve({ data: [] }), // map_pin_requests not used
+        supabase
+          .from("location_requests")
+          .select("*, restaurants(name, city, is_active)")
+          .eq("status", "pending")
+          .order("created_at", { ascending: false }),
         supabase
           .from("profiles")
           .select("*", { count: "exact", head: true })
@@ -286,14 +290,47 @@ export default function SuperAdmin() {
     }
   };
 
-  const approvePin = async (id, name) => {
-    // map_pin_requests not used - pins handled via profiles.rest_location
-    showToast("❌ Funcție dezactivată.");
+  const approvePin = async (pin) => {
+    try {
+      // Actualizam statusul cererii
+      await supabase
+        .from("location_requests")
+        .update({ status: "approved" })
+        .eq("id", pin.id);
+
+      // Salvam coordonatele in restaurants si activam
+      if (pin.restaurant_id) {
+        await supabase
+          .from("restaurants")
+          .update({
+            latitude: pin.lat,
+            longitude: pin.lon,
+            location_name: pin.restaurant_name,
+            is_active: true,
+          })
+          .eq("id", pin.restaurant_id);
+      }
+
+      setMapPinRequests((prev) => prev.filter((p) => p.id !== pin.id));
+      showToast(
+        `✅ Locația „${pin.restaurant_name}" aprobată! Apare pe hartă.`,
+      );
+    } catch {
+      showToast("❌ Eroare.");
+    }
   };
 
-  const rejectPin = async (id, name) => {
-    // map_pin_requests not used - pins handled via profiles.rest_location
-    showToast("❌ Funcție dezactivată.");
+  const rejectPin = async (pin) => {
+    try {
+      await supabase
+        .from("location_requests")
+        .update({ status: "rejected" })
+        .eq("id", pin.id);
+      setMapPinRequests((prev) => prev.filter((p) => p.id !== pin.id));
+      showToast(`❌ Locația „${pin.restaurant_name}" respinsă.`);
+    } catch {
+      showToast("❌ Eroare.");
+    }
   };
 
   const toggleOwner = async (id, status) => {
@@ -1006,7 +1043,7 @@ export default function SuperAdmin() {
                           marginBottom: 4,
                         }}
                       >
-                        📍 {pin.name}
+                        📍 {pin.restaurant_name}
                       </div>
                       <div
                         style={{
@@ -1026,6 +1063,14 @@ export default function SuperAdmin() {
                       >
                         🏙️ {pin.city || "—"} · {pin.lat?.toFixed(4)},{" "}
                         {pin.lon?.toFixed(4)}
+                      </div>
+                      <div
+                        style={{ fontSize: 11, color: "#c8a97e", marginTop: 2 }}
+                      >
+                        {pin.type === "update"
+                          ? "🔄 Modificare locație"
+                          : "🆕 Locație nouă"}
+                        {pin.restaurants?.is_active && " · Restaurant activ"}
                       </div>
                       <div style={{ fontSize: 11, color: "#6b6050" }}>
                         📅{" "}
@@ -1058,7 +1103,7 @@ export default function SuperAdmin() {
                     }}
                   >
                     <button
-                      onClick={() => rejectPin(pin.id, pin.name)}
+                      onClick={() => rejectPin(pin)}
                       style={{
                         padding: 10,
                         borderRadius: 10,
@@ -1073,7 +1118,7 @@ export default function SuperAdmin() {
                       ❌ Respinge
                     </button>
                     <button
-                      onClick={() => approvePin(pin.id, pin.name)}
+                      onClick={() => approvePin(pin)}
                       style={{
                         padding: 10,
                         borderRadius: 10,

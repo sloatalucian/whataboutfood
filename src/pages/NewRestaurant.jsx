@@ -88,7 +88,13 @@ const PICKER_CSS = `
   .maplibregl-ctrl-attrib { display: none !important; }
 `;
 
-function RestaurantLocationPicker({ city, onSelect, onClose, showToast }) {
+export function RestaurantLocationPicker({
+  city,
+  onSelect,
+  onClose,
+  showToast,
+  restaurantId,
+}) {
   const containerRef = useRef(null);
   const mapRef = useRef(null);
   const poiMarkersRef = useRef([]);
@@ -375,30 +381,27 @@ function RestaurantLocationPicker({ city, onSelect, onClose, showToast }) {
         return;
       }
 
-      // Salvam locatia in profiles.rest_location ca JSON
-      const locationData = {
-        name: pinName.trim(),
+      const { error } = await supabase.from("location_requests").insert({
+        owner_id: session.user.id,
+        restaurant_id: restaurantId || null,
+        restaurant_name: pinName.trim(),
         lat: pendingPin.lat,
         lon: pendingPin.lon,
         city: mapCityRef.current,
-        isManualPin: true,
-      };
-
-      const { error } = await supabase
-        .from("profiles")
-        .update({ rest_location: JSON.stringify(locationData) })
-        .eq("id", session.user.id);
+        type: restaurantId ? "update" : "new",
+        status: "pending",
+      });
 
       if (error) throw error;
       showToast?.("✅ Cererea a fost trimisă! Apare pe hartă după aprobare.");
       setAddingMode(false);
-      // Informam componenta parinte despre locatia selectata
       onSelect({
         lat: pendingPin.lat,
         lon: pendingPin.lon,
         name: pinName.trim(),
       });
-    } catch {
+    } catch (e) {
+      console.error(e);
       showToast?.("❌ Eroare la trimitere. Încearcă din nou.");
     }
     setSubmitting(false);
@@ -1074,40 +1077,42 @@ export default function NewRestaurant() {
       }
 
       // Restaurantul porneste inactiv — devine activ dupa aprobare SuperAdmin
-      const { error } = await supabase.from("restaurants").insert({
-        owner_id: userId,
-        name: form.name,
-        type: form.type,
-        emoji: form.emoji,
-        address: form.address,
-        city: form.city,
-        phone: form.phone || null,
-        email: form.email || null,
-        website: form.website || null,
-        description: form.description || null,
-        plan: user?.plan || "free",
-        is_active: false,
-        latitude: restLocation?.lat || null,
-        longitude: restLocation?.lon || null,
-        location_name: restLocation?.name || null,
-      });
+      const { data: newRest, error } = await supabase
+        .from("restaurants")
+        .insert({
+          owner_id: userId,
+          name: form.name,
+          type: form.type,
+          emoji: form.emoji,
+          address: form.address,
+          city: form.city,
+          phone: form.phone || null,
+          email: form.email || null,
+          website: form.website || null,
+          description: form.description || null,
+          plan: user?.plan || "free",
+          is_active: false,
+          latitude: restLocation?.lat || null,
+          longitude: restLocation?.lon || null,
+          location_name: restLocation?.name || null,
+        })
+        .select("id")
+        .single();
 
       if (error) throw error;
 
-      // Daca a ales o locatie pe harta, salvam in profiles pentru aprobare
-      if (restLocation) {
-        await supabase
-          .from("profiles")
-          .update({
-            rest_location: JSON.stringify({
-              name: form.name,
-              lat: restLocation.lat,
-              lon: restLocation.lon,
-              city: form.city,
-              isManualPin: false,
-            }),
-          })
-          .eq("id", userId);
+      // Daca a ales o locatie pe harta, trimitem cerere in location_requests
+      if (restLocation && newRest?.id) {
+        await supabase.from("location_requests").insert({
+          owner_id: userId,
+          restaurant_id: newRest.id,
+          restaurant_name: form.name,
+          lat: restLocation.lat,
+          lon: restLocation.lon,
+          city: form.city,
+          type: "new",
+          status: "pending",
+        });
         showToast(
           `🎉 Restaurantul creat! Locația va apărea pe hartă după aprobare.`,
         );
