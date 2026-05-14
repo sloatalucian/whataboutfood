@@ -254,7 +254,16 @@ export default function SuperAdmin() {
           if (loc?.lat && loc?.lon) {
             await supabase
               .from("restaurants")
-              .update({ latitude: loc.lat, longitude: loc.lon })
+              .update({
+                latitude: loc.lat,
+                longitude: loc.lon,
+                is_active: true,
+              })
+              .eq("owner_id", id);
+          } else {
+            await supabase
+              .from("restaurants")
+              .update({ is_active: true })
               .eq("owner_id", id);
           }
         } catch (_) {}
@@ -342,7 +351,10 @@ export default function SuperAdmin() {
 
   const approveRestaurant = async (id, name) => {
     try {
-      await supabase.from("restaurants").update({ is_active: true }).eq("id", id);
+      await supabase
+        .from("restaurants")
+        .update({ is_active: true })
+        .eq("id", id);
       setRestaurante((prev) =>
         prev.map((r) => (r.id === id ? { ...r, is_active: true } : r)),
       );
@@ -870,6 +882,35 @@ export default function SuperAdmin() {
                           year: "numeric",
                         })}
                       </div>
+                      {c.rest_location &&
+                        (() => {
+                          try {
+                            const loc =
+                              typeof c.rest_location === "string"
+                                ? JSON.parse(c.rest_location)
+                                : c.rest_location;
+                            return (
+                              <div
+                                style={{
+                                  fontSize: 11,
+                                  color: "#c0622f",
+                                  marginTop: 4,
+                                }}
+                              >
+                                📍 {loc.name} — {loc.city}
+                                <br />
+                                <span style={{ color: "#6b6050" }}>
+                                  {loc.lat?.toFixed(5)}, {loc.lon?.toFixed(5)}
+                                  {loc.isManualPin
+                                    ? " (pin manual)"
+                                    : " (din hartă)"}
+                                </span>
+                              </div>
+                            );
+                          } catch {
+                            return null;
+                          }
+                        })()}
                     </div>
                     <div
                       style={{
@@ -987,10 +1028,22 @@ export default function SuperAdmin() {
                       >
                         📍 {pin.name}
                       </div>
-                      <div style={{ fontSize: 12, color: "#6b6050", marginBottom: 2 }}>
+                      <div
+                        style={{
+                          fontSize: 12,
+                          color: "#6b6050",
+                          marginBottom: 2,
+                        }}
+                      >
                         👤 {pin.owner_name || "Proprietar"}
                       </div>
-                      <div style={{ fontSize: 11, color: "#6b6050", marginBottom: 2 }}>
+                      <div
+                        style={{
+                          fontSize: 11,
+                          color: "#6b6050",
+                          marginBottom: 2,
+                        }}
+                      >
                         🏙️ {pin.city || "—"} · {pin.lat?.toFixed(4)},{" "}
                         {pin.lon?.toFixed(4)}
                       </div>
