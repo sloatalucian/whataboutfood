@@ -1361,26 +1361,30 @@ function HomeOwner({ onLogout }) {
     loadRestaurants();
   }, [loadRestaurants]);
 
-  // Realtime: reîncarcă restaurantele când SuperAdmin aprobă locația
+  // Realtime + polling: reîncarcă restaurantele când SuperAdmin aprobă locația
   useEffect(() => {
     if (!user?.id) return;
+
+    // Realtime fără filtru — mai fiabil decât filtrul pe coloană
     const channel = supabase
       .channel(`owner-restaurants-${user.id}`)
       .on(
         "postgres_changes",
-        {
-          event: "UPDATE",
-          schema: "public",
-          table: "restaurants",
-          filter: `owner_id=eq.${user.id}`,
-        },
+        { event: "UPDATE", schema: "public", table: "restaurants" },
         () => {
           loadRestaurants();
         },
       )
       .subscribe();
+
+    // Polling fallback la fiecare 10 secunde (prinde și cazurile când Realtime nu e activat)
+    const interval = setInterval(() => {
+      loadRestaurants();
+    }, 10000);
+
     return () => {
       supabase.removeChannel(channel);
+      clearInterval(interval);
     };
   }, [user?.id, loadRestaurants]);
 
