@@ -395,11 +395,7 @@ export function RestaurantLocationPicker({
       if (error) throw error;
       showToast?.("✅ Cererea a fost trimisă! Apare pe hartă după aprobare.");
       setAddingMode(false);
-      onSelect({
-        lat: pendingPin.lat,
-        lon: pendingPin.lon,
-        name: pinName.trim(),
-      });
+      // Nu apelam onSelect — insert-ul s-a facut deja mai sus direct in location_requests
     } catch (e) {
       console.error(e);
       showToast?.("❌ Eroare la trimitere. Încearcă din nou.");
