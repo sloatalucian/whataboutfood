@@ -1978,6 +1978,7 @@ function HomeOwner({ onLogout }) {
 export default function Home({ onLogout }) {
   const { state } = useApp();
   const { user } = state;
-  if (user?.role === "owner") return <HomeOwner onLogout={onLogout} />;
+  if (user?.role === "owner" || user?.role === "superadmin")
+    return <HomeOwner onLogout={onLogout} />;
   return <HomeClient />;
 }

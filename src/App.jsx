@@ -76,7 +76,6 @@ function Router() {
               role: profile?.role || "client",
             },
           });
-          if (profile?.role === "superadmin") navigate("superAdmin");
           setSplashDone(true);
         }
       } catch (err) {}
@@ -299,10 +298,7 @@ function Router() {
       <div className="app">
         {toast && <div className="toast">{toast}</div>}
         <SplashScreen
-          onComplete={(role) => {
-            if (role === "superadmin") navigate("superAdmin");
-            setSplashDone(true);
-          }}
+          onComplete={(role) => setSplashDone(true)}
           onWaiterLogin={handleWaiterLogin}
         />
       </div>
