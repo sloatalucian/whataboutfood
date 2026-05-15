@@ -179,12 +179,31 @@ export default function HartaPage() {
 
   // Load DB data
   useEffect(() => {
-    supabase
-      .from("restaurants")
-      .select("id, name, address, city, rating, type, latitude, longitude")
-      .eq("is_active", true)
-      .then(({ data }) => setRegisteredRestaurants(data || []));
+    const loadDbRestaurants = () => {
+      supabase
+        .from("restaurants")
+        .select("id, name, address, city, rating, type, latitude, longitude")
+        .eq("is_active", true)
+        .then(({ data }) => setRegisteredRestaurants(data || []));
+    };
 
+    loadDbRestaurants();
+
+    // Realtime: pinurile portocalii apar imediat dupa aprobare SuperAdmin
+    const channel = supabase
+      .channel("harta-restaurants-realtime")
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "restaurants" },
+        () => {
+          loadDbRestaurants();
+        },
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
     // map_pin_requests not implemented yet
   }, []);
 

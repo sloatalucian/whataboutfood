@@ -1361,6 +1361,29 @@ function HomeOwner({ onLogout }) {
     loadRestaurants();
   }, [loadRestaurants]);
 
+  // Realtime: reîncarcă restaurantele când SuperAdmin aprobă locația
+  useEffect(() => {
+    if (!user?.id) return;
+    const channel = supabase
+      .channel(`owner-restaurants-${user.id}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "restaurants",
+          filter: `owner_id=eq.${user.id}`,
+        },
+        () => {
+          loadRestaurants();
+        },
+      )
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user?.id, loadRestaurants]);
+
   // Încarcă statisticile de azi
   useEffect(() => {
     if (!user?.id) return;
