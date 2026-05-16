@@ -1247,25 +1247,7 @@ export default function MenuEditor() {
                     overflowX: "auto",
                     scrollbarWidth: "none",
                     paddingBottom: 8,
-                    cursor: "grab",
                     userSelect: "none",
-                  }}
-                  onMouseDown={(e) => {
-                    const el = catScrollRef.current;
-                    if (!el) return;
-                    const startX = e.pageX;
-                    const startScroll = el.scrollLeft;
-                    el.style.cursor = "grabbing";
-                    const onMove = (ev) => {
-                      el.scrollLeft = startScroll - (ev.pageX - startX);
-                    };
-                    const onUp = () => {
-                      el.style.cursor = "grab";
-                      window.removeEventListener("mousemove", onMove);
-                      window.removeEventListener("mouseup", onUp);
-                    };
-                    window.addEventListener("mousemove", onMove);
-                    window.addEventListener("mouseup", onUp);
                   }}
                 >
                   {categories.map((cat) => (
@@ -1323,16 +1305,27 @@ export default function MenuEditor() {
                     </div>
                   ))}
                 </div>
-                {/* Scrollbar custom */}
+                {/* Scrollbar custom draggable */}
                 {scrollThumb.visible && (
                   <div
                     style={{
                       position: "relative",
-                      height: 3,
+                      height: 5,
                       background: "rgba(255,255,255,0.06)",
                       borderRadius: 99,
-                      marginTop: 4,
-                      overflow: "hidden",
+                      marginTop: 6,
+                      cursor: "pointer",
+                    }}
+                    onClick={(e) => {
+                      // Click pe track -> sari la pozitia respectiva
+                      const track = e.currentTarget;
+                      const el = catScrollRef.current;
+                      if (!el) return;
+                      const rect = track.getBoundingClientRect();
+                      const clickX =
+                        e.clientX - rect.left - scrollThumb.width / 2;
+                      const ratio = clickX / (rect.width - scrollThumb.width);
+                      el.scrollLeft = ratio * (el.scrollWidth - el.clientWidth);
                     }}
                   >
                     <div
@@ -1344,7 +1337,33 @@ export default function MenuEditor() {
                         height: "100%",
                         background: "linear-gradient(90deg, #c0622f, #e07a47)",
                         borderRadius: 99,
+                        cursor: "grab",
                         transition: "left 0.05s ease",
+                      }}
+                      onMouseDown={(e) => {
+                        e.stopPropagation();
+                        const el = catScrollRef.current;
+                        if (!el) return;
+                        const startX = e.clientX;
+                        const startScroll = el.scrollLeft;
+                        const trackW =
+                          e.currentTarget.parentElement.clientWidth;
+                        const scrollRange = el.scrollWidth - el.clientWidth;
+                        const thumbRange = trackW - scrollThumb.width;
+                        e.currentTarget.style.cursor = "grabbing";
+                        const onMove = (ev) => {
+                          const delta = ev.clientX - startX;
+                          const ratio = delta / thumbRange;
+                          el.scrollLeft = startScroll + ratio * scrollRange;
+                        };
+                        const onUp = (ev) => {
+                          ev.currentTarget &&
+                            (ev.currentTarget.style.cursor = "grab");
+                          window.removeEventListener("mousemove", onMove);
+                          window.removeEventListener("mouseup", onUp);
+                        };
+                        window.addEventListener("mousemove", onMove);
+                        window.addEventListener("mouseup", onUp);
                       }}
                     />
                   </div>
