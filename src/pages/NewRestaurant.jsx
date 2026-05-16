@@ -395,7 +395,16 @@ export function RestaurantLocationPicker({
       if (error) throw error;
       showToast?.("✅ Cererea a fost trimisă! Apare pe hartă după aprobare.");
       setAddingMode(false);
-      // Nu apelam onSelect — insert-ul s-a facut deja mai sus direct in location_requests
+      // Daca e restaurant nou (fara restaurantId), apelam onSelect sa salveze
+      // coordonatele in formularul de inregistrare — insert-ul in location_requests
+      // se va face din handleCreate mai tarziu
+      if (!restaurantId) {
+        onSelect?.({
+          lat: pendingPin.lat,
+          lon: pendingPin.lon,
+          name: pinName.trim(),
+        });
+      }
     } catch (e) {
       console.error(e);
       showToast?.("❌ Eroare la trimitere. Încearcă din nou.");
@@ -904,13 +913,35 @@ export function RestaurantLocationPicker({
               Nu
             </button>
             <button
-              onClick={() =>
-                onSelect({
-                  lat: confirming.lat,
-                  lon: confirming.lon,
-                  name: confirming.name,
-                })
-              }
+              onClick={async () => {
+                if (restaurantId) {
+                  // Modificare locatie — insereaza in location_requests
+                  const {
+                    data: { session },
+                  } = await supabase.auth.getSession();
+                  await supabase.from("location_requests").insert({
+                    owner_id: session?.user?.id,
+                    restaurant_id: restaurantId,
+                    restaurant_name: confirming.name,
+                    lat: confirming.lat,
+                    lon: confirming.lon,
+                    city: mapCityRef.current,
+                    type: "update",
+                    status: "pending",
+                  });
+                  showToast?.(
+                    "✅ Cererea a fost trimisă! Apare pe hartă după aprobare.",
+                  );
+                  onClose?.();
+                } else {
+                  // Restaurant nou — salveaza in form
+                  onSelect({
+                    lat: confirming.lat,
+                    lon: confirming.lon,
+                    name: confirming.name,
+                  });
+                }
+              }}
               style={{
                 flex: 2,
                 padding: "14px",
