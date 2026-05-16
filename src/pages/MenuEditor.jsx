@@ -1341,6 +1341,7 @@ export default function MenuEditor() {
                         transition: "left 0.05s ease",
                       }}
                       onMouseDown={(e) => {
+                        e.preventDefault();
                         e.stopPropagation();
                         const el = catScrollRef.current;
                         if (!el) return;
@@ -1350,15 +1351,15 @@ export default function MenuEditor() {
                           e.currentTarget.parentElement.clientWidth;
                         const scrollRange = el.scrollWidth - el.clientWidth;
                         const thumbRange = trackW - scrollThumb.width;
-                        e.currentTarget.style.cursor = "grabbing";
+                        let dragging = true;
                         const onMove = (ev) => {
+                          if (!dragging) return;
                           const delta = ev.clientX - startX;
                           const ratio = delta / thumbRange;
                           el.scrollLeft = startScroll + ratio * scrollRange;
                         };
-                        const onUp = (ev) => {
-                          ev.currentTarget &&
-                            (ev.currentTarget.style.cursor = "grab");
+                        const onUp = () => {
+                          dragging = false;
                           window.removeEventListener("mousemove", onMove);
                           window.removeEventListener("mouseup", onUp);
                         };
