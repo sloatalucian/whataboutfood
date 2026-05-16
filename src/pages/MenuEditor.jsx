@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useApp } from "../context/AppContext";
 import { supabase } from "../supabase";
 
@@ -137,6 +137,27 @@ export default function MenuEditor() {
   // ── Meniu ──
   const [categories, setCategories] = useState([]);
   const [activeCategory, setActiveCategory] = useState(null);
+  const catScrollRef = useRef(null);
+  const [scrollThumb, setScrollThumb] = useState({
+    left: 0,
+    width: 0,
+    visible: false,
+  });
+
+  // Initializeaza scrollbar-ul dupa ce categoriile sunt randate
+  useEffect(() => {
+    const el = catScrollRef.current;
+    if (!el) return;
+    const thumbW = Math.max(
+      30,
+      (el.clientWidth / el.scrollWidth) * el.clientWidth,
+    );
+    setScrollThumb({
+      left: 0,
+      width: thumbW,
+      visible: el.scrollWidth > el.clientWidth,
+    });
+  }, [categories]);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
 
@@ -1201,70 +1222,133 @@ export default function MenuEditor() {
           ) : (
             <>
               {/* Tabs categorii */}
-              <div
-                style={{
-                  display: "flex",
-                  gap: 8,
-                  overflowX: "auto",
-                  scrollbarWidth: "none",
-                  marginBottom: 20,
-                  paddingBottom: 4,
-                }}
-              >
-                {categories.map((cat) => (
-                  <div
-                    key={cat.id}
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 4,
-                      flexShrink: 0,
-                    }}
-                  >
+              <div style={{ marginBottom: 20 }}>
+                <div
+                  ref={catScrollRef}
+                  onScroll={() => {
+                    const el = catScrollRef.current;
+                    if (!el) return;
+                    const ratio =
+                      el.scrollLeft / (el.scrollWidth - el.clientWidth);
+                    const thumbW = Math.max(
+                      30,
+                      (el.clientWidth / el.scrollWidth) * el.clientWidth,
+                    );
+                    const thumbL = ratio * (el.clientWidth - thumbW);
+                    setScrollThumb({
+                      left: thumbL,
+                      width: thumbW,
+                      visible: el.scrollWidth > el.clientWidth,
+                    });
+                  }}
+                  style={{
+                    display: "flex",
+                    gap: 8,
+                    overflowX: "auto",
+                    scrollbarWidth: "none",
+                    paddingBottom: 8,
+                    cursor: "grab",
+                    userSelect: "none",
+                  }}
+                  onMouseDown={(e) => {
+                    const el = catScrollRef.current;
+                    if (!el) return;
+                    const startX = e.pageX;
+                    const startScroll = el.scrollLeft;
+                    el.style.cursor = "grabbing";
+                    const onMove = (ev) => {
+                      el.scrollLeft = startScroll - (ev.pageX - startX);
+                    };
+                    const onUp = () => {
+                      el.style.cursor = "grab";
+                      window.removeEventListener("mousemove", onMove);
+                      window.removeEventListener("mouseup", onUp);
+                    };
+                    window.addEventListener("mousemove", onMove);
+                    window.addEventListener("mouseup", onUp);
+                  }}
+                >
+                  {categories.map((cat) => (
                     <div
-                      onClick={() => setActiveCategory(cat.id)}
+                      key={cat.id}
                       style={{
-                        padding: "8px 14px",
-                        borderRadius: 20,
-                        cursor: "pointer",
-                        background:
-                          activeCategory === cat.id ? "#c0622f" : "#1e1a14",
-                        border: `1px solid ${activeCategory === cat.id ? "#c0622f" : "#2a2218"}`,
-                        color: activeCategory === cat.id ? "#fff" : "#6b6050",
-                        fontSize: 13,
-                        fontWeight: activeCategory === cat.id ? 700 : 400,
                         display: "flex",
                         alignItems: "center",
-                        gap: 6,
-                      }}
-                    >
-                      <span>{cat.emoji}</span>
-                      <span>{cat.name}</span>
-                      <span style={{ fontSize: 10, opacity: 0.7 }}>
-                        ({cat.products?.length || 0})
-                      </span>
-                    </div>
-                    <button
-                      onClick={() => deleteCategory(cat.id)}
-                      style={{
-                        width: 20,
-                        height: 20,
-                        borderRadius: "50%",
-                        background: "rgba(192,57,43,.2)",
-                        border: "1px solid rgba(192,57,43,.3)",
-                        color: "#e05050",
-                        fontSize: 10,
-                        cursor: "pointer",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
+                        gap: 4,
                         flexShrink: 0,
                       }}
                     >
-                      ✕
-                    </button>
+                      <div
+                        onClick={() => setActiveCategory(cat.id)}
+                        style={{
+                          padding: "8px 14px",
+                          borderRadius: 20,
+                          cursor: "pointer",
+                          background:
+                            activeCategory === cat.id ? "#c0622f" : "#1e1a14",
+                          border: `1px solid ${activeCategory === cat.id ? "#c0622f" : "#2a2218"}`,
+                          color: activeCategory === cat.id ? "#fff" : "#6b6050",
+                          fontSize: 13,
+                          fontWeight: activeCategory === cat.id ? 700 : 400,
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 6,
+                        }}
+                      >
+                        <span>{cat.emoji}</span>
+                        <span>{cat.name}</span>
+                        <span style={{ fontSize: 10, opacity: 0.7 }}>
+                          ({cat.products?.length || 0})
+                        </span>
+                      </div>
+                      <button
+                        onClick={() => deleteCategory(cat.id)}
+                        style={{
+                          width: 20,
+                          height: 20,
+                          borderRadius: "50%",
+                          background: "rgba(192,57,43,.2)",
+                          border: "1px solid rgba(192,57,43,.3)",
+                          color: "#e05050",
+                          fontSize: 10,
+                          cursor: "pointer",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          flexShrink: 0,
+                        }}
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  ))}
+                </div>
+                {/* Scrollbar custom */}
+                {scrollThumb.visible && (
+                  <div
+                    style={{
+                      position: "relative",
+                      height: 3,
+                      background: "rgba(255,255,255,0.06)",
+                      borderRadius: 99,
+                      marginTop: 4,
+                      overflow: "hidden",
+                    }}
+                  >
+                    <div
+                      style={{
+                        position: "absolute",
+                        top: 0,
+                        left: scrollThumb.left,
+                        width: scrollThumb.width,
+                        height: "100%",
+                        background: "linear-gradient(90deg, #c0622f, #e07a47)",
+                        borderRadius: 99,
+                        transition: "left 0.05s ease",
+                      }}
+                    />
                   </div>
-                ))}
+                )}
               </div>
 
               {/* Produse */}
