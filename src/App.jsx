@@ -60,7 +60,11 @@ function Router() {
             .select("*")
             .eq("id", session.user.id)
             .single();
-          if (profile?.role === "owner" && profile?.status === "pending") {
+          if (
+            profile?.role === "owner" &&
+            profile?.status === "pending" &&
+            profile?.role !== "superadmin"
+          ) {
             await supabase.auth.signOut();
             setCheckingSession(false);
             return;

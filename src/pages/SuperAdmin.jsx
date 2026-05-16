@@ -74,7 +74,7 @@ export default function SuperAdmin() {
   const [viewStatsLoading, setViewStatsLoading] = useState(false);
 
   // ── Verifică acces admin ──
-  if (!user || user?.email !== ADMIN_EMAIL) {
+  if (!user || user?.role !== "superadmin") {
     return (
       <div
         className="page fade-in"

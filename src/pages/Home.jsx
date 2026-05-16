@@ -1742,7 +1742,7 @@ function HomeOwner({ onLogout }) {
               </div>
             ))}
           </div>
-          {user?.email === "sloatalucian@yahoo.com" && (
+          {user?.role === "superadmin" && (
             <div
               onClick={() => navigate("superAdmin")}
               style={{

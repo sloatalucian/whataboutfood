@@ -1317,7 +1317,11 @@ export default function SplashScreen({ onComplete, onWaiterLogin }) {
       .select("*")
       .eq("id", data.user.id)
       .single();
-    if (profile?.role === "owner" && profile?.status === "pending") {
+    if (
+      profile?.role === "owner" &&
+      profile?.status === "pending" &&
+      profile?.role !== "superadmin"
+    ) {
       await supabase.auth.signOut();
       setError(
         "Contul tău este în așteptarea aprobării. Vei fi contactat în 24-48 ore.",

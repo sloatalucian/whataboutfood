@@ -809,7 +809,7 @@ export default function Restaurant() {
           (t) => !tableStates[t.label] || tableStates[t.label] === "free",
         ).length
       : 0;
-  const isOwner = user?.role === "owner";
+  const isOwner = user?.role === "owner" || user?.role === "superadmin";
 
   const handleSaveProgram = async (newProg) => {
     setProgram(newProg);

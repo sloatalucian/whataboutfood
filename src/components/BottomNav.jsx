@@ -110,7 +110,7 @@ export default function BottomNav({
   ) : null;
 
   // ── PROPRIETAR ──
-  if (user?.role === "owner") {
+  if (user?.role === "owner" || user?.role === "superadmin") {
     const ownerItems = [
       { id: "home", icon: "🏠", label: "Acasă" },
       { id: "adminFloor", icon: "🏗️", label: "Planșeu" },
