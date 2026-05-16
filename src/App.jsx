@@ -547,12 +547,12 @@ function Router() {
 }
 
 function BurgerLoader() {
-  const [step, setStep] = React.useState(0);
-  const [phase, setPhase] = React.useState("building");
-  const [dotIdx, setDotIdx] = React.useState(0);
+  const [step, setStep] = useState(0);
+  const [phase, setPhase] = useState("building");
+  const [dotIdx, setDotIdx] = useState(0);
   const layers = ["l0", "l1", "l2", "l3", "l4", "l5"];
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (phase === "building") {
       if (step < layers.length) {
         const t = setTimeout(() => setStep((s) => s + 1), 420);
@@ -573,7 +573,7 @@ function BurgerLoader() {
     }
   }, [step, phase]);
 
-  React.useEffect(() => {
+  useEffect(() => {
     const t = setInterval(() => setDotIdx((i) => i + 1), 400);
     return () => clearInterval(t);
   }, []);
