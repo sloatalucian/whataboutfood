@@ -693,7 +693,6 @@ function FoodAnimation({ onComplete }) {
     </div>
   );
 }
-
 function WaiterLoginModal({ onLogin, onClose }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
