@@ -184,6 +184,7 @@ export default function HartaPage() {
         .from("restaurants")
         .select("id, name, address, city, rating, type, latitude, longitude")
         .eq("is_active", true)
+        .eq("is_deleted", false)
         .then(({ data }) => setRegisteredRestaurants(data || []));
     };
 
@@ -195,6 +196,13 @@ export default function HartaPage() {
       .on(
         "postgres_changes",
         { event: "UPDATE", schema: "public", table: "restaurants" },
+        () => {
+          loadDbRestaurants();
+        },
+      )
+      .on(
+        "postgres_changes",
+        { event: "DELETE", schema: "public", table: "restaurants" },
         () => {
           loadDbRestaurants();
         },
