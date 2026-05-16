@@ -407,11 +407,156 @@ function DeleteRestaurantModal({ restaurant, onConfirm, onClose }) {
   const [step, setStep] = useState(1);
   const [typedName, setTypedName] = useState("");
   const [loading, setLoading] = useState(false);
+  const [exportLoading, setExportLoading] = useState(false);
 
   const handleDelete = async () => {
     setLoading(true);
     await onConfirm(restaurant.id);
     setLoading(false);
+  };
+
+  const handleExportPDF = async () => {
+    setExportLoading(true);
+    try {
+      // Fetch toate datele restaurantului
+      const [ordersRes, reservationsRes] = await Promise.all([
+        supabase
+          .from("orders")
+          .select("*")
+          .eq("restaurant_id", restaurant.id)
+          .order("created_at", { ascending: false }),
+        supabase
+          .from("reservations")
+          .select("*")
+          .eq("restaurant_id", restaurant.id)
+          .order("created_at", { ascending: false }),
+      ]);
+      const orders = ordersRes.data || [];
+      const reservations = reservationsRes.data || [];
+
+      // Calcule sumar
+      const totalVanzari = orders.reduce(
+        (sum, o) => sum + (parseFloat(o.total) || 0),
+        0,
+      );
+      const totalComenzi = orders.length;
+      const totalRezervari = reservations.length;
+
+      // Generam HTML pentru print
+      const html = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="UTF-8">
+          <title>Raport - ${restaurant.name}</title>
+          <style>
+            body { font-family: Arial, sans-serif; color: #222; padding: 32px; max-width: 800px; margin: 0 auto; }
+            h1 { color: #c0622f; border-bottom: 2px solid #c0622f; padding-bottom: 8px; }
+            h2 { color: #555; margin-top: 32px; font-size: 16px; text-transform: uppercase; letter-spacing: 1px; }
+            .meta { color: #888; font-size: 13px; margin-bottom: 24px; }
+            .summary { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; margin: 24px 0; }
+            .summary-card { background: #f9f6f2; border-radius: 10px; padding: 16px; text-align: center; }
+            .summary-card .val { font-size: 28px; font-weight: 900; color: #c0622f; }
+            .summary-card .lbl { font-size: 12px; color: #888; margin-top: 4px; }
+            table { width: 100%; border-collapse: collapse; margin-top: 12px; font-size: 13px; }
+            th { background: #f0ebe3; text-align: left; padding: 8px 10px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; color: #888; }
+            td { padding: 8px 10px; border-bottom: 1px solid #f0ebe3; }
+            tr:last-child td { border-bottom: none; }
+            .footer { margin-top: 40px; font-size: 11px; color: #bbb; text-align: center; border-top: 1px solid #eee; padding-top: 16px; }
+            @media print { body { padding: 16px; } }
+          </style>
+        </head>
+        <body>
+          <h1>🍽️ Raport Restaurant</h1>
+          <div class="meta">
+            <strong>${restaurant.name}</strong> &bull; ${restaurant.city || "—"} &bull; 
+            Generat la ${new Date().toLocaleDateString("ro-RO", { day: "numeric", month: "long", year: "numeric" })}
+          </div>
+
+          <div class="summary">
+            <div class="summary-card">
+              <div class="val">${totalComenzi}</div>
+              <div class="lbl">Comenzi totale</div>
+            </div>
+            <div class="summary-card">
+              <div class="val">${totalVanzari.toFixed(2)} lei</div>
+              <div class="lbl">Vânzări totale</div>
+            </div>
+            <div class="summary-card">
+              <div class="val">${totalRezervari}</div>
+              <div class="lbl">Rezervări totale</div>
+            </div>
+          </div>
+
+          <h2>📦 Comenzi (${totalComenzi})</h2>
+          ${
+            orders.length === 0
+              ? "<p style='color:#aaa'>Nicio comandă înregistrată.</p>"
+              : `
+          <table>
+            <thead><tr><th>Data</th><th>Masă</th><th>Status</th><th>Total</th></tr></thead>
+            <tbody>
+              ${orders
+                .slice(0, 500)
+                .map(
+                  (o) => `
+                <tr>
+                  <td>${new Date(o.created_at).toLocaleDateString("ro-RO")}</td>
+                  <td>${o.table_label || "—"}</td>
+                  <td>${o.status || "—"}</td>
+                  <td>${parseFloat(o.total || 0).toFixed(2)} lei</td>
+                </tr>
+              `,
+                )
+                .join("")}
+            </tbody>
+          </table>`
+          }
+
+          <h2>📅 Rezervări (${totalRezervari})</h2>
+          ${
+            reservations.length === 0
+              ? "<p style='color:#aaa'>Nicio rezervare înregistrată.</p>"
+              : `
+          <table>
+            <thead><tr><th>Data</th><th>Nume</th><th>Persoane</th><th>Status</th></tr></thead>
+            <tbody>
+              ${reservations
+                .slice(0, 500)
+                .map(
+                  (r) => `
+                <tr>
+                  <td>${new Date(r.created_at).toLocaleDateString("ro-RO")}</td>
+                  <td>${r.customer_name || "—"}</td>
+                  <td>${r.guests || "—"}</td>
+                  <td>${r.status || "—"}</td>
+                </tr>
+              `,
+                )
+                .join("")}
+            </tbody>
+          </table>`
+          }
+
+          <div class="footer">
+            WhataboutFood &bull; Raport generat automat &bull; ${new Date().toLocaleDateString("ro-RO")}
+          </div>
+        </body>
+        </html>
+      `;
+
+      // Deschidem un window nou si printam ca PDF
+      const win = window.open("", "_blank");
+      win.document.write(html);
+      win.document.close();
+      win.focus();
+      setTimeout(() => {
+        win.print();
+      }, 500);
+    } catch (e) {
+      console.error("Export PDF error:", e);
+    }
+    setExportLoading(false);
   };
 
   return (
@@ -465,14 +610,35 @@ function DeleteRestaurantModal({ restaurant, onConfirm, onClose }) {
                 color: "#6b6050",
                 textAlign: "center",
                 lineHeight: 1.6,
-                marginBottom: 24,
+                marginBottom: 20,
               }}
             >
               Vrei să ștergi restaurantul
               <br />
               <b style={{ color: "#f0ebe3" }}>„{restaurant.name}"</b>?<br />
-              Această acțiune nu poate fi anulată.
+              <span style={{ fontSize: 12, color: "#4a6e4a" }}>
+                Datele (comenzi, rezervări) sunt păstrate 90 zile.
+              </span>
             </div>
+            {/* Buton export PDF */}
+            <button
+              onClick={handleExportPDF}
+              disabled={exportLoading}
+              style={{
+                width: "100%",
+                padding: 13,
+                borderRadius: 12,
+                background: "rgba(74,110,74,.15)",
+                border: "1px solid rgba(74,110,74,.4)",
+                color: "#6b9e6b",
+                fontSize: 14,
+                cursor: "pointer",
+                fontWeight: 700,
+                marginBottom: 10,
+              }}
+            >
+              {exportLoading ? "Se generează..." : "📥 Descarcă raport PDF"}
+            </button>
             <div
               style={{
                 display: "grid",
@@ -508,7 +674,7 @@ function DeleteRestaurantModal({ restaurant, onConfirm, onClose }) {
                   fontWeight: 700,
                 }}
               >
-                Da, șterge
+                Șterge restaurantul
               </button>
             </div>
           </>
@@ -539,9 +705,9 @@ function DeleteRestaurantModal({ restaurant, onConfirm, onClose }) {
                 marginBottom: 16,
               }}
             >
-              Toate datele vor fi șterse permanent:
+              Restaurantul va fi dezactivat și ascuns.
               <br />
-              mese, meniu, rezervări, comenzi, ospătari.
+              Datele sunt păstrate 90 zile, apoi șterse definitiv de admin.
             </div>
             <div style={{ marginBottom: 20 }}>
               <label
@@ -1342,6 +1508,7 @@ function HomeOwner({ onLogout }) {
         .from("restaurants")
         .select("*")
         .eq("owner_id", user.id)
+        .eq("is_deleted", false)
         .order("created_at");
       if (error) {
         console.error(
@@ -1434,12 +1601,16 @@ function HomeOwner({ onLogout }) {
     try {
       const { error } = await supabase
         .from("restaurants")
-        .delete()
+        .update({
+          is_deleted: true,
+          is_active: false,
+          deleted_at: new Date().toISOString(),
+        })
         .eq("id", restaurantId);
       if (error) throw error;
       setMyRestaurants((prev) => prev.filter((r) => r.id !== restaurantId));
       setDeleteModal(null);
-      showToast("🗑️ Restaurantul a fost șters definitiv.");
+      showToast("🗑️ Restaurantul a fost șters. Datele sunt păstrate 90 zile.");
     } catch (err) {
       showToast("❌ Eroare la ștergere. Încearcă din nou.");
       setDeleteModal(null);

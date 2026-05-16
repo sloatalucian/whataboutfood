@@ -36,6 +36,7 @@ const TABS = [
   { id: "restaurante", icon: "🏪", label: "Restaurante" },
   { id: "statistici", icon: "📊", label: "Statistici" },
   { id: "abonamente", icon: "💰", label: "Abonamente" },
+  { id: "sterse", icon: "🗑️", label: "Șterse" },
 ];
 
 const PLAN_COLOR = { free: "#6b6050", pro: "#c8a97e", business: "#4a6e4a" };
@@ -67,6 +68,7 @@ export default function SuperAdmin() {
   const [restaurante, setRestaurante] = useState([]);
   const [abonamente, setAbonamente] = useState([]);
   const [mapPinRequests, setMapPinRequests] = useState([]);
+  const [sterseRestaurante, setSterseRestaurante] = useState([]);
   const [statistici, setStatistici] = useState(null);
   const [loading, setLoading] = useState(true);
   const [viewAsOwner, setViewAsOwner] = useState(null);
@@ -135,6 +137,7 @@ export default function SuperAdmin() {
         { count: totalRest },
         { count: totalOrders },
         { data: venituriData },
+        { data: sterseData },
       ] = await Promise.all([
         supabase
           .from("profiles")
@@ -173,6 +176,11 @@ export default function SuperAdmin() {
           .from("subscriptions")
           .select("amount,plan")
           .eq("status", "paid"),
+        supabase
+          .from("restaurants")
+          .select("*")
+          .eq("is_deleted", true)
+          .order("deleted_at", { ascending: false }),
       ]);
 
       setCereri(cereriData || []);
@@ -192,6 +200,12 @@ export default function SuperAdmin() {
         profiles: propMap[r.owner_id] || null,
       }));
       setRestaurante(restWithOwner);
+      // Restaurante sterse
+      const sterseWithOwner = (sterseData || []).map((r) => ({
+        ...r,
+        profiles: propMap[r.owner_id] || null,
+      }));
+      setSterseRestaurante(sterseWithOwner);
       // Mapam proprietarii si restaurantele pe abonamente
       const aboWithData = (aboData || []).map((a) => ({
         ...a,
@@ -793,6 +807,21 @@ export default function SuperAdmin() {
                 }}
               >
                 {mapPinRequests.length}
+              </span>
+            )}
+            {t.id === "sterse" && sterseRestaurante.length > 0 && (
+              <span
+                style={{
+                  background: "#c0392b",
+                  color: "#fff",
+                  borderRadius: 20,
+                  padding: "1px 6px",
+                  fontSize: 10,
+                  fontWeight: 800,
+                  marginLeft: 2,
+                }}
+              >
+                {sterseRestaurante.length}
               </span>
             )}
             {t.id === "restaurante" &&
@@ -1954,6 +1983,156 @@ export default function SuperAdmin() {
           </div>
         )}
       </div>
+
+      {/* ── Tab Restaurante Sterse ── */}
+      {!loading && activeTab === "sterse" && (
+        <div style={{ padding: "0 0 40px" }}>
+          <div
+            style={{
+              fontSize: 11,
+              letterSpacing: 2,
+              textTransform: "uppercase",
+              color: "#e05050",
+              marginBottom: 14,
+              padding: "0 4px",
+            }}
+          >
+            🗑️ Restaurante șterse ({sterseRestaurante.length})
+          </div>
+          {sterseRestaurante.length === 0 ? (
+            <div
+              style={{
+                color: "#6b6050",
+                fontSize: 14,
+                textAlign: "center",
+                padding: 32,
+              }}
+            >
+              Niciun restaurant șters.
+            </div>
+          ) : (
+            sterseRestaurante.map((r) => {
+              const deletedAt = r.deleted_at ? new Date(r.deleted_at) : null;
+              const expireAt = deletedAt
+                ? new Date(deletedAt.getTime() + 90 * 24 * 60 * 60 * 1000)
+                : null;
+              const daysLeft = expireAt
+                ? Math.ceil((expireAt - new Date()) / (1000 * 60 * 60 * 24))
+                : null;
+              return (
+                <div
+                  key={r.id}
+                  style={{
+                    background: "rgba(192,57,43,.06)",
+                    border: "1px solid rgba(192,57,43,.25)",
+                    borderRadius: 16,
+                    padding: 16,
+                    marginBottom: 12,
+                  }}
+                >
+                  <div
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "flex-start",
+                      gap: 12,
+                    }}
+                  >
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div
+                        style={{
+                          fontWeight: 700,
+                          fontSize: 15,
+                          marginBottom: 4,
+                        }}
+                      >
+                        {r.emoji || "🍽️"} {r.name}
+                      </div>
+                      <div
+                        style={{
+                          fontSize: 12,
+                          color: "#6b6050",
+                          marginBottom: 2,
+                        }}
+                      >
+                        📍 {r.city || "—"} • 👤 {r.profiles?.full_name || "—"}
+                      </div>
+                      <div
+                        style={{
+                          fontSize: 11,
+                          color: "#6b6050",
+                          marginBottom: 6,
+                        }}
+                      >
+                        Șters la:{" "}
+                        {deletedAt
+                          ? deletedAt.toLocaleDateString("ro-RO")
+                          : "—"}
+                      </div>
+                      {daysLeft !== null && (
+                        <div
+                          style={{
+                            display: "inline-block",
+                            fontSize: 11,
+                            fontWeight: 700,
+                            padding: "3px 10px",
+                            borderRadius: 20,
+                            background:
+                              daysLeft <= 10
+                                ? "rgba(192,57,43,.2)"
+                                : "rgba(107,96,80,.2)",
+                            color: daysLeft <= 10 ? "#e05050" : "#6b6050",
+                          }}
+                        >
+                          {daysLeft > 0
+                            ? `⏳ Expiră în ${daysLeft} zile`
+                            : "⚠️ Expirat"}
+                        </div>
+                      )}
+                    </div>
+                    <button
+                      onClick={async () => {
+                        if (
+                          !window.confirm(
+                            `Ștergi definitiv "${r.name}"? Această acțiune NU poate fi anulată.`,
+                          )
+                        )
+                          return;
+                        const { error } = await supabase
+                          .from("restaurants")
+                          .delete()
+                          .eq("id", r.id);
+                        if (!error) {
+                          setSterseRestaurante((prev) =>
+                            prev.filter((x) => x.id !== r.id),
+                          );
+                          showToast("🗑️ Restaurantul a fost șters definitiv.");
+                        } else {
+                          showToast("❌ Eroare la ștergere.");
+                        }
+                      }}
+                      style={{
+                        padding: "8px 14px",
+                        borderRadius: 10,
+                        background: "rgba(192,57,43,.2)",
+                        border: "1px solid rgba(192,57,43,.4)",
+                        color: "#e05050",
+                        fontSize: 12,
+                        fontWeight: 700,
+                        cursor: "pointer",
+                        whiteSpace: "nowrap",
+                        flexShrink: 0,
+                      }}
+                    >
+                      🗑️ Șterge definitiv
+                    </button>
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </div>
+      )}
     </div>
   );
 }
