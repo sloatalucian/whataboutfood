@@ -52,14 +52,16 @@ export function Rezervare() {
         const map = {};
         data.forEach((t) => {
           if (t.locked_until) {
-            const lockedUntilUTC = t.locked_until.endsWith("Z")
-              ? t.locked_until
-              : t.locked_until + "Z";
-            const exp = new Date(lockedUntilUTC);
+            // Normalizam formatul: "2026-05-17 17:53:29+00" -> "2026-05-17T17:53:29+00:00"
+            const normalized = t.locked_until
+              .replace(" ", "T") // spatiu -> T
+              .replace("+00", "+00:00") // +00 -> +00:00
+              .replace(/Z$/, "+00:00"); // Z -> +00:00
+            const exp = new Date(normalized);
             console.log(
-              `${t.label}: locked_until=${lockedUntilUTC} exp=${exp.toISOString()} now=${now.toISOString()} valid=${exp > now}`,
+              `${t.label}: raw=${t.locked_until} normalized=${normalized} valid=${exp > now}`,
             );
-            if (exp > now) map[t.id] = lockedUntilUTC;
+            if (!isNaN(exp) && exp > now) map[t.id] = normalized;
           }
         });
         console.log("lockedTables map:", Object.keys(map).length, "entries");
@@ -90,11 +92,13 @@ export function Rezervare() {
           setLockedTables((prev) => {
             const next = { ...prev };
             if (t.locked_until) {
-              const lockedUntilUTC = t.locked_until.endsWith("Z")
-                ? t.locked_until
-                : t.locked_until + "Z";
-              if (new Date(lockedUntilUTC) > new Date()) {
-                next[t.id] = lockedUntilUTC;
+              const normalized = t.locked_until
+                .replace(" ", "T")
+                .replace("+00", "+00:00")
+                .replace(/Z$/, "+00:00");
+              const exp = new Date(normalized);
+              if (!isNaN(exp) && exp > new Date()) {
+                next[t.id] = normalized;
               }
             } else {
               delete next[t.id];
