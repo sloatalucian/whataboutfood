@@ -710,9 +710,8 @@ export function Rezervare() {
                             if (isDisabled) return;
                             // Daca aveam alta masa locked, o eliberam
                             const prevLocked = myLockedTableIdRef.current;
-                            // Eliberam masa anterioara INAINTE de a bloca noua
                             if (prevLocked && prevLocked !== t.id) {
-                              // Unlock direct in DB fara sa resetam countdown-ul
+                              // Unlock in DB
                               supabase
                                 .from("tables")
                                 .update({
@@ -720,6 +719,14 @@ export function Rezervare() {
                                   locked_by: null,
                                 })
                                 .eq("id", prevLocked);
+                              // Actualizam state local imediat ca sa nu asteptam polling
+                              setLockedTables((prev) => {
+                                const next = { ...prev };
+                                delete next[prevLocked];
+                                return next;
+                              });
+                              // Resetam ref
+                              myLockedTableIdRef.current = null;
                             }
                             set({ tableId: t.id });
                             await lockTable(t.id);
