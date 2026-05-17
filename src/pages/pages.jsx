@@ -37,6 +37,7 @@ export function Rezervare() {
   // ── Incarca mesele locked din Supabase + Realtime ──
   // Pastram floor_id-urile restaurantului curent intr-un ref
   const floorIdsRef = useRef([]);
+  const pollRef = useRef(null);
 
   useEffect(() => {
     if (!selectedRest?.id) return;
@@ -74,11 +75,14 @@ export function Rezervare() {
       }
     };
 
-    // Initializam si pornim polling
+    // Initializam floors, apoi pornim polling
     initFloors().then(() => {
       loadLocked();
+      // Pornim polling DOAR dupa ce avem floor_id-urile
+      const pollInterval = setInterval(loadLocked, 3000);
+      // Salvam intervalul ca sa il putem opri la cleanup
+      pollRef.current = pollInterval;
     });
-    const pollInterval = setInterval(loadLocked, 3000);
 
     // Realtime — propagam lock/unlock instant
     const channel = supabase
@@ -114,7 +118,7 @@ export function Rezervare() {
       .subscribe();
 
     return () => {
-      clearInterval(pollInterval);
+      if (pollRef.current) clearInterval(pollRef.current);
       supabase.removeChannel(channel);
     };
   }, [selectedRest?.id]);
