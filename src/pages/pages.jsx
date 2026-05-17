@@ -35,17 +35,29 @@ export function Rezervare() {
   }, [selectedRest?.id]);
 
   // ── Incarca mesele locked din Supabase + Realtime ──
+  // Pastram floor_id-urile restaurantului curent intr-un ref
+  const floorIdsRef = useRef([]);
+
   useEffect(() => {
     if (!selectedRest?.id) return;
 
+    // Pasul 1: obtinem floor_id-urile restaurantului o singura data
+    const initFloors = async () => {
+      const { data } = await supabase
+        .from("floors")
+        .select("id")
+        .eq("restaurant_id", selectedRest.id);
+      if (data) floorIdsRef.current = data.map((f) => f.id);
+    };
+
+    // Pasul 2: incarcam mesele locked folosind floor_id-urile
     const loadLocked = async () => {
+      if (!floorIdsRef.current.length) return;
       try {
         const { data, error } = await supabase
           .from("tables")
-          .select(
-            "id, locked_until, locked_by, floor_id, floors!inner(restaurant_id)",
-          )
-          .eq("floors.restaurant_id", selectedRest.id);
+          .select("id, locked_until")
+          .in("floor_id", floorIdsRef.current);
         if (error || !data) return;
         const now = new Date();
         const map = {};
@@ -58,14 +70,14 @@ export function Rezervare() {
         });
         setLockedTables(map);
       } catch (e) {
-        // Nu blocam UI-ul daca lock-urile nu se pot incarca
         console.warn("Lock tables load error:", e);
       }
     };
 
-    loadLocked();
-
-    // Polling fallback la fiecare 3 secunde
+    // Initializam si pornim polling
+    initFloors().then(() => {
+      loadLocked();
+    });
     const pollInterval = setInterval(loadLocked, 3000);
 
     // Realtime — propagam lock/unlock instant
@@ -80,6 +92,8 @@ export function Rezervare() {
         },
         (payload) => {
           const t = payload.new;
+          // Verificam ca masa apartine acestui restaurant
+          if (!floorIdsRef.current.includes(t.floor_id)) return;
           setLockedTables((prev) => {
             const next = { ...prev };
             if (t.locked_until) {
@@ -87,6 +101,8 @@ export function Rezervare() {
               const exp = new Date(normalized);
               if (!isNaN(exp) && exp > new Date()) {
                 next[t.id] = normalized;
+              } else {
+                delete next[t.id];
               }
             } else {
               delete next[t.id];
