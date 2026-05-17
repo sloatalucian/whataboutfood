@@ -152,6 +152,7 @@ export function Rezervare() {
         locked_by: sessionId,
       })
       .eq("id", tableId)
+      .select()
       .then(({ data, error }) => {
         console.log("Lock result - error:", error, "data:", data);
         if (error)
