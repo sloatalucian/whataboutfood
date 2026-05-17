@@ -42,9 +42,10 @@ export function Rezervare() {
       try {
         const { data, error } = await supabase
           .from("tables")
-          .select("id, locked_until, locked_by, floors!inner(restaurant_id)")
-          .eq("floors.restaurant_id", selectedRest.id)
-          .not("locked_until", "is", null);
+          .select(
+            "id, locked_until, locked_by, floor_id, floors!inner(restaurant_id)",
+          )
+          .eq("floors.restaurant_id", selectedRest.id);
         if (error || !data) return;
         const map = {};
         data.forEach((t) => {
