@@ -41,9 +41,9 @@ export function Rezervare() {
       try {
         const { data, error } = await supabase
           .from("tables")
-          .select("id, locked_until, locked_by")
-          .eq("restaurant_id", selectedRest.id)
-          .filter("locked_until", "not.is", null);
+          .select("id, locked_until, locked_by, floors!inner(restaurant_id)")
+          .eq("floors.restaurant_id", selectedRest.id)
+          .not("locked_until", "is", null);
         if (error || !data) return;
         const map = {};
         data.forEach((t) => {
@@ -72,7 +72,6 @@ export function Rezervare() {
         },
         (payload) => {
           const t = payload.new;
-          if (t.restaurant_id !== selectedRest.id) return;
           setLockedTables((prev) => {
             const next = { ...prev };
             if (t.locked_until && new Date(t.locked_until) > new Date()) {
