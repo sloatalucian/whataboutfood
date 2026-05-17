@@ -50,7 +50,17 @@ export function Rezervare() {
         if (error || !data) return;
         const map = {};
         data.forEach((t) => {
-          if (t.locked_until && new Date(t.locked_until) > new Date()) {
+          console.log(
+            "table:",
+            t.id,
+            "locked_until:",
+            t.locked_until,
+            "now:",
+            new Date().toISOString(),
+            "valid:",
+            t.locked_until && new Date(t.locked_until) > new Date(),
+          );
+          if (t.locked_until) {
             map[t.id] = t.locked_until;
           }
         });
