@@ -46,23 +46,16 @@ export function Rezervare() {
             "id, locked_until, locked_by, floor_id, floors!inner(restaurant_id)",
           )
           .eq("floors.restaurant_id", selectedRest.id);
-        console.log("loadLocked error:", error, "data count:", data?.length);
         if (error || !data) return;
         const now = new Date();
         const map = {};
         data.forEach((t) => {
           if (t.locked_until) {
-            // Normalizam formatul: "2026-05-17 17:53:29+00" -> "2026-05-17T17:53:29+00:00"
-            // Supabase returneaza deja ISO 8601 valid - folosim direct
             const normalized = t.locked_until.replace(" ", "T");
             const exp = new Date(normalized);
-            console.log(
-              `${t.label}: raw=${t.locked_until} normalized=${normalized} valid=${exp > now}`,
-            );
             if (!isNaN(exp) && exp > now) map[t.id] = normalized;
           }
         });
-        console.log("lockedTables map:", Object.keys(map).length, "entries");
         setLockedTables(map);
       } catch (e) {
         // Nu blocam UI-ul daca lock-urile nu se pot incarca
@@ -148,7 +141,6 @@ export function Rezervare() {
     startCountdown(tableId);
 
     // Update Supabase in paralel
-    console.log("Trying to lock table:", tableId, "until:", lockedUntil);
     supabase
       .from("tables")
       .update({
@@ -156,16 +148,8 @@ export function Rezervare() {
         locked_by: sessionId,
       })
       .eq("id", tableId)
-      .select()
-      .then(({ data, error }) => {
-        console.log("Lock result - error:", error, "data:", data);
-        if (error)
-          console.warn(
-            "Lock table error:",
-            error.message,
-            error.details,
-            error.hint,
-          );
+      .then(({ error }) => {
+        if (error) console.warn("Lock table error:", error.message);
       });
   };
 
@@ -726,11 +710,9 @@ export function Rezervare() {
                             if (isDisabled) return;
                             // Daca aveam alta masa locked, o eliberam
                             const prevLocked = myLockedTableIdRef.current;
-                            // Facem lock primul ca sa nu avem gap in countdown
-                            set({ tableId: t.id });
-                            await lockTable(t.id);
-                            // Apoi eliberam masa anterioara
+                            // Eliberam masa anterioara INAINTE de a bloca noua
                             if (prevLocked && prevLocked !== t.id) {
+                              // Unlock direct in DB fara sa resetam countdown-ul
                               supabase
                                 .from("tables")
                                 .update({
@@ -739,6 +721,8 @@ export function Rezervare() {
                                 })
                                 .eq("id", prevLocked);
                             }
+                            set({ tableId: t.id });
+                            await lockTable(t.id);
                           }}
                           style={{
                             position: "absolute",
