@@ -157,13 +157,21 @@ export function Rezervare() {
       .eq("id", tableId);
   };
 
-  // Cleanup la unmount
+  // Cleanup la unmount - doar la parasirea paginii
   useEffect(() => {
     return () => {
-      if (myLockedTableIdRef.current) unlockTable(myLockedTableIdRef.current);
-      clearInterval(countdownRef.current);
+      if (myLockedTableIdRef.current) {
+        supabase
+          .from("tables")
+          .update({
+            locked_until: null,
+            locked_by: null,
+          })
+          .eq("id", myLockedTableIdRef.current);
+      }
+      if (countdownRef.current) clearInterval(countdownRef.current);
     };
-  }, [myLockedTableId]);
+  }, []); // array gol - ruleaza DOAR la unmount
 
   // Generează orele disponibile bazat pe ziua selectată și program
   const getAvailableSlots = () => {
