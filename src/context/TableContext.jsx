@@ -36,6 +36,13 @@ export const TABLE_STATUS = {
     border: "#5b8dd9",
     icon: "🔵",
   },
+  locked: {
+    label: "În curs de rezervare",
+    color: "#a0785a",
+    bg: "rgba(160,120,90,.15)",
+    border: "#a0785a",
+    icon: "🟤",
+  },
 };
 
 // Generează session ID unic: T1_02052026_1139

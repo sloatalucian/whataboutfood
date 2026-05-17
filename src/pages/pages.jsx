@@ -12,6 +12,11 @@ export function Rezervare() {
   const [dbFloors, setDbFloors] = useState([]);
   const [reservedTables, setReservedTables] = useState([]);
   const [restProgram, setRestProgram] = useState(null);
+  const [lockedTables, setLockedTables] = useState({}); // { tableId: locked_until }
+  const [lockCountdown, setLockCountdown] = useState(null); // secunde ramase
+  const [myLockedTableId, setMyLockedTableId] = useState(null); // masa pe care am blocat-o eu
+  const countdownRef = useRef(null);
+  const LOCK_SECONDS = 120; // 2 minute
 
   // Încarcă programul restaurantului din Supabase
   useEffect(() => {
@@ -25,6 +30,113 @@ export function Rezervare() {
         if (data?.program) setRestProgram(data.program);
       });
   }, [selectedRest?.id]);
+
+  // ── Incarca mesele locked din Supabase + Realtime ──
+  useEffect(() => {
+    if (!selectedRest?.id) return;
+
+    const loadLocked = async () => {
+      const now = new Date().toISOString();
+      const { data } = await supabase
+        .from("tables")
+        .select("id, locked_until, locked_by")
+        .eq("restaurant_id", selectedRest.id)
+        .not("locked_until", "is", null);
+      if (!data) return;
+      const map = {};
+      data.forEach((t) => {
+        if (t.locked_until && new Date(t.locked_until) > new Date()) {
+          map[t.id] = t.locked_until;
+        }
+      });
+      setLockedTables(map);
+    };
+
+    loadLocked();
+
+    // Realtime — propagam lock/unlock instant
+    const channel = supabase
+      .channel(`tables-lock-${selectedRest.id}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "tables",
+        },
+        (payload) => {
+          const t = payload.new;
+          if (t.restaurant_id !== selectedRest.id) return;
+          setLockedTables((prev) => {
+            const next = { ...prev };
+            if (t.locked_until && new Date(t.locked_until) > new Date()) {
+              next[t.id] = t.locked_until;
+            } else {
+              delete next[t.id];
+            }
+            return next;
+          });
+        },
+      )
+      .subscribe();
+
+    return () => supabase.removeChannel(channel);
+  }, [selectedRest?.id]);
+
+  // ── Functii lock/unlock ──
+  const lockTable = async (tableId) => {
+    const lockedUntil = new Date(
+      Date.now() + LOCK_SECONDS * 1000,
+    ).toISOString();
+    const sessionId = user?.id || "anon-" + Math.random().toString(36).slice(2);
+    await supabase
+      .from("tables")
+      .update({
+        locked_until: lockedUntil,
+        locked_by: sessionId,
+      })
+      .eq("id", tableId);
+    setMyLockedTableId(tableId);
+    setLockCountdown(LOCK_SECONDS);
+
+    // Porneste countdown
+    clearInterval(countdownRef.current);
+    countdownRef.current = setInterval(() => {
+      setLockCountdown((prev) => {
+        if (prev <= 1) {
+          clearInterval(countdownRef.current);
+          // Expirat — unlock si reseteaza
+          unlockTable(tableId);
+          set({ tableId: null });
+          showToast("⏱️ Timpul a expirat. Selectează din nou masa.");
+          return null;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+  };
+
+  const unlockTable = async (tableId) => {
+    if (!tableId) return;
+    await supabase
+      .from("tables")
+      .update({
+        locked_until: null,
+        locked_by: null,
+      })
+      .eq("id", tableId);
+    clearInterval(countdownRef.current);
+    setMyLockedTableId(null);
+    setLockCountdown(null);
+  };
+
+  // Cleanup la unmount
+  useEffect(() => {
+    return () => {
+      if (myLockedTableId) unlockTable(myLockedTableId);
+      clearInterval(countdownRef.current);
+    };
+  }, [myLockedTableId]);
 
   // Generează orele disponibile bazat pe ziua selectată și program
   const getAvailableSlots = () => {
@@ -176,6 +288,8 @@ export function Rezervare() {
         tableId: resForm.tableId,
       },
     });
+    // Unlock masa dupa finalizare rezervare
+    await unlockTable(myLockedTableId);
     showToast("📅 Rezervare trimisă! Ospătarul va confirma în scurt timp.");
   };
 
@@ -534,11 +648,24 @@ export function Rezervare() {
                     {allTables.map((t) => {
                       const isTaken = reservedTables.includes(t.label);
                       const isSel = resForm.tableId === t.id;
+                      const isLocked =
+                        !isSel &&
+                        lockedTables[t.id] &&
+                        new Date(lockedTables[t.id]) > new Date();
+                      const isDisabled = isTaken || isLocked;
                       const w = t.seats <= 2 ? 52 : t.seats <= 4 ? 64 : 80;
                       return (
                         <div
                           key={t.id}
-                          onClick={() => !isTaken && set({ tableId: t.id })}
+                          onClick={async () => {
+                            if (isDisabled) return;
+                            // Daca aveam alta masa locked, o eliberam
+                            if (myLockedTableId && myLockedTableId !== t.id) {
+                              await unlockTable(myLockedTableId);
+                            }
+                            set({ tableId: t.id });
+                            await lockTable(t.id);
+                          }}
                           style={{
                             position: "absolute",
                             left: t.x,
@@ -550,13 +677,15 @@ export function Rezervare() {
                               ? "rgba(192,98,47,.35)"
                               : isTaken
                                 ? "rgba(192,57,43,.15)"
-                                : "rgba(74,110,74,.15)",
-                            border: `2px solid ${isSel ? "#c0622f" : isTaken ? "#e05050" : "#4a6e4a"}`,
+                                : isLocked
+                                  ? "rgba(160,120,90,.15)"
+                                  : "rgba(74,110,74,.15)",
+                            border: `2px solid ${isSel ? "#c0622f" : isTaken ? "#e05050" : isLocked ? "#a0785a" : "#4a6e4a"}`,
                             display: "flex",
                             flexDirection: "column",
                             alignItems: "center",
                             justifyContent: "center",
-                            cursor: isTaken ? "not-allowed" : "pointer",
+                            cursor: isDisabled ? "not-allowed" : "pointer",
                             gap: 1,
                           }}
                         >
@@ -578,6 +707,17 @@ export function Rezervare() {
                           <span style={{ fontSize: 9, color: "#6b6050" }}>
                             {t.seats}p
                           </span>
+                          {isLocked && (
+                            <span
+                              style={{
+                                fontSize: 8,
+                                color: "#a0785a",
+                                marginTop: 1,
+                              }}
+                            >
+                              🔒
+                            </span>
+                          )}
                         </div>
                       );
                     })}
@@ -585,6 +725,37 @@ export function Rezervare() {
                 </div>
               );
             })()}
+          </div>
+        )}
+        {/* Countdown lock */}
+        {lockCountdown !== null && resForm.tableId && (
+          <div
+            style={{
+              background: "rgba(160,120,90,.15)",
+              border: "1px solid #a0785a",
+              borderRadius: 12,
+              padding: "10px 16px",
+              marginBottom: 12,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              gap: 8,
+            }}
+          >
+            <span style={{ fontSize: 13, color: "#a0785a" }}>
+              🔒 Masa rezervată pentru tine
+            </span>
+            <span
+              style={{
+                fontSize: 15,
+                fontWeight: 700,
+                color: lockCountdown <= 30 ? "#e05050" : "#a0785a",
+                fontVariantNumeric: "tabular-nums",
+              }}
+            >
+              {Math.floor(lockCountdown / 60)}:
+              {String(lockCountdown % 60).padStart(2, "0")}
+            </span>
           </div>
         )}
         <button
