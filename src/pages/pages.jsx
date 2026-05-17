@@ -27,7 +27,9 @@ export function Rezervare() {
       .eq("id", selectedRest.id)
       .single()
       .then(({ data }) => {
-        if (data?.program) setRestProgram(data.program);
+        // Daca are program setat il folosim, altfel setam un obiect gol
+        // ca sa nu ramana blocat pe "Se incarca programul..."
+        setRestProgram(data?.program || {});
       });
   }, [selectedRest?.id]);
 
@@ -36,20 +38,24 @@ export function Rezervare() {
     if (!selectedRest?.id) return;
 
     const loadLocked = async () => {
-      const now = new Date().toISOString();
-      const { data } = await supabase
-        .from("tables")
-        .select("id, locked_until, locked_by")
-        .eq("restaurant_id", selectedRest.id)
-        .not("locked_until", "is", null);
-      if (!data) return;
-      const map = {};
-      data.forEach((t) => {
-        if (t.locked_until && new Date(t.locked_until) > new Date()) {
-          map[t.id] = t.locked_until;
-        }
-      });
-      setLockedTables(map);
+      try {
+        const { data, error } = await supabase
+          .from("tables")
+          .select("id, locked_until, locked_by")
+          .eq("restaurant_id", selectedRest.id)
+          .not("locked_until", "is", null);
+        if (error || !data) return;
+        const map = {};
+        data.forEach((t) => {
+          if (t.locked_until && new Date(t.locked_until) > new Date()) {
+            map[t.id] = t.locked_until;
+          }
+        });
+        setLockedTables(map);
+      } catch (e) {
+        // Nu blocam UI-ul daca lock-urile nu se pot incarca
+        console.warn("Lock tables load error:", e);
+      }
     };
 
     loadLocked();
@@ -89,23 +95,15 @@ export function Rezervare() {
       Date.now() + LOCK_SECONDS * 1000,
     ).toISOString();
     const sessionId = user?.id || "anon-" + Math.random().toString(36).slice(2);
-    await supabase
-      .from("tables")
-      .update({
-        locked_until: lockedUntil,
-        locked_by: sessionId,
-      })
-      .eq("id", tableId);
+
+    // Pornim countdown imediat, indiferent de raspunsul Supabase
     setMyLockedTableId(tableId);
     setLockCountdown(LOCK_SECONDS);
-
-    // Porneste countdown
     clearInterval(countdownRef.current);
     countdownRef.current = setInterval(() => {
       setLockCountdown((prev) => {
         if (prev <= 1) {
           clearInterval(countdownRef.current);
-          // Expirat — unlock si reseteaza
           unlockTable(tableId);
           set({ tableId: null });
           showToast("⏱️ Timpul a expirat. Selectează din nou masa.");
@@ -114,6 +112,18 @@ export function Rezervare() {
         return prev - 1;
       });
     }, 1000);
+
+    // Update Supabase in paralel (nu blocam UI-ul)
+    supabase
+      .from("tables")
+      .update({
+        locked_until: lockedUntil,
+        locked_by: sessionId,
+      })
+      .eq("id", tableId)
+      .then(({ error }) => {
+        if (error) console.warn("Lock table error:", error.message);
+      });
   };
 
   const unlockTable = async (tableId) => {
@@ -140,7 +150,7 @@ export function Rezervare() {
 
   // Generează orele disponibile bazat pe ziua selectată și program
   const getAvailableSlots = () => {
-    if (!resForm.date || !restProgram) return [];
+    if (!resForm.date || restProgram === null) return [];
 
     const date = new Date(resForm.date);
     const dayIndex = date.getDay(); // 0=Duminică, 1=Luni...
