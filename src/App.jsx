@@ -534,7 +534,9 @@ function Router() {
             </div>
           </div>
         )}
-        {pages[screen] || <Home />}
+        <div key={screen} className="page-transition">
+          {pages[screen] || <Home />}
+        </div>
         {screen !== "waiter" && !noNav.includes(screen) && (
           <BottomNav
             waiterLoggedIn={!!waiterUser}
