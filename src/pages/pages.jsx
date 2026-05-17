@@ -34,92 +34,30 @@ export function Rezervare() {
       });
   }, [selectedRest?.id]);
 
-  // ── Incarca mesele locked din Supabase + Realtime ──
-  // Pastram floor_id-urile restaurantului curent intr-un ref
-  const floorIdsRef = useRef([]);
+  // ── Incarca mesele locked via RPC + polling ──
   const pollRef = useRef(null);
 
   useEffect(() => {
     if (!selectedRest?.id) return;
 
-    // Pasul 1: obtinem floor_id-urile restaurantului o singura data
-    const initFloors = async () => {
-      const { data } = await supabase
-        .from("floors")
-        .select("id")
-        .eq("restaurant_id", selectedRest.id);
-      if (data) floorIdsRef.current = data.map((f) => f.id);
-    };
-
-    // Pasul 2: incarcam mesele locked folosind floor_id-urile
     const loadLocked = async () => {
-      if (!floorIdsRef.current.length) return;
-      try {
-        const { data, error } = await supabase
-          .from("tables")
-          .select("id, locked_until")
-          .in("floor_id", floorIdsRef.current);
-        if (error || !data) return;
-        const now = new Date();
-        const map = {};
-        data.forEach((t) => {
-          if (t.locked_until) {
-            const normalized = t.locked_until.replace(" ", "T");
-            const exp = new Date(normalized);
-            if (!isNaN(exp) && exp > now) map[t.id] = normalized;
-          }
-        });
-        setLockedTables(map);
-      } catch (e) {
-        console.warn("Lock tables load error:", e);
-      }
+      const { data, error } = await supabase.rpc("get_locked_tables", {
+        p_restaurant_id: selectedRest.id,
+      });
+      if (error || !data) return;
+      const map = {};
+      data.forEach((t) => {
+        map[t.id] = t.locked_until;
+      });
+      setLockedTables(map);
     };
 
-    // Initializam floors, apoi pornim polling
-    initFloors().then(() => {
-      loadLocked();
-      // Pornim polling DOAR dupa ce avem floor_id-urile
-      const pollInterval = setInterval(loadLocked, 3000);
-      // Salvam intervalul ca sa il putem opri la cleanup
-      pollRef.current = pollInterval;
-    });
-
-    // Realtime — propagam lock/unlock instant
-    const channel = supabase
-      .channel(`tables-lock-${selectedRest.id}`)
-      .on(
-        "postgres_changes",
-        {
-          event: "UPDATE",
-          schema: "public",
-          table: "tables",
-        },
-        (payload) => {
-          const t = payload.new;
-          // Verificam ca masa apartine acestui restaurant
-          if (!floorIdsRef.current.includes(t.floor_id)) return;
-          setLockedTables((prev) => {
-            const next = { ...prev };
-            if (t.locked_until) {
-              const normalized = t.locked_until.replace(" ", "T");
-              const exp = new Date(normalized);
-              if (!isNaN(exp) && exp > new Date()) {
-                next[t.id] = normalized;
-              } else {
-                delete next[t.id];
-              }
-            } else {
-              delete next[t.id];
-            }
-            return next;
-          });
-        },
-      )
-      .subscribe();
+    // Incarcare imediata + polling la 2 secunde
+    loadLocked();
+    pollRef.current = setInterval(loadLocked, 2000);
 
     return () => {
       if (pollRef.current) clearInterval(pollRef.current);
-      supabase.removeChannel(channel);
     };
   }, [selectedRest?.id]);
 
@@ -725,10 +663,7 @@ export function Rezervare() {
                     {allTables.map((t) => {
                       const isTaken = reservedTables.includes(t.label);
                       const isSel = resForm.tableId === t.id;
-                      const isLocked =
-                        !isSel &&
-                        lockedTables[t.id] &&
-                        new Date(lockedTables[t.id]) > new Date();
+                      const isLocked = !isSel && !!lockedTables[t.id];
                       const isDisabled = isTaken || isLocked;
                       const w = t.seats <= 2 ? 52 : t.seats <= 4 ? 64 : 80;
                       return (
