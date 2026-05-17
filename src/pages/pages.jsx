@@ -53,10 +53,8 @@ export function Rezervare() {
         data.forEach((t) => {
           if (t.locked_until) {
             // Normalizam formatul: "2026-05-17 17:53:29+00" -> "2026-05-17T17:53:29+00:00"
-            const normalized = t.locked_until
-              .replace(" ", "T") // spatiu -> T
-              .replace("+00", "+00:00") // +00 -> +00:00
-              .replace(/Z$/, "+00:00"); // Z -> +00:00
+            // Supabase returneaza deja ISO 8601 valid - folosim direct
+            const normalized = t.locked_until.replace(" ", "T");
             const exp = new Date(normalized);
             console.log(
               `${t.label}: raw=${t.locked_until} normalized=${normalized} valid=${exp > now}`,
@@ -92,10 +90,7 @@ export function Rezervare() {
           setLockedTables((prev) => {
             const next = { ...prev };
             if (t.locked_until) {
-              const normalized = t.locked_until
-                .replace(" ", "T")
-                .replace("+00", "+00:00")
-                .replace(/Z$/, "+00:00");
+              const normalized = t.locked_until.replace(" ", "T");
               const exp = new Date(normalized);
               if (!isNaN(exp) && exp > new Date()) {
                 next[t.id] = normalized;
