@@ -43,7 +43,7 @@ export function Rezervare() {
           .from("tables")
           .select("id, locked_until, locked_by")
           .eq("restaurant_id", selectedRest.id)
-          .not("locked_until", "is", null);
+          .filter("locked_until", "not.is", null);
         if (error || !data) return;
         const map = {};
         data.forEach((t) => {
