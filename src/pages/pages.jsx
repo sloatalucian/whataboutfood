@@ -144,6 +144,7 @@ export function Rezervare() {
     startCountdown(tableId);
 
     // Update Supabase in paralel
+    console.log("Trying to lock table:", tableId, "until:", lockedUntil);
     supabase
       .from("tables")
       .update({
@@ -151,8 +152,15 @@ export function Rezervare() {
         locked_by: sessionId,
       })
       .eq("id", tableId)
-      .then(({ error }) => {
-        if (error) console.warn("Lock table error:", error.message);
+      .then(({ data, error }) => {
+        console.log("Lock result - error:", error, "data:", data);
+        if (error)
+          console.warn(
+            "Lock table error:",
+            error.message,
+            error.details,
+            error.hint,
+          );
       });
   };
 
