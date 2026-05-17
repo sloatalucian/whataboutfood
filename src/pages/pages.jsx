@@ -89,20 +89,21 @@ export function Rezervare() {
   }, [selectedRest?.id]);
 
   // ── Functii lock/unlock ──
-  const lockTable = async (tableId) => {
-    const lockedUntil = new Date(
-      Date.now() + LOCK_SECONDS * 1000,
-    ).toISOString();
-    const sessionId = user?.id || "anon-" + Math.random().toString(36).slice(2);
-
-    // Pornim countdown imediat, indiferent de raspunsul Supabase
-    setMyLockedTableId(tableId);
+  const startCountdown = (tableId) => {
+    // Oprim orice interval existent
+    if (countdownRef.current) {
+      clearInterval(countdownRef.current);
+      countdownRef.current = null;
+    }
     setLockCountdown(LOCK_SECONDS);
-    clearInterval(countdownRef.current);
-    countdownRef.current = setInterval(() => {
+    const id = setInterval(() => {
       setLockCountdown((prev) => {
+        if (prev === null) {
+          clearInterval(id);
+          return null;
+        }
         if (prev <= 1) {
-          clearInterval(countdownRef.current);
+          clearInterval(id);
           unlockTable(tableId);
           set({ tableId: null });
           showToast("⏱️ Timpul a expirat. Selectează din nou masa.");
@@ -111,8 +112,19 @@ export function Rezervare() {
         return prev - 1;
       });
     }, 1000);
+    countdownRef.current = id;
+  };
 
-    // Update Supabase in paralel (nu blocam UI-ul)
+  const lockTable = async (tableId) => {
+    const lockedUntil = new Date(
+      Date.now() + LOCK_SECONDS * 1000,
+    ).toISOString();
+    const sessionId = user?.id || "anon-" + Math.random().toString(36).slice(2);
+
+    setMyLockedTableId(tableId);
+    startCountdown(tableId);
+
+    // Update Supabase in paralel
     supabase
       .from("tables")
       .update({
