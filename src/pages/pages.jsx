@@ -15,6 +15,7 @@ export function Rezervare() {
   const [lockedTables, setLockedTables] = useState({}); // { tableId: locked_until }
   const [lockCountdown, setLockCountdown] = useState(null); // secunde ramase
   const [myLockedTableId, setMyLockedTableId] = useState(null); // masa pe care am blocat-o eu
+  const myLockedTableIdRef = useRef(null); // ref pentru acces in closures
   const countdownRef = useRef(null);
   const LOCK_SECONDS = 120; // 2 minute
 
@@ -121,6 +122,7 @@ export function Rezervare() {
     ).toISOString();
     const sessionId = user?.id || "anon-" + Math.random().toString(36).slice(2);
 
+    myLockedTableIdRef.current = tableId;
     setMyLockedTableId(tableId);
     startCountdown(tableId);
 
@@ -139,22 +141,26 @@ export function Rezervare() {
 
   const unlockTable = async (tableId) => {
     if (!tableId) return;
-    await supabase
+    myLockedTableIdRef.current = null;
+    setMyLockedTableId(null);
+    if (countdownRef.current) {
+      clearInterval(countdownRef.current);
+      countdownRef.current = null;
+    }
+    setLockCountdown(null);
+    supabase
       .from("tables")
       .update({
         locked_until: null,
         locked_by: null,
       })
       .eq("id", tableId);
-    clearInterval(countdownRef.current);
-    setMyLockedTableId(null);
-    setLockCountdown(null);
   };
 
   // Cleanup la unmount
   useEffect(() => {
     return () => {
-      if (myLockedTableId) unlockTable(myLockedTableId);
+      if (myLockedTableIdRef.current) unlockTable(myLockedTableIdRef.current);
       clearInterval(countdownRef.current);
     };
   }, [myLockedTableId]);
@@ -681,8 +687,9 @@ export function Rezervare() {
                           onClick={async () => {
                             if (isDisabled) return;
                             // Daca aveam alta masa locked, o eliberam
-                            if (myLockedTableId && myLockedTableId !== t.id) {
-                              await unlockTable(myLockedTableId);
+                            const prevLocked = myLockedTableIdRef.current;
+                            if (prevLocked && prevLocked !== t.id) {
+                              await unlockTable(prevLocked);
                             }
                             set({ tableId: t.id });
                             await lockTable(t.id);
