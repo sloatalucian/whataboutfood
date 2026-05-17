@@ -48,8 +48,14 @@ export function Rezervare() {
         if (error || !data) return;
         const map = {};
         data.forEach((t) => {
-          if (t.locked_until && new Date(t.locked_until) > new Date()) {
-            map[t.id] = t.locked_until;
+          if (t.locked_until) {
+            // Supabase returneaza TIMESTAMP fara timezone - adaugam Z pentru UTC
+            const lockedUntilUTC = t.locked_until.endsWith("Z")
+              ? t.locked_until
+              : t.locked_until + "Z";
+            if (new Date(lockedUntilUTC) > new Date()) {
+              map[t.id] = lockedUntilUTC;
+            }
           }
         });
         setLockedTables(map);
@@ -78,8 +84,13 @@ export function Rezervare() {
           const t = payload.new;
           setLockedTables((prev) => {
             const next = { ...prev };
-            if (t.locked_until && new Date(t.locked_until) > new Date()) {
-              next[t.id] = t.locked_until;
+            if (t.locked_until) {
+              const lockedUntilUTC = t.locked_until.endsWith("Z")
+                ? t.locked_until
+                : t.locked_until + "Z";
+              if (new Date(lockedUntilUTC) > new Date()) {
+                next[t.id] = lockedUntilUTC;
+              }
             } else {
               delete next[t.id];
             }
