@@ -45,26 +45,13 @@ export function Rezervare() {
           .select("id, locked_until, locked_by, floors!inner(restaurant_id)")
           .eq("floors.restaurant_id", selectedRest.id)
           .not("locked_until", "is", null);
-        console.log("loadLocked error:", error);
-        console.log("loadLocked data:", data);
         if (error || !data) return;
         const map = {};
         data.forEach((t) => {
-          console.log(
-            "table:",
-            t.id,
-            "locked_until:",
-            t.locked_until,
-            "now:",
-            new Date().toISOString(),
-            "valid:",
-            t.locked_until && new Date(t.locked_until) > new Date(),
-          );
-          if (t.locked_until) {
+          if (t.locked_until && new Date(t.locked_until) > new Date()) {
             map[t.id] = t.locked_until;
           }
         });
-        console.log("lockedTables map:", map);
         setLockedTables(map);
       } catch (e) {
         // Nu blocam UI-ul daca lock-urile nu se pot incarca
