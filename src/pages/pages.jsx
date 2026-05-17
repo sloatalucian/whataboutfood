@@ -688,11 +688,19 @@ export function Rezervare() {
                             if (isDisabled) return;
                             // Daca aveam alta masa locked, o eliberam
                             const prevLocked = myLockedTableIdRef.current;
-                            if (prevLocked && prevLocked !== t.id) {
-                              await unlockTable(prevLocked);
-                            }
+                            // Facem lock primul ca sa nu avem gap in countdown
                             set({ tableId: t.id });
                             await lockTable(t.id);
+                            // Apoi eliberam masa anterioara
+                            if (prevLocked && prevLocked !== t.id) {
+                              supabase
+                                .from("tables")
+                                .update({
+                                  locked_until: null,
+                                  locked_by: null,
+                                })
+                                .eq("id", prevLocked);
+                            }
                           }}
                           style={{
                             position: "absolute",
@@ -756,7 +764,7 @@ export function Rezervare() {
           </div>
         )}
         {/* Countdown lock */}
-        {lockCountdown !== null && resForm.tableId && (
+        {lockCountdown !== null && lockCountdown > 0 && (
           <div
             style={{
               background: "rgba(160,120,90,.15)",
