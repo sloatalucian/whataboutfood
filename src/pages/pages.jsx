@@ -103,23 +103,56 @@ export function Rezervare() {
     };
   }, [selectedRest?.id]);
 
-  // ── Functii lock/unlock ──
-  const startCountdown = (tableId) => {
-    // Oprim orice interval existent
+  // ── Selecteaza masa: deblocheaza vechea, blocheaza noua ──
+  const selectTable = (tableId) => {
+    const prevId = myLockedTableIdRef.current;
+
+    // 1. Oprim intervalul existent indiferent de ce
     if (countdownRef.current) {
       clearInterval(countdownRef.current);
       countdownRef.current = null;
     }
+
+    // 2. Daca aveam o masa blocata, o eliberam in DB si in state
+    if (prevId && prevId !== tableId) {
+      supabase
+        .from("tables")
+        .update({ locked_until: null, locked_by: null })
+        .eq("id", prevId);
+      setLockedTables((prev) => {
+        const n = { ...prev };
+        delete n[prevId];
+        return n;
+      });
+    }
+
+    // 3. Actualizam referinta curenta
+    myLockedTableIdRef.current = tableId;
+    setMyLockedTableId(tableId);
+
+    // 4. Blocam noua masa in DB
+    const lockedUntil = new Date(
+      Date.now() + LOCK_SECONDS * 1000,
+    ).toISOString();
+    const sessionId = user?.id || "anon-" + Math.random().toString(36).slice(2);
+    supabase
+      .from("tables")
+      .update({ locked_until: lockedUntil, locked_by: sessionId })
+      .eq("id", tableId);
+
+    // 5. Pornim countdown nou de la 0
     setLockCountdown(LOCK_SECONDS);
     const id = setInterval(() => {
       setLockCountdown((prev) => {
-        if (prev === null) {
-          clearInterval(id);
-          return null;
-        }
         if (prev <= 1) {
           clearInterval(id);
-          unlockTable(tableId);
+          // Expirat — eliberam in DB si resetam
+          supabase
+            .from("tables")
+            .update({ locked_until: null, locked_by: null })
+            .eq("id", tableId);
+          myLockedTableIdRef.current = null;
+          setMyLockedTableId(null);
           set({ tableId: null });
           showToast("⏱️ Timpul a expirat. Selectează din nou masa.");
           return null;
@@ -130,44 +163,19 @@ export function Rezervare() {
     countdownRef.current = id;
   };
 
-  const lockTable = async (tableId) => {
-    const lockedUntil = new Date(
-      Date.now() + LOCK_SECONDS * 1000,
-    ).toISOString();
-    const sessionId = user?.id || "anon-" + Math.random().toString(36).slice(2);
-
-    myLockedTableIdRef.current = tableId;
-    setMyLockedTableId(tableId);
-    startCountdown(tableId);
-
-    // Update Supabase in paralel
-    supabase
-      .from("tables")
-      .update({
-        locked_until: lockedUntil,
-        locked_by: sessionId,
-      })
-      .eq("id", tableId)
-      .then(({ error }) => {
-        if (error) console.warn("Lock table error:", error.message);
-      });
-  };
-
-  const unlockTable = async (tableId) => {
+  // Unlock simplu folosit la finalizare rezervare si cleanup
+  const unlockTable = (tableId) => {
     if (!tableId) return;
-    myLockedTableIdRef.current = null;
-    setMyLockedTableId(null);
     if (countdownRef.current) {
       clearInterval(countdownRef.current);
       countdownRef.current = null;
     }
+    myLockedTableIdRef.current = null;
+    setMyLockedTableId(null);
     setLockCountdown(null);
     supabase
       .from("tables")
-      .update({
-        locked_until: null,
-        locked_by: null,
-      })
+      .update({ locked_until: null, locked_by: null })
       .eq("id", tableId);
   };
 
@@ -706,30 +714,10 @@ export function Rezervare() {
                       return (
                         <div
                           key={t.id}
-                          onClick={async () => {
+                          onClick={() => {
                             if (isDisabled) return;
-                            // Daca aveam alta masa locked, o eliberam
-                            const prevLocked = myLockedTableIdRef.current;
-                            if (prevLocked && prevLocked !== t.id) {
-                              // Unlock in DB
-                              supabase
-                                .from("tables")
-                                .update({
-                                  locked_until: null,
-                                  locked_by: null,
-                                })
-                                .eq("id", prevLocked);
-                              // Actualizam state local imediat ca sa nu asteptam polling
-                              setLockedTables((prev) => {
-                                const next = { ...prev };
-                                delete next[prevLocked];
-                                return next;
-                              });
-                              // Resetam ref
-                              myLockedTableIdRef.current = null;
-                            }
                             set({ tableId: t.id });
-                            await lockTable(t.id);
+                            selectTable(t.id);
                           }}
                           style={{
                             position: "absolute",
