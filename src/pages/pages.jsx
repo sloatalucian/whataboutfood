@@ -46,19 +46,23 @@ export function Rezervare() {
             "id, locked_until, locked_by, floor_id, floors!inner(restaurant_id)",
           )
           .eq("floors.restaurant_id", selectedRest.id);
+        console.log("loadLocked error:", error, "data count:", data?.length);
         if (error || !data) return;
+        const now = new Date();
         const map = {};
         data.forEach((t) => {
           if (t.locked_until) {
-            // Supabase returneaza TIMESTAMP fara timezone - adaugam Z pentru UTC
             const lockedUntilUTC = t.locked_until.endsWith("Z")
               ? t.locked_until
               : t.locked_until + "Z";
-            if (new Date(lockedUntilUTC) > new Date()) {
-              map[t.id] = lockedUntilUTC;
-            }
+            const exp = new Date(lockedUntilUTC);
+            console.log(
+              `${t.label}: locked_until=${lockedUntilUTC} exp=${exp.toISOString()} now=${now.toISOString()} valid=${exp > now}`,
+            );
+            if (exp > now) map[t.id] = lockedUntilUTC;
           }
         });
+        console.log("lockedTables map:", Object.keys(map).length, "entries");
         setLockedTables(map);
       } catch (e) {
         // Nu blocam UI-ul daca lock-urile nu se pot incarca
