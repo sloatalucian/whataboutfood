@@ -76,7 +76,8 @@ export function Rezervare() {
       supabase
         .from("tables")
         .update({ locked_until: null, locked_by: null })
-        .eq("id", prevId);
+        .eq("id", prevId)
+        .then(() => {});
       setLockedTables((prev) => {
         const n = { ...prev };
         delete n[prevId];
@@ -96,7 +97,8 @@ export function Rezervare() {
     supabase
       .from("tables")
       .update({ locked_until: lockedUntil, locked_by: sessionId })
-      .eq("id", tableId);
+      .eq("id", tableId)
+      .then(() => {});
 
     // 5. Pornim countdown nou de la 0
     setLockCountdown(LOCK_SECONDS);
@@ -108,7 +110,8 @@ export function Rezervare() {
           supabase
             .from("tables")
             .update({ locked_until: null, locked_by: null })
-            .eq("id", tableId);
+            .eq("id", tableId)
+            .then(() => {});
           myLockedTableIdRef.current = null;
           setMyLockedTableId(null);
           set({ tableId: null });
@@ -134,7 +137,8 @@ export function Rezervare() {
     supabase
       .from("tables")
       .update({ locked_until: null, locked_by: null })
-      .eq("id", tableId);
+      .eq("id", tableId)
+      .then(() => {});
   };
 
   // Cleanup la unmount - doar la parasirea paginii
@@ -147,7 +151,8 @@ export function Rezervare() {
             locked_until: null,
             locked_by: null,
           })
-          .eq("id", myLockedTableIdRef.current);
+          .eq("id", myLockedTableIdRef.current)
+          .then(() => {});
       }
       if (countdownRef.current) clearInterval(countdownRef.current);
     };
