@@ -61,6 +61,9 @@ export function Rezervare() {
 
     loadLocked();
 
+    // Polling fallback la fiecare 3 secunde
+    const pollInterval = setInterval(loadLocked, 3000);
+
     // Realtime — propagam lock/unlock instant
     const channel = supabase
       .channel(`tables-lock-${selectedRest.id}`)
@@ -86,7 +89,10 @@ export function Rezervare() {
       )
       .subscribe();
 
-    return () => supabase.removeChannel(channel);
+    return () => {
+      clearInterval(pollInterval);
+      supabase.removeChannel(channel);
+    };
   }, [selectedRest?.id]);
 
   // ── Functii lock/unlock ──
