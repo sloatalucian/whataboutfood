@@ -422,10 +422,7 @@ export default function HartaPage() {
     );
     // Handler pentru imagini lipsa din sprite - previne crash-ul in worker
     map.on("styleimagemissing", (e) => {
-      const canvas = document.createElement("canvas");
-      canvas.width = 1;
-      canvas.height = 1;
-      map.addImage(e.id, canvas);
+      map.addImage(e.id, { width: 0, height: 0, data: new Uint8Array(0) });
     });
 
     map.on("load", () => {
