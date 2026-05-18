@@ -417,7 +417,7 @@ export default function HartaPage() {
     if (!containerRef.current) return;
     const map = new maplibregl.Map({
       container: containerRef.current,
-      style: "https://tiles.openfreemap.org/styles/liberty",
+      style: "https://tiles.openfreemap.org/styles/bright",
       center: toLngLat(CITY_COORDS["Iași"]),
       zoom: 15,
       minZoom: 6,
@@ -428,6 +428,11 @@ export default function HartaPage() {
       new maplibregl.NavigationControl({ showCompass: false }),
       "bottom-right",
     );
+    // Suprima erorile de tile-uri corupte din OpenFreeMap - nu blocheaza harta
+    map.on("error", (e) => {
+      return;
+    });
+
     map.on("load", () => {
       mapRef.current = map;
       setMapReady(true);
