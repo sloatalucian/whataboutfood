@@ -31,7 +31,7 @@ const CITY_COORDS = {
   Deva: [45.885, 22.9108],
 };
 
-const ORASE = Object.keys(CITY_COORDS);
+const ORASE = Object.keys(CITY_COORDS).sort((a, b) => a.localeCompare(b, "ro"));
 
 const toLngLat = ([lat, lon]) => [lon, lat];
 
@@ -532,7 +532,16 @@ export default function HartaPage() {
           {/* City selector */}
           <div style={{ position: "relative", zIndex: 500 }}>
             <button
-              onClick={() => setShowCities(!showCities)}
+              onClick={() => {
+                setShowCities((v) => {
+                  if (!v)
+                    setTimeout(() => {
+                      const dd = document.getElementById("city-dropdown");
+                      if (dd) dd.scrollTop = 0;
+                    }, 10);
+                  return !v;
+                });
+              }}
               style={{
                 display: "flex",
                 alignItems: "center",
@@ -562,6 +571,7 @@ export default function HartaPage() {
             </button>
             {showCities && (
               <div
+                id="city-dropdown"
                 style={{
                   position: "fixed",
                   top: 55,
