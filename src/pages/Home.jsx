@@ -63,6 +63,32 @@ function SearchBar({
   const inputRef = useRef(null);
   const wrapRef = useRef(null);
 
+  // Placeholder rotativ
+  const placeholders = [
+    {
+      prefix: "Ți-e poftă de un ",
+      bold: "Sushi",
+      suffix: " la ",
+      brand: "Zen?",
+    },
+    { prefix: "Cauți o ", bold: "Pizza", suffix: " bună în ", brand: "oraș?" },
+    {
+      prefix: "Ce zici de un ",
+      bold: "Burger",
+      suffix: " la ",
+      brand: "prânz?",
+    },
+    { prefix: "Poate o ", bold: "Salată", suffix: " la ", brand: "terasă?" },
+  ];
+  const [phIdx, setPhIdx] = useState(0);
+  useEffect(() => {
+    const t = setInterval(
+      () => setPhIdx((i) => (i + 1) % placeholders.length),
+      3500,
+    );
+    return () => clearInterval(t);
+  }, []);
+
   const results =
     query.trim().length === 0
       ? []
@@ -90,128 +116,167 @@ function SearchBar({
     return () => document.removeEventListener("mousedown", handler);
   }, []);
 
+  const ph = placeholders[phIdx];
+
   return (
     <div ref={wrapRef} style={{ position: "relative", zIndex: 150 }}>
-      {/* Bara unificata */}
+      {/* Bara principala */}
       <div
         style={{
           display: "flex",
           alignItems: "center",
-          background: "#1e1a14",
-          border: `1px solid ${focused ? "#c0622f" : "#2a2218"}`,
-          borderRadius: 20,
-          padding: "8px 8px 8px 14px",
-          gap: 8,
-          boxShadow: focused ? "0 0 0 3px rgba(192,98,47,.12)" : "none",
-          transition: "box-shadow .2s, border-color .2s",
+          justifyContent: "space-between",
+          background: "#2a2218",
+          padding: "12px 12px 12px 20px",
+          borderRadius: 50,
+          border: "1px solid rgba(200,169,126,0.15)",
+          boxShadow: "0 10px 30px rgba(0,0,0,0.3)",
         }}
       >
-        {/* Selector oras */}
-        <button
-          onClick={() => {
-            setShowCities(!showCities);
-            setFocused(false);
+        {/* Stanga: oras + placeholder */}
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            gap: 4,
+            flex: 1,
+            cursor: "text",
           }}
+          onClick={() => {
+            inputRef.current?.focus();
+            setFocused(true);
+          }}
+        >
+          {/* Selector oras */}
+          <div
+            onClick={(e) => {
+              e.stopPropagation();
+              setShowCities(!showCities);
+              setFocused(false);
+            }}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
+              cursor: "pointer",
+            }}
+          >
+            <span style={{ fontSize: 14 }}>📍</span>
+            <span style={{ fontSize: 13, color: "#f0ebe3", opacity: 0.8 }}>
+              {selectedCity}
+            </span>
+            <span
+              style={{
+                fontSize: 9,
+                color: "#c0622f",
+                transform: showCities ? "rotate(180deg)" : "rotate(0)",
+                transition: "transform .2s",
+                display: "inline-block",
+              }}
+            >
+              ▼
+            </span>
+          </div>
+
+          {/* Search input / placeholder animat */}
+          {focused ? (
+            <input
+              ref={inputRef}
+              value={query}
+              maxLength={100}
+              onChange={(e) => setQuery(e.target.value)}
+              onFocus={() => setFocused(true)}
+              placeholder="Caută restaurant, bucătărie..."
+              autoFocus
+              style={{
+                background: "none",
+                border: "none",
+                outline: "none",
+                color: "#f0ebe3",
+                fontFamily: "'Fraunces',serif",
+                fontSize: 18,
+                fontWeight: 400,
+                padding: 0,
+                width: "100%",
+              }}
+            />
+          ) : (
+            <div
+              style={{
+                fontFamily: "'Fraunces',serif",
+                fontSize: 18,
+                color: "#f0ebe3",
+                transition: "opacity .3s",
+              }}
+            >
+              {ph.prefix}
+              <span style={{ fontWeight: 900 }}>{ph.bold}</span>
+              {ph.suffix}
+              <span style={{ color: "#c0622f", fontWeight: 900 }}>
+                {ph.brand}
+              </span>
+            </div>
+          )}
+        </div>
+
+        {/* Dreapta: butoane harta + filtre */}
+        <div
           style={{
             display: "flex",
             alignItems: "center",
-            gap: 5,
-            background: "none",
-            border: "none",
-            cursor: "pointer",
-            color: selectedCity !== "Toate orașele" ? "#e07a47" : "#6b6050",
-            fontSize: 12,
-            fontWeight: 600,
-            padding: "0 4px",
+            gap: 10,
+            background: "rgba(255,255,255,0.05)",
+            border: "1px solid #c8a97e",
+            borderRadius: 30,
+            padding: "6px 12px",
             flexShrink: 0,
-            whiteSpace: "nowrap",
+            marginLeft: 12,
           }}
         >
-          <span style={{ fontSize: 14 }}>📍</span>
-          <span>{selectedCity}</span>
-          <span
-            style={{
-              fontSize: 9,
-              transform: showCities ? "rotate(180deg)" : "rotate(0)",
-              transition: "transform .2s",
-              display: "inline-block",
-            }}
-          >
-            ▾
-          </span>
-        </button>
-
-        {/* Separator */}
-        <div
-          style={{ width: 1, height: 18, background: "#2a2218", flexShrink: 0 }}
-        />
-
-        {/* Input search */}
-        <span style={{ fontSize: 14, color: "#6b6050", flexShrink: 0 }}>
-          🔍
-        </span>
-        <input
-          ref={inputRef}
-          value={query}
-          maxLength={100}
-          onChange={(e) => setQuery(e.target.value)}
-          onFocus={() => {
-            setFocused(true);
-            setShowCities(false);
-          }}
-          placeholder={`Caută restaurant${selectedCity !== "Toate orașele" ? ` în ${selectedCity}` : ", bucătărie, zonă"}...`}
-          style={{
-            flex: 1,
-            background: "none",
-            border: "none",
-            outline: "none",
-            color: "#f0ebe3",
-            fontFamily: "'Plus Jakarta Sans',sans-serif",
-            fontSize: 13,
-          }}
-        />
-        {query && (
           <button
-            onClick={() => setQuery("")}
+            onClick={() => onMapClick && onMapClick()}
             style={{
               background: "none",
               border: "none",
-              color: "#6b6050",
-              fontSize: 16,
+              color: "#c8a97e",
               cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
               padding: 0,
-              flexShrink: 0,
             }}
           >
-            ✕
+            <svg viewBox="0 0 24 24" width="22" height="22">
+              <path
+                fill="currentColor"
+                d="M15,19L9,16.56V4.56L15,7V19M8.5,20L2,16.94V4.27L8.5,7.33V20M22,7.06V19.73L15.5,16.67V4L22,7.06Z"
+              />
+            </svg>
           </button>
-        )}
-
-        {/* Separator */}
-        <div
-          style={{ width: 1, height: 18, background: "#2a2218", flexShrink: 0 }}
-        />
-
-        {/* Buton harta + Filtre */}
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 6,
-            background: "rgba(200,169,126,.08)",
-            border: "1px solid rgba(200,169,126,.2)",
-            borderRadius: 14,
-            padding: "5px 10px",
-            cursor: "pointer",
-            flexShrink: 0,
-          }}
-          onClick={() => onMapClick && onMapClick()}
-        >
-          <span style={{ fontSize: 16 }}>🗺️</span>
           <div
-            style={{ width: 1, height: 14, background: "rgba(200,169,126,.3)" }}
+            style={{
+              width: 1,
+              height: 24,
+              background: "rgba(200,169,126,0.3)",
+            }}
           />
-          <span style={{ fontSize: 14, color: "#6b6050" }}>⚙️</span>
+          <button
+            style={{
+              background: "none",
+              border: "none",
+              color: "#c8a97e",
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              padding: 0,
+            }}
+          >
+            <svg viewBox="0 0 24 24" width="22" height="22">
+              <path
+                fill="currentColor"
+                d="M3,17V19H9V17H3M3,5V7H13V5H3M13,19V21H15V19H21V17H15V15H13V19M7,9V11H3V13H7V15H9V9H7M21,13V11H11V13H21M15,9H17V7H21V5H17V3H15V9Z"
+              />
+            </svg>
+          </button>
         </div>
       </div>
 
@@ -229,9 +294,7 @@ function SearchBar({
             width: 220,
             maxHeight: 396,
             overflowY: "auto",
-            scrollbarWidth: "thin",
             zIndex: 200,
-            animation: "fadeDown .2s ease",
           }}
         >
           {ORASE.map((oras) => (
@@ -280,7 +343,6 @@ function SearchBar({
             borderRadius: 16,
             boxShadow: "0 8px 32px rgba(0,0,0,.5)",
             zIndex: 200,
-            animation: "fadeDown .2s ease",
           }}
         >
           {results.length === 0 ? (
@@ -375,7 +437,6 @@ function SearchBar({
     </div>
   );
 }
-
 function HomeClient() {
   const { state, dispatch, navigate, showToast } = useApp();
   const { user, savedCart } = state;
