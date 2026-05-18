@@ -311,9 +311,6 @@ export default function HartaPage() {
     );
     pois
       .filter((p) => !regNames.has(p.name.toLowerCase()))
-      .filter(
-        (p) => p.lat != null && p.lon != null && !isNaN(p.lat) && !isNaN(p.lon),
-      )
       .forEach((poi) => {
         const el = makeEl(poi.name, false, isLabel);
         el.addEventListener("click", () =>
@@ -335,13 +332,7 @@ export default function HartaPage() {
     try {
       const cached = localStorage.getItem(cacheKey);
       if (cached) {
-        const pois = JSON.parse(cached).filter(
-          (p) =>
-            p.lat != null &&
-            p.lon != null &&
-            !isNaN(Number(p.lat)) &&
-            !isNaN(Number(p.lon)),
-        );
+        const pois = JSON.parse(cached);
         setOverpassPOIs(pois);
         renderOverpass(pois, mapRef.current?.getZoom() ?? 15);
         return;
@@ -394,14 +385,7 @@ export default function HartaPage() {
 
       // Salvam in localStorage pentru data viitoare
       try {
-        const validPois = pois.filter(
-          (p) =>
-            p.lat != null &&
-            p.lon != null &&
-            !isNaN(Number(p.lat)) &&
-            !isNaN(Number(p.lon)),
-        );
-        localStorage.setItem(cacheKey, JSON.stringify(validPois));
+        localStorage.setItem(cacheKey, JSON.stringify(pois));
       } catch (_) {}
 
       setOverpassPOIs(pois);
@@ -417,31 +401,7 @@ export default function HartaPage() {
     if (!containerRef.current) return;
     const map = new maplibregl.Map({
       container: containerRef.current,
-      style: {
-        version: 8,
-        sources: {
-          "carto-dark": {
-            type: "raster",
-            tiles: [
-              "https://a.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png",
-              "https://b.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png",
-              "https://c.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png",
-            ],
-            tileSize: 256,
-            attribution: "© OpenStreetMap contributors © CARTO",
-            maxzoom: 19,
-          },
-        },
-        layers: [
-          {
-            id: "carto-dark",
-            type: "raster",
-            source: "carto-dark",
-            minzoom: 0,
-            maxzoom: 19,
-          },
-        ],
-      },
+      style: "https://tiles.openfreemap.org/styles/bright",
       center: toLngLat(CITY_COORDS["Iași"]),
       zoom: 15,
       minZoom: 6,
@@ -452,11 +412,6 @@ export default function HartaPage() {
       new maplibregl.NavigationControl({ showCompass: false }),
       "bottom-right",
     );
-    // Suprima erorile de tile-uri corupte din OpenFreeMap - nu blocheaza harta
-    map.on("error", (e) => {
-      return;
-    });
-
     map.on("load", () => {
       mapRef.current = map;
       setMapReady(true);
@@ -801,10 +756,7 @@ export default function HartaPage() {
       </div>
 
       {/* Map */}
-      <div
-        ref={containerRef}
-        style={{ width: "100%", height: window.innerHeight - 160 + "px" }}
-      />
+      <div ref={containerRef} style={{ flex: 1, width: "100%" }} />
 
       {/* Popup */}
       {selectedMarker && (
