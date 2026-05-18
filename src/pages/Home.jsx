@@ -81,11 +81,15 @@ function SearchBar({
     { prefix: "Poate o ", bold: "Salată", suffix: " la ", brand: "terasă?" },
   ];
   const [phIdx, setPhIdx] = useState(0);
+  const [phVisible, setPhVisible] = useState(true);
   useEffect(() => {
-    const t = setInterval(
-      () => setPhIdx((i) => (i + 1) % placeholders.length),
-      3500,
-    );
+    const t = setInterval(() => {
+      setPhVisible(false);
+      setTimeout(() => {
+        setPhIdx((i) => (i + 1) % placeholders.length);
+        setPhVisible(true);
+      }, 400);
+    }, 8000);
     return () => clearInterval(t);
   }, []);
 
@@ -179,44 +183,58 @@ function SearchBar({
           </div>
 
           {/* Search input / placeholder animat */}
-          {focused ? (
-            <input
-              ref={inputRef}
-              value={query}
-              maxLength={100}
-              onChange={(e) => setQuery(e.target.value)}
-              onFocus={() => setFocused(true)}
-              placeholder="Caută restaurant, bucătărie..."
-              autoFocus
-              style={{
-                background: "none",
-                border: "none",
-                outline: "none",
-                color: "#f0ebe3",
-                fontFamily: "'Fraunces',serif",
-                fontSize: 18,
-                fontWeight: 400,
-                padding: 0,
-                width: "100%",
-              }}
-            />
-          ) : (
-            <div
-              style={{
-                fontFamily: "'Fraunces',serif",
-                fontSize: 18,
-                color: "#f0ebe3",
-                transition: "opacity .3s",
-              }}
-            >
-              {ph.prefix}
-              <span style={{ fontWeight: 900 }}>{ph.bold}</span>
-              {ph.suffix}
-              <span style={{ color: "#c0622f", fontWeight: 900 }}>
-                {ph.brand}
-              </span>
-            </div>
-          )}
+          <div
+            style={{
+              height: 28,
+              display: "flex",
+              alignItems: "center",
+              overflow: "hidden",
+            }}
+          >
+            {focused ? (
+              <input
+                ref={inputRef}
+                value={query}
+                maxLength={100}
+                onChange={(e) => setQuery(e.target.value)}
+                onFocus={() => setFocused(true)}
+                placeholder="Caută restaurant, bucătărie..."
+                autoFocus
+                style={{
+                  background: "none",
+                  border: "none",
+                  outline: "none",
+                  color: "#f0ebe3",
+                  fontFamily: "'Fraunces',serif",
+                  fontSize: 18,
+                  fontWeight: 400,
+                  padding: 0,
+                  width: "100%",
+                }}
+              />
+            ) : (
+              <div
+                style={{
+                  fontFamily: "'Fraunces',serif",
+                  fontSize: 18,
+                  color: "#f0ebe3",
+                  whiteSpace: "nowrap",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  opacity: phVisible ? 1 : 0,
+                  transform: phVisible ? "translateY(0)" : "translateY(6px)",
+                  transition: "opacity 0.4s ease, transform 0.4s ease",
+                }}
+              >
+                {ph.prefix}
+                <span style={{ fontWeight: 900 }}>{ph.bold}</span>
+                {ph.suffix}
+                <span style={{ color: "#c0622f", fontWeight: 900 }}>
+                  {ph.brand}
+                </span>
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Dreapta: butoane harta + filtre */}
