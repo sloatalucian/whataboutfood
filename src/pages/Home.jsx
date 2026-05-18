@@ -2219,17 +2219,20 @@ function HomeOwner({ onLogout }) {
                 >
                   <div
                     style={{
-                      width: 48,
-                      height: 48,
+                      width: 56,
+                      height: 56,
                       borderRadius: 13,
-                      background: "linear-gradient(135deg,#2d1507,#1a0e05)",
+                      background: r.cover_image
+                        ? `url(${r.cover_image}) center/cover no-repeat`
+                        : "linear-gradient(135deg,#2d1507,#1a0e05)",
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "center",
                       fontSize: 26,
+                      flexShrink: 0,
                     }}
                   >
-                    {r.emoji || "🍽️"}
+                    {!r.cover_image && (r.emoji || "🍽️")}
                   </div>
                   <div style={{ flex: 1 }}>
                     <div style={{ fontWeight: 700, fontSize: 15 }}>
