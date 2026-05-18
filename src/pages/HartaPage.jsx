@@ -801,12 +801,10 @@ export default function HartaPage() {
       </div>
 
       {/* Map */}
-      <div style={{ flex: 1, position: "relative", overflow: "hidden" }}>
-        <div
-          ref={containerRef}
-          style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0 }}
-        />
-      </div>
+      <div
+        ref={containerRef}
+        style={{ width: "100%", height: "calc(100vh - 160px)" }}
+      />
 
       {/* Popup */}
       {selectedMarker && (
