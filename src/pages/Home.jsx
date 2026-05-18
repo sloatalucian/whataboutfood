@@ -135,6 +135,8 @@ function SearchBar({
           borderRadius: 50,
           border: "1px solid rgba(200,169,126,0.15)",
           boxShadow: "0 10px 30px rgba(0,0,0,0.3)",
+          width: "100%",
+          boxSizing: "border-box",
         }}
       >
         {/* Stanga: oras + placeholder */}
@@ -144,6 +146,7 @@ function SearchBar({
             flexDirection: "column",
             gap: 4,
             flex: 1,
+            minWidth: 0,
             cursor: "text",
           }}
           onClick={() => {
