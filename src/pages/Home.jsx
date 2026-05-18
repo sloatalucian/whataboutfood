@@ -3,7 +3,6 @@ import imageCompression from "browser-image-compression";
 import { ProgramEditorModal } from "./Restaurant";
 import { useApp } from "../context/AppContext";
 import RestaurantCard from "../components/RestaurantCard";
-import { RESTAURANTS } from "../data/restaurants";
 import { RestaurantLocationPicker } from "./NewRestaurant";
 import { supabase } from "../supabase";
 
