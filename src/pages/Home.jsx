@@ -219,11 +219,10 @@ function SearchBar({
               <div
                 style={{
                   fontFamily: "'Fraunces',serif",
-                  fontSize: 18,
+                  fontSize: 15,
                   color: "#f0ebe3",
                   whiteSpace: "nowrap",
                   overflow: "hidden",
-                  textOverflow: "ellipsis",
                   opacity: phVisible ? 1 : 0,
                   transform: phVisible ? "translateY(0)" : "translateY(6px)",
                   transition: "opacity 0.4s ease, transform 0.4s ease",
