@@ -420,8 +420,15 @@ export default function HartaPage() {
       new maplibregl.NavigationControl({ showCompass: false }),
       "bottom-right",
     );
+    // Handler pentru imagini lipsa din sprite - previne crash-ul in worker
+    map.on("styleimagemissing", (e) => {
+      const canvas = document.createElement("canvas");
+      canvas.width = 1;
+      canvas.height = 1;
+      map.addImage(e.id, canvas);
+    });
+
     map.on("load", () => {
-      // Dezactiveaza terrain care cauzeaza erori cu coordonate null
       try {
         map.setTerrain(null);
       } catch (e) {}
