@@ -420,19 +420,23 @@ export default function HartaPage() {
       style: {
         version: 8,
         sources: {
-          "osm-tiles": {
+          "carto-dark": {
             type: "raster",
-            tiles: ["https://tile.openstreetmap.org/{z}/{x}/{y}.png"],
+            tiles: [
+              "https://a.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png",
+              "https://b.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png",
+              "https://c.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png",
+            ],
             tileSize: 256,
-            attribution: "© OpenStreetMap contributors",
+            attribution: "© OpenStreetMap contributors © CARTO",
             maxzoom: 19,
           },
         },
         layers: [
           {
-            id: "osm-tiles",
+            id: "carto-dark",
             type: "raster",
-            source: "osm-tiles",
+            source: "carto-dark",
             minzoom: 0,
             maxzoom: 19,
           },
@@ -797,7 +801,12 @@ export default function HartaPage() {
       </div>
 
       {/* Map */}
-      <div ref={containerRef} style={{ flex: 1, width: "100%" }} />
+      <div style={{ flex: 1, position: "relative", overflow: "hidden" }}>
+        <div
+          ref={containerRef}
+          style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0 }}
+        />
+      </div>
 
       {/* Popup */}
       {selectedMarker && (
