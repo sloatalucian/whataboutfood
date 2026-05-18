@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from "react";
+import imageCompression from "browser-image-compression";
 import { ProgramEditorModal } from "./Restaurant";
 import { useApp } from "../context/AppContext";
 import RestaurantCard from "../components/RestaurantCard";
@@ -1487,6 +1488,11 @@ function HomeOwner({ onLogout }) {
   const [myRestaurants, setMyRestaurants] = useState([]);
   const [loading, setLoading] = useState(true);
   const [deleteModal, setDeleteModal] = useState(null);
+  const [photoModal, setPhotoModal] = useState(null); // restaurantul pentru care uploadam poza
+  const [photoPreview, setPhotoPreview] = useState(null);
+  const [photoFile, setPhotoFile] = useState(null);
+  const [photoLoading, setPhotoLoading] = useState(false);
+  const photoInputRef = useRef(null);
   const [locationEditRest, setLocationEditRest] = useState(null);
   const [todayStats, setTodayStats] = useState({
     orders: "—",
@@ -1597,6 +1603,56 @@ function HomeOwner({ onLogout }) {
   }, [user?.id]);
 
   // Șterge restaurant din Supabase
+  // ── Upload poza restaurant ──
+  const handlePhotoSelect = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    try {
+      const compressed = await imageCompression(file, {
+        maxSizeMB: 0.8,
+        maxWidthOrHeight: 1200,
+        useWebWorker: true,
+      });
+      setPhotoFile(compressed);
+      setPhotoPreview(URL.createObjectURL(compressed));
+    } catch (err) {
+      showToast("❌ Eroare la procesarea imaginii.");
+    }
+  };
+
+  const handlePhotoSave = async () => {
+    if (!photoFile || !photoModal) return;
+    setPhotoLoading(true);
+    try {
+      const ext = photoFile.name?.split(".").pop() || "jpg";
+      const path = `${photoModal.id}.${ext}`;
+      const { error: uploadError } = await supabase.storage
+        .from("restaurant-covers")
+        .upload(path, photoFile, { upsert: true, contentType: photoFile.type });
+      if (uploadError) throw uploadError;
+      const {
+        data: { publicUrl },
+      } = supabase.storage.from("restaurant-covers").getPublicUrl(path);
+      const { error: updateError } = await supabase
+        .from("restaurants")
+        .update({ cover_image: publicUrl })
+        .eq("id", photoModal.id);
+      if (updateError) throw updateError;
+      setMyRestaurants((prev) =>
+        prev.map((r) =>
+          r.id === photoModal.id ? { ...r, cover_image: publicUrl } : r,
+        ),
+      );
+      setPhotoModal(null);
+      setPhotoPreview(null);
+      setPhotoFile(null);
+      showToast("✅ Fotografia a fost salvată!");
+    } catch (err) {
+      showToast("❌ Eroare la salvarea fotografiei.");
+    }
+    setPhotoLoading(false);
+  };
+
   const handleDeleteRestaurant = async (restaurantId) => {
     try {
       const { error } = await supabase
@@ -1625,6 +1681,163 @@ function HomeOwner({ onLogout }) {
           onConfirm={handleDeleteRestaurant}
           onClose={() => setDeleteModal(null)}
         />
+      )}
+
+      {/* Modal upload fotografie */}
+      {photoModal && (
+        <div
+          onClick={() => {
+            setPhotoModal(null);
+            setPhotoPreview(null);
+            setPhotoFile(null);
+          }}
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 500,
+            background: "rgba(0,0,0,.85)",
+            backdropFilter: "blur(10px)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: 20,
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              background: "#161210",
+              border: "1px solid #2a2218",
+              borderRadius: 24,
+              padding: 24,
+              width: "100%",
+              maxWidth: 400,
+              animation: "fadeInUp .3s ease",
+            }}
+          >
+            <div
+              style={{
+                fontSize: 16,
+                fontWeight: 700,
+                color: "#f0ebe3",
+                marginBottom: 16,
+              }}
+            >
+              📷 Fotografie restaurant
+            </div>
+
+            {/* Preview */}
+            <div
+              onClick={() => photoInputRef.current?.click()}
+              style={{
+                width: "100%",
+                height: 200,
+                borderRadius: 16,
+                marginBottom: 16,
+                background: photoPreview
+                  ? "transparent"
+                  : "rgba(255,255,255,.05)",
+                border: `2px dashed ${photoPreview ? "#c0622f" : "#2a2218"}`,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                cursor: "pointer",
+                overflow: "hidden",
+                position: "relative",
+              }}
+            >
+              {photoPreview ? (
+                <img
+                  src={photoPreview}
+                  alt="preview"
+                  style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                />
+              ) : (
+                <div style={{ textAlign: "center", color: "#6b6050" }}>
+                  <div style={{ fontSize: 32, marginBottom: 8 }}>🖼️</div>
+                  <div style={{ fontSize: 13 }}>
+                    Apasă pentru a alege o fotografie
+                  </div>
+                  <div style={{ fontSize: 11, marginTop: 4, color: "#4a3a28" }}>
+                    JPG, PNG, WebP • Max 10MB
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <input
+              ref={photoInputRef}
+              type="file"
+              accept="image/*"
+              style={{ display: "none" }}
+              onChange={handlePhotoSelect}
+            />
+
+            {photoPreview && (
+              <button
+                onClick={() => photoInputRef.current?.click()}
+                style={{
+                  width: "100%",
+                  padding: 10,
+                  borderRadius: 12,
+                  marginBottom: 10,
+                  background: "rgba(255,255,255,.05)",
+                  border: "1px solid #2a2218",
+                  color: "#c8a97e",
+                  fontSize: 13,
+                  cursor: "pointer",
+                }}
+              >
+                Alege altă fotografie
+              </button>
+            )}
+
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "1fr 1fr",
+                gap: 10,
+              }}
+            >
+              <button
+                onClick={() => {
+                  setPhotoModal(null);
+                  setPhotoPreview(null);
+                  setPhotoFile(null);
+                }}
+                style={{
+                  padding: 13,
+                  borderRadius: 12,
+                  background: "none",
+                  border: "1px solid #2a2218",
+                  color: "#6b6050",
+                  fontSize: 14,
+                  cursor: "pointer",
+                }}
+              >
+                Anulează
+              </button>
+              <button
+                onClick={handlePhotoSave}
+                disabled={!photoFile || photoLoading}
+                style={{
+                  padding: 13,
+                  borderRadius: 12,
+                  cursor: photoFile ? "pointer" : "not-allowed",
+                  background: photoFile
+                    ? "linear-gradient(135deg,#c0622f,#8b3a18)"
+                    : "#2a2218",
+                  border: "none",
+                  color: photoFile ? "#fff" : "#6b6050",
+                  fontSize: 14,
+                  fontWeight: 700,
+                }}
+              >
+                {photoLoading ? "Se salvează..." : "✅ Salvează"}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {locationEditRest && (
@@ -2054,6 +2267,29 @@ function HomeOwner({ onLogout }) {
                       }}
                     >
                       ✏️
+                    </button>
+                    <button
+                      onClick={() => {
+                        setPhotoModal(r);
+                        setPhotoPreview(r.cover_image || null);
+                        setPhotoFile(null);
+                      }}
+                      title="Adaugă fotografie"
+                      style={{
+                        width: 32,
+                        height: 32,
+                        borderRadius: 8,
+                        background: "rgba(74,110,74,.1)",
+                        border: "1px solid rgba(74,110,74,.25)",
+                        color: "#6b9e6b",
+                        fontSize: 14,
+                        cursor: "pointer",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                      }}
+                    >
+                      📷
                     </button>
                     <button
                       onClick={() => setLocationEditRest(r)}
