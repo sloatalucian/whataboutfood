@@ -2,6 +2,7 @@ import { useState, useEffect, useLayoutEffect, useRef } from "react";
 import maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { useApp } from "../context/AppContext";
+import MAP_STYLE from "../mapStyle";
 import { supabase } from "../supabase";
 
 const CITY_COORDS = {
@@ -409,7 +410,7 @@ export default function HartaPage() {
     if (!containerRef.current) return;
     const map = new maplibregl.Map({
       container: containerRef.current,
-      style: "https://tiles.openfreemap.org/styles/liberty",
+      style: MAP_STYLE,
       center: toLngLat(CITY_COORDS["Iași"]),
       zoom: 15,
       minZoom: 6,
