@@ -803,7 +803,7 @@ export default function HartaPage() {
       {/* Map */}
       <div
         ref={containerRef}
-        style={{ width: "100%", height: "calc(100vh - 160px)" }}
+        style={{ width: "100%", height: window.innerHeight - 160 + "px" }}
       />
 
       {/* Popup */}
