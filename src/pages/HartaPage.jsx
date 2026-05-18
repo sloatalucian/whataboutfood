@@ -311,6 +311,9 @@ export default function HartaPage() {
     );
     pois
       .filter((p) => !regNames.has(p.name.toLowerCase()))
+      .filter(
+        (p) => p.lat != null && p.lon != null && !isNaN(p.lat) && !isNaN(p.lon),
+      )
       .forEach((poi) => {
         const el = makeEl(poi.name, false, isLabel);
         el.addEventListener("click", () =>
@@ -332,7 +335,13 @@ export default function HartaPage() {
     try {
       const cached = localStorage.getItem(cacheKey);
       if (cached) {
-        const pois = JSON.parse(cached);
+        const pois = JSON.parse(cached).filter(
+          (p) =>
+            p.lat != null &&
+            p.lon != null &&
+            !isNaN(Number(p.lat)) &&
+            !isNaN(Number(p.lon)),
+        );
         setOverpassPOIs(pois);
         renderOverpass(pois, mapRef.current?.getZoom() ?? 15);
         return;
@@ -385,7 +394,14 @@ export default function HartaPage() {
 
       // Salvam in localStorage pentru data viitoare
       try {
-        localStorage.setItem(cacheKey, JSON.stringify(pois));
+        const validPois = pois.filter(
+          (p) =>
+            p.lat != null &&
+            p.lon != null &&
+            !isNaN(Number(p.lat)) &&
+            !isNaN(Number(p.lon)),
+        );
+        localStorage.setItem(cacheKey, JSON.stringify(validPois));
       } catch (_) {}
 
       setOverpassPOIs(pois);
@@ -401,7 +417,7 @@ export default function HartaPage() {
     if (!containerRef.current) return;
     const map = new maplibregl.Map({
       container: containerRef.current,
-      style: "https://tiles.openfreemap.org/styles/bright",
+      style: "https://tiles.openfreemap.org/styles/liberty",
       center: toLngLat(CITY_COORDS["Iași"]),
       zoom: 15,
       minZoom: 6,
