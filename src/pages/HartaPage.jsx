@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useLayoutEffect, useRef } from "react";
 import maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { useApp } from "../context/AppContext";
@@ -396,12 +396,20 @@ export default function HartaPage() {
     setLoading(false);
   }
 
+  // Seteaza inaltimea containerului explicit inainte de init map
+  useLayoutEffect(() => {
+    if (!containerRef.current) return;
+    const header = containerRef.current.previousSibling;
+    const headerH = header ? header.getBoundingClientRect().height : 160;
+    containerRef.current.style.height = window.innerHeight - headerH + "px";
+  }, []);
+
   // Init map — zoom handler updates DOM directly, zero React re-renders
   useEffect(() => {
     if (!containerRef.current) return;
     const map = new maplibregl.Map({
       container: containerRef.current,
-      style: "https://tiles.openfreemap.org/styles/bright",
+      style: "https://tiles.openfreemap.org/styles/liberty",
       center: toLngLat(CITY_COORDS["Iași"]),
       zoom: 15,
       minZoom: 6,
@@ -413,6 +421,10 @@ export default function HartaPage() {
       "bottom-right",
     );
     map.on("load", () => {
+      // Dezactiveaza terrain care cauzeaza erori cu coordonate null
+      try {
+        map.setTerrain(null);
+      } catch (e) {}
       mapRef.current = map;
       setMapReady(true);
     });
