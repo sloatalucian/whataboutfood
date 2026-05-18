@@ -92,6 +92,347 @@ function SearchBar({
 
   return (
     <div ref={wrapRef} style={{ position: "relative", zIndex: 150 }}>
+      {/* Bara unificata */}
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          background: "#1e1a14",
+          border: `1px solid ${focused ? "#c0622f" : "#2a2218"}`,
+          borderRadius: 20,
+          padding: "8px 8px 8px 14px",
+          gap: 8,
+          boxShadow: focused ? "0 0 0 3px rgba(192,98,47,.12)" : "none",
+          transition: "box-shadow .2s, border-color .2s",
+        }}
+      >
+        {/* Selector oras */}
+        <button
+          onClick={() => {
+            setShowCities(!showCities);
+            setFocused(false);
+          }}
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 5,
+            background: "none",
+            border: "none",
+            cursor: "pointer",
+            color: selectedCity !== "Toate orașele" ? "#e07a47" : "#6b6050",
+            fontSize: 12,
+            fontWeight: 600,
+            padding: "0 4px",
+            flexShrink: 0,
+            whiteSpace: "nowrap",
+          }}
+        >
+          <span style={{ fontSize: 14 }}>📍</span>
+          <span>{selectedCity}</span>
+          <span
+            style={{
+              fontSize: 9,
+              transform: showCities ? "rotate(180deg)" : "rotate(0)",
+              transition: "transform .2s",
+              display: "inline-block",
+            }}
+          >
+            ▾
+          </span>
+        </button>
+
+        {/* Separator */}
+        <div
+          style={{ width: 1, height: 18, background: "#2a2218", flexShrink: 0 }}
+        />
+
+        {/* Input search */}
+        <span style={{ fontSize: 14, color: "#6b6050", flexShrink: 0 }}>
+          🔍
+        </span>
+        <input
+          ref={inputRef}
+          value={query}
+          maxLength={100}
+          onChange={(e) => setQuery(e.target.value)}
+          onFocus={() => {
+            setFocused(true);
+            setShowCities(false);
+          }}
+          placeholder={`Caută restaurant${selectedCity !== "Toate orașele" ? ` în ${selectedCity}` : ", bucătărie, zonă"}...`}
+          style={{
+            flex: 1,
+            background: "none",
+            border: "none",
+            outline: "none",
+            color: "#f0ebe3",
+            fontFamily: "'Plus Jakarta Sans',sans-serif",
+            fontSize: 13,
+          }}
+        />
+        {query && (
+          <button
+            onClick={() => setQuery("")}
+            style={{
+              background: "none",
+              border: "none",
+              color: "#6b6050",
+              fontSize: 16,
+              cursor: "pointer",
+              padding: 0,
+              flexShrink: 0,
+            }}
+          >
+            ✕
+          </button>
+        )}
+
+        {/* Separator */}
+        <div
+          style={{ width: 1, height: 18, background: "#2a2218", flexShrink: 0 }}
+        />
+
+        {/* Buton harta + Filtre */}
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 6,
+            background: "rgba(200,169,126,.08)",
+            border: "1px solid rgba(200,169,126,.2)",
+            borderRadius: 14,
+            padding: "5px 10px",
+            cursor: "pointer",
+            flexShrink: 0,
+          }}
+          onClick={() => onMapClick && onMapClick()}
+        >
+          <span style={{ fontSize: 16 }}>🗺️</span>
+          <div
+            style={{ width: 1, height: 14, background: "rgba(200,169,126,.3)" }}
+          />
+          <span style={{ fontSize: 14, color: "#6b6050" }}>⚙️</span>
+        </div>
+      </div>
+
+      {/* Dropdown orase */}
+      {showCities && (
+        <div
+          style={{
+            position: "absolute",
+            top: "calc(100% + 6px)",
+            left: 0,
+            background: "#1e1a14",
+            border: "1px solid #2a2218",
+            borderRadius: 16,
+            boxShadow: "0 8px 32px rgba(0,0,0,.5)",
+            width: 220,
+            maxHeight: 396,
+            overflowY: "auto",
+            scrollbarWidth: "thin",
+            zIndex: 200,
+            animation: "fadeDown .2s ease",
+          }}
+        >
+          {ORASE.map((oras) => (
+            <div
+              key={oras}
+              onClick={() => {
+                onCityChange(oras);
+                setShowCities(false);
+              }}
+              style={{
+                padding: "10px 16px",
+                cursor: "pointer",
+                fontSize: 13,
+                fontWeight: oras === selectedCity ? 700 : 400,
+                color:
+                  oras === selectedCity
+                    ? "#e07a47"
+                    : oras === "Toate orașele"
+                      ? "#f0ebe3"
+                      : "#c8a97e",
+                background:
+                  oras === selectedCity ? "rgba(192,98,47,.12)" : "transparent",
+                borderBottom: "1px solid rgba(255,255,255,.04)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+              }}
+            >
+              <span>{oras}</span>
+              {oras === selectedCity && <span>✓</span>}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Rezultate cautare */}
+      {focused && query.trim().length > 0 && (
+        <div
+          style={{
+            position: "absolute",
+            top: "calc(100% + 6px)",
+            left: 0,
+            right: 0,
+            background: "#1e1a14",
+            border: "1px solid #2a2218",
+            borderRadius: 16,
+            boxShadow: "0 8px 32px rgba(0,0,0,.5)",
+            zIndex: 200,
+            animation: "fadeDown .2s ease",
+          }}
+        >
+          {results.length === 0 ? (
+            <div style={{ padding: "20px 16px", textAlign: "center" }}>
+              <div style={{ fontSize: 28, marginBottom: 8 }}>🔍</div>
+              <div style={{ fontSize: 14, color: "#f0ebe3", fontWeight: 600 }}>
+                Niciun rezultat pentru „{query}"
+              </div>
+            </div>
+          ) : (
+            <>
+              <div
+                style={{
+                  padding: "8px 16px 6px",
+                  fontSize: 10,
+                  letterSpacing: 2,
+                  textTransform: "uppercase",
+                  color: "#6b6050",
+                }}
+              >
+                {results.length}{" "}
+                {results.length === 1 ? "rezultat" : "rezultate"}
+              </div>
+              {results.map((r, i) => (
+                <div
+                  key={r.id}
+                  onClick={() => {
+                    onSelect(r);
+                    setQuery("");
+                    setFocused(false);
+                  }}
+                  style={{
+                    padding: "12px 16px",
+                    cursor: "pointer",
+                    borderTop:
+                      i > 0 ? "1px solid rgba(255,255,255,.04)" : "none",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 12,
+                  }}
+                  onMouseEnter={(e) =>
+                    (e.currentTarget.style.background = "rgba(255,255,255,.05)")
+                  }
+                  onMouseLeave={(e) =>
+                    (e.currentTarget.style.background = "transparent")
+                  }
+                >
+                  <div
+                    style={{
+                      width: 42,
+                      height: 42,
+                      borderRadius: 12,
+                      flexShrink: 0,
+                      background: "#1e1a14",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      fontSize: 22,
+                    }}
+                  >
+                    {r.emoji}
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div
+                      style={{
+                        fontSize: 14,
+                        fontWeight: 700,
+                        color: "#f0ebe3",
+                        marginBottom: 2,
+                      }}
+                    >
+                      <HighlightText text={r.name} query={query} />
+                    </div>
+                    <div
+                      style={{
+                        fontSize: 11,
+                        color: "#6b6050",
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        whiteSpace: "nowrap",
+                      }}
+                    >
+                      📍 {r.address}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function HighlightText({ text, query }) {
+  if (!query) return <span>{text}</span>;
+  const idx = text.toLowerCase().indexOf(query.toLowerCase());
+  if (idx === -1) return <span>{text}</span>;
+  return (
+    <span>
+      {text.slice(0, idx)}
+      <span style={{ color: "#e07a47", fontWeight: 800 }}>
+        {text.slice(idx, idx + query.length)}
+      </span>
+      {text.slice(idx + query.length)}
+    </span>
+  );
+}
+
+function SearchBar({
+  onSelect,
+  selectedCity,
+  onCityChange,
+  restaurants = [],
+  onMapClick,
+}) {
+  const [query, setQuery] = useState("");
+  const [focused, setFocused] = useState(false);
+  const [showCities, setShowCities] = useState(false);
+  const inputRef = useRef(null);
+  const wrapRef = useRef(null);
+
+  const results =
+    query.trim().length === 0
+      ? []
+      : restaurants.filter((r) => {
+          const matchName = r.name.toLowerCase().includes(query.toLowerCase());
+          const matchType = (r.type || "")
+            .toLowerCase()
+            .includes(query.toLowerCase());
+          const matchCity =
+            selectedCity === "Toate orașele" ||
+            (r.city || r.address || "")
+              .toLowerCase()
+              .includes(selectedCity.toLowerCase());
+          return (matchName || matchType) && matchCity;
+        });
+
+  useEffect(() => {
+    const handler = (e) => {
+      if (wrapRef.current && !wrapRef.current.contains(e.target)) {
+        setFocused(false);
+        setShowCities(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
+  return (
+    <div ref={wrapRef} style={{ position: "relative", zIndex: 150 }}>
       {/* Selector oraș + buton hartă */}
       <div
         style={{
