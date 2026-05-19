@@ -427,15 +427,21 @@ export default function HartaPage() {
     map.on("error", () => {});
 
     map.on("load", () => {
-      // Ascunde layerele POI din stilul Protomaps
+      // Ascunde doar layerele POI (nu strazile, apa, cladirile)
       const style = map.getStyle();
       if (style?.layers) {
         style.layers.forEach((layer) => {
           if (
-            layer.type === "symbol" ||
-            layer.id.includes("label") ||
             layer.id.includes("poi") ||
-            layer.id.includes("place")
+            layer.id.includes("_poi") ||
+            (layer.type === "symbol" &&
+              (layer.id.includes("airport") ||
+                layer.id.includes("transit") ||
+                layer.id.includes("shop") ||
+                layer.id.includes("amenity") ||
+                layer.id.includes("leisure") ||
+                layer.id.includes("landuse-label") ||
+                layer.id.includes("natural-label")))
           ) {
             try {
               map.setLayoutProperty(layer.id, "visibility", "none");
