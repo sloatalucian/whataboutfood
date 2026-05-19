@@ -41,6 +41,11 @@ function Router() {
   const [checkingSession, setCheckingSession] = useState(true);
 
   useEffect(() => {
+    // Timeout de siguranta - daca dureaza mai mult de 5 secunde, resetam
+    const safetyTimeout = setTimeout(() => {
+      setCheckingSession(false);
+    }, 5000);
+
     const checkSession = async () => {
       try {
         // Incercam sa reinnnoim sesiunea daca exista
@@ -85,7 +90,9 @@ function Router() {
       } catch (err) {}
       setCheckingSession(false);
     };
-    checkSession();
+    checkSession().finally(() => {
+      clearTimeout(safetyTimeout);
+    });
 
     const {
       data: { subscription },
