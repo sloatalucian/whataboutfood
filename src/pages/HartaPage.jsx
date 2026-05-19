@@ -409,7 +409,7 @@ export default function HartaPage() {
     if (!containerRef.current) return;
     const map = new maplibregl.Map({
       container: containerRef.current,
-      style: "https://tiles.openfreemap.org/styles/bright",
+      style: "https://tiles.openfreemap.org/styles/liberty",
       center: toLngLat(CITY_COORDS["Iași"]),
       zoom: 15,
       minZoom: 6,
