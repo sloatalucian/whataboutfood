@@ -265,6 +265,9 @@ h3 {
 
 .page-transition {
   animation: pageEnter 0.22s cubic-bezier(0.22, 0.68, 0, 1.2) both;
+  position: relative;
+  flex: 1;
+  min-height: 0;
 }
 @keyframes pageEnter {
   from {

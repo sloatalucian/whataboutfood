@@ -408,7 +408,7 @@ export default function HartaPage() {
     const map = new maplibregl.Map({
       container: containerRef.current,
       style:
-        "https://api.protomaps.com/styles/v5/light/ro.json?key=761dcbc1158047c6",
+        "https://api.protomaps.com/styles/v5/dark/ro.json?key=761dcbc1158047c6",
       center: toLngLat(CITY_COORDS["Iași"]),
       zoom: 15,
       minZoom: 6,
@@ -496,12 +496,15 @@ export default function HartaPage() {
   return (
     <div
       style={{
-        position: "fixed",
-        inset: 0,
+        position: "absolute",
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
         background: "#f8f4ef",
         display: "flex",
         flexDirection: "column",
-        zIndex: 1000,
+        zIndex: 10,
       }}
     >
       {/* Header */}
