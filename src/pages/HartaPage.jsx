@@ -430,6 +430,10 @@ export default function HartaPage() {
 
     map.on("load", () => {
       mapRef.current = map;
+      // Forteaza resize dupa ce containerul primeste inaltimea corecta
+      setTimeout(() => {
+        map.resize();
+      }, 50);
       setMapReady(true);
     });
     // La crossover zoom 14, re-render complet cu anchor corect
