@@ -427,6 +427,22 @@ export default function HartaPage() {
     map.on("error", () => {});
 
     map.on("load", () => {
+      // Ascunde layerele POI din stilul Protomaps
+      const style = map.getStyle();
+      if (style?.layers) {
+        style.layers.forEach((layer) => {
+          if (
+            layer.type === "symbol" ||
+            layer.id.includes("label") ||
+            layer.id.includes("poi") ||
+            layer.id.includes("place")
+          ) {
+            try {
+              map.setLayoutProperty(layer.id, "visibility", "none");
+            } catch (e) {}
+          }
+        });
+      }
       mapRef.current = map;
       setTimeout(() => {
         map.resize();
