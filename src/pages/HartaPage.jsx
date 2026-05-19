@@ -2,7 +2,6 @@ import { useState, useEffect, useLayoutEffect, useRef } from "react";
 import maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { useApp } from "../context/AppContext";
-import MAP_STYLE from "../mapStyle";
 import { supabase } from "../supabase";
 
 const CITY_COORDS = {
@@ -410,7 +409,7 @@ export default function HartaPage() {
     if (!containerRef.current) return;
     const map = new maplibregl.Map({
       container: containerRef.current,
-      style: MAP_STYLE,
+      style: "https://tiles.openfreemap.org/styles/bright",
       center: toLngLat(CITY_COORDS["Iași"]),
       zoom: 15,
       minZoom: 6,
@@ -421,15 +420,14 @@ export default function HartaPage() {
       new maplibregl.NavigationControl({ showCompass: false }),
       "bottom-right",
     );
-    // Handler pentru imagini lipsa din sprite - previne crash-ul in worker
     map.on("styleimagemissing", (e) => {
-      map.addImage(e.id, { width: 0, height: 0, data: new Uint8Array(0) });
+      const img = new ImageData(1, 1);
+      map.addImage(e.id, img, { pixelRatio: 1 });
     });
 
+    map.on("error", () => {});
+
     map.on("load", () => {
-      try {
-        map.setTerrain(null);
-      } catch (e) {}
       mapRef.current = map;
       setMapReady(true);
     });
