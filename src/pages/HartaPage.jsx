@@ -1,4 +1,4 @@
-import { useState, useEffect, useLayoutEffect, useRef } from "react";
+import { useState, useEffect, useRef } from "react";
 import maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { useApp } from "../context/AppContext";
@@ -396,17 +396,15 @@ export default function HartaPage() {
     setLoading(false);
   }
 
-  // Seteaza inaltimea containerului explicit inainte de init map
-  useLayoutEffect(() => {
-    if (!containerRef.current) return;
-    const header = containerRef.current.previousSibling;
-    const headerH = header ? header.getBoundingClientRect().height : 160;
-    containerRef.current.style.height = window.innerHeight - headerH + "px";
-  }, []);
-
-  // Init map — zoom handler updates DOM directly, zero React re-renders
+  // Init map — seteaza inaltimea si initializeaza MapLibre
   useEffect(() => {
     if (!containerRef.current) return;
+    // Setam inaltimea inainte de init
+    const header = containerRef.current.previousElementSibling;
+    const headerH = header ? header.getBoundingClientRect().height : 130;
+    const mapHeight = window.innerHeight - headerH - 60; // 60 pentru bottom nav
+    containerRef.current.style.height = mapHeight + "px";
+    containerRef.current.style.width = "100%";
     const map = new maplibregl.Map({
       container: containerRef.current,
       style:
