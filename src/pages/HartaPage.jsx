@@ -427,12 +427,16 @@ export default function HartaPage() {
     map.on("error", () => {});
 
     map.on("load", () => {
+      console.log("MAP LOADED OK");
       mapRef.current = map;
-      // Forteaza resize dupa ce containerul primeste inaltimea corecta
       setTimeout(() => {
         map.resize();
       }, 50);
       setMapReady(true);
+    });
+
+    map.on("error", (e) => {
+      console.error("MAP ERROR:", e?.error?.message, e);
     });
     // La crossover zoom 14, re-render complet cu anchor corect
     let prevIsLabel = map.getZoom() >= 14;
