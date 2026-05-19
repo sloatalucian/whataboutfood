@@ -408,7 +408,7 @@ export default function HartaPage() {
     const map = new maplibregl.Map({
       container: containerRef.current,
       style:
-        "https://api.protomaps.com/styles/v5/dark/ro.json?key=761dcbc1158047c6",
+        "https://api.protomaps.com/styles/v5/light/ro.json?key=761dcbc1158047c6",
       center: toLngLat(CITY_COORDS["Iași"]),
       zoom: 15,
       minZoom: 6,
@@ -427,16 +427,11 @@ export default function HartaPage() {
     map.on("error", () => {});
 
     map.on("load", () => {
-      console.log("MAP LOADED OK");
       mapRef.current = map;
       setTimeout(() => {
         map.resize();
       }, 50);
       setMapReady(true);
-    });
-
-    map.on("error", (e) => {
-      console.error("MAP ERROR:", e?.error?.message, e);
     });
     // La crossover zoom 14, re-render complet cu anchor corect
     let prevIsLabel = map.getZoom() >= 14;
@@ -798,7 +793,7 @@ export default function HartaPage() {
         <div
           style={{
             position: "absolute",
-            bottom: 16,
+            bottom: 80,
             left: 16,
             right: 16,
             background: "#1a1510",
