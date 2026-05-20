@@ -764,19 +764,16 @@ export function WaiterTablet({
           event: "INSERT",
           schema: "public",
           table: "notifications",
-          filter: `restaurant_id=eq.${restaurantId}`,
+          filter: `user_id=eq.${waiterId}`,
         },
         (payload) => {
           if (payload.new?.type === "waiter_call") {
-            // Afisam doar daca notificarea e pentru acest ospatar sau e generala
-            if (!payload.new.user_id || payload.new.user_id === waiterId) {
-              const msg = payload.new.message || "🔔 Masă cheamă ospătarul";
-              setWaiterCalls((prev) => [
-                ...prev,
-                { id: payload.new.id, message: msg },
-              ]);
-              showToast(`🔔 ${msg}`);
-            }
+            const msg = payload.new.message || "🔔 Masă cheamă ospătarul";
+            setWaiterCalls((prev) => [
+              ...prev,
+              { id: payload.new.id, message: msg },
+            ]);
+            showToast(`🔔 ${msg}`);
           }
         },
       )
