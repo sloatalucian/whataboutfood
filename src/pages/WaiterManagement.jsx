@@ -404,13 +404,14 @@ export function WaiterManagement({ onBack, onLogout }) {
         data: { session },
       } = await supabase.auth.getSession();
       const response = await fetch(
-        `${process.env.REACT_APP_SUPABASE_URL}/functions/v1/create-waiter`,
+        "https://dsqkqqaojwxouimcacgy.supabase.co/functions/v1/create-waiter",
         {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
             Authorization: `Bearer ${session.access_token}`,
-            apikey: process.env.REACT_APP_SUPABASE_ANON_KEY,
+            apikey:
+              "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRzcWtxcWFvand4b3VpbWNhY2d5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY2MTM0NzcsImV4cCI6MjA5MjE4OTQ3N30.Sb-6N8L1fft_fZOP37Q3O00ihQn8kN6NdE584MwdR5Y",
           },
           body: JSON.stringify({
             name: newWaiter.name,
