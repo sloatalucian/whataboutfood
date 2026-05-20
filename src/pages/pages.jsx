@@ -925,6 +925,7 @@ export function Meniu() {
     try {
       await supabase.from("notifications").insert({
         restaurant_id: activeOrder.restaurant_id,
+        user_id: activeOrder.waiter_id || null,
         type: "waiter_call",
         message: `🔔 Masa ${activeOrder.table_label} cheamă ospătarul`,
         is_read: false,

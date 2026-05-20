@@ -768,12 +768,15 @@ export function WaiterTablet({
         },
         (payload) => {
           if (payload.new?.type === "waiter_call") {
-            const msg = payload.new.message || "🔔 Masă cheamă ospătarul";
-            setWaiterCalls((prev) => [
-              ...prev,
-              { id: payload.new.id, message: msg },
-            ]);
-            showToast(`🔔 ${msg}`);
+            // Afisam doar daca notificarea e pentru acest ospatar sau e generala
+            if (!payload.new.user_id || payload.new.user_id === waiterId) {
+              const msg = payload.new.message || "🔔 Masă cheamă ospătarul";
+              setWaiterCalls((prev) => [
+                ...prev,
+                { id: payload.new.id, message: msg },
+              ]);
+              showToast(`🔔 ${msg}`);
+            }
           }
         },
       )
