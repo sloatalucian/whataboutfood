@@ -653,6 +653,7 @@ export function WaiterTablet({
         .from("orders")
         .select("*")
         .eq("restaurant_id", restaurantId)
+        .eq("waiter_id", waiterId)
         .gte("created_at", startOfDay)
         .lte("created_at", endOfDay)
         .order("created_at", { ascending: false });
