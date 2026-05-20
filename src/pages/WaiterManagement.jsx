@@ -20,39 +20,67 @@ export function WaiterLogin({ onLogin, onBack }) {
     setError("");
 
     try {
-      const { data, error: dbError } = await supabase
-        .from("waiter_accounts")
-        .select("*")
-        .eq("email", email.toLowerCase().trim())
-        .eq("is_active", true)
+      // Autentificare prin Supabase Auth
+      const { data: authData, error: authError } =
+        await supabase.auth.signInWithPassword({
+          email: email.toLowerCase().trim(),
+          password,
+        });
+
+      if (authError || !authData?.user) {
+        setError("Email sau parolă incorectă.");
+        setLoading(false);
+        return;
+      }
+
+      // Verificam ca este ospatar si luam restaurant_id din profiles
+      const { data: profile, error: profileError } = await supabase
+        .from("profiles")
+        .select("id, full_name, role, restaurant_id")
+        .eq("id", authData.user.id)
         .single();
 
-      if (dbError || !data) {
-        setError("Cont de ospătar inexistent sau dezactivat.");
+      if (profileError || !profile) {
+        setError("Profil inexistent.");
+        await supabase.auth.signOut();
         setLoading(false);
         return;
       }
 
-      if (data.password_hash !== password) {
-        setError("Parolă incorectă.");
+      if (profile.role !== "waiter") {
+        setError("Acest cont nu este de ospătar.");
+        await supabase.auth.signOut();
         setLoading(false);
         return;
       }
+
+      if (!profile.restaurant_id) {
+        setError("Ospătarul nu este asociat unui restaurant.");
+        await supabase.auth.signOut();
+        setLoading(false);
+        return;
+      }
+
+      // Luam numele restaurantului
+      const { data: rest } = await supabase
+        .from("restaurants")
+        .select("name, emoji")
+        .eq("id", profile.restaurant_id)
+        .single();
 
       onLogin({
-        id: data.id,
-        name: data.name,
-        email: data.email,
+        id: profile.id,
+        name: profile.full_name || email,
+        email: authData.user.email,
         role: "waiter",
-        restaurantId: data.restaurant_id,
-        restaurantName: data.restaurant_name || "Restaurant",
+        restaurantId: profile.restaurant_id,
+        restaurantName: rest?.name || "Restaurant",
       });
     } catch (err) {
       setError("Eroare la conectare. Încearcă din nou.");
     }
     setLoading(false);
   };
-
   return (
     <div
       style={{
