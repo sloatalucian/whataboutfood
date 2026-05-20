@@ -707,29 +707,39 @@ function WaiterLoginModal({ onLogin, onClose }) {
     setLoading(true);
     setError("");
     try {
+      const { data: authData, error: authError } =
+        await supabase.auth.signInWithPassword({
+          email: email.toLowerCase().trim(),
+          password,
+        });
+      if (authError || !authData?.user) {
+        setError("Email sau parolă incorectă.");
+        setLoading(false);
+        return;
+      }
       const { data, error: dbError } = await supabase
-        .from("waiter_accounts")
-        .select("*")
-        .eq("email", email.toLowerCase().trim())
-        .eq("is_active", true)
+        .from("profiles")
+        .select("id, full_name, role, restaurant_id, status")
+        .eq("id", authData.user.id)
         .single();
-      if (dbError || !data) {
+      if (dbError || !data || data.role !== "waiter") {
         setError("Cont inexistent sau dezactivat.");
+        await supabase.auth.signOut();
         setLoading(false);
         return;
       }
-      if (data.password_hash !== password) {
-        setError("Parolă incorectă.");
-        setLoading(false);
-        return;
-      }
+      const { data: rest } = await supabase
+        .from("restaurants")
+        .select("name")
+        .eq("id", data.restaurant_id)
+        .single();
       onLogin({
         id: data.id,
-        name: data.name,
-        email: data.email,
+        name: data.full_name || email,
+        email: authData.user.email,
         role: "waiter",
         restaurantId: data.restaurant_id,
-        restaurantName: data.restaurant_name || "Restaurant",
+        restaurantName: rest?.name || "Restaurant",
       });
     } catch {
       setError("Eroare la conectare.");

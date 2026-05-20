@@ -124,12 +124,13 @@ export default function DashboardLive() {
       .eq("status", "confirmed");
     setTodayReservations(resCount || 0);
 
-    // Ospătari activi (conturi active)
+    // Ospătari activi (din profiles)
     const { count: waiterCount } = await supabase
-      .from("waiter_accounts")
+      .from("profiles")
       .select("id", { count: "exact", head: true })
       .eq("restaurant_id", selectedRestId)
-      .eq("is_active", true);
+      .eq("role", "waiter")
+      .eq("status", "approved");
     setActiveWaiters(waiterCount || 0);
 
     // Mese
