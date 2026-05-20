@@ -622,11 +622,13 @@ export function WaiterTablet({
       return;
     }
     try {
+      // Comenzile pending (nerevendicate) + comenzile proprii
       const { data, error } = await supabase
         .from("orders")
         .select("*")
         .eq("restaurant_id", restaurantId)
         .in("status", ["pending", "cooking", "ready", "paying"])
+        .or(`waiter_id.is.null,waiter_id.eq.${waiterId}`)
         .order("created_at", { ascending: true });
       if (error) throw error;
       setOrders(data || []);
@@ -725,19 +727,29 @@ export function WaiterTablet({
         },
         (payload) => {
           if (payload.eventType === "INSERT") {
-            setOrders((prev) => {
-              const exists = prev.find((o) => o.id === payload.new.id);
-              if (exists) return prev;
-              return [...prev, payload.new];
-            });
-            showToast("🆕 Comandă nouă!");
+            // Afisam doar comenzile nerevendicate (waiter_id null)
+            if (
+              payload.new.waiter_id === null ||
+              payload.new.waiter_id === waiterId
+            ) {
+              setOrders((prev) => {
+                const exists = prev.find((o) => o.id === payload.new.id);
+                if (exists) return prev;
+                return [...prev, payload.new];
+              });
+              showToast("🆕 Comandă nouă!");
+            }
           }
           if (payload.eventType === "UPDATE") {
             setOrders((prev) =>
               prev
                 .map((o) => (o.id === payload.new.id ? payload.new : o))
-                .filter((o) =>
-                  ["pending", "cooking", "ready", "paying"].includes(o.status),
+                .filter(
+                  (o) =>
+                    ["pending", "cooking", "ready", "paying"].includes(
+                      o.status,
+                    ) &&
+                    (o.waiter_id === null || o.waiter_id === waiterId),
                 ),
             );
           }
