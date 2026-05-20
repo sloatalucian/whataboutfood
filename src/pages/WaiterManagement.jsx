@@ -345,12 +345,20 @@ export function WaiterManagement({ onBack, onLogout }) {
     setLoading(true);
     try {
       const { data, error } = await supabase
-        .from("waiter_accounts")
-        .select("*")
+        .from("profiles")
+        .select("id, full_name, role, restaurant_id, status, created_at")
         .eq("restaurant_id", restId)
+        .eq("role", "waiter")
         .order("created_at");
       if (error) throw error;
-      setWaiters(data || []);
+      setWaiters(
+        (data || []).map((w) => ({
+          ...w,
+          name: w.full_name,
+          is_active: w.status === "approved",
+          email: "",
+        })),
+      );
     } catch (err) {
       console.log("Load waiters error:", err);
       showToast("❌ Eroare la încărcarea ospătarilor.");
@@ -392,30 +400,46 @@ export function WaiterManagement({ onBack, onLogout }) {
 
     setSaving(true);
     try {
-      const selectedRest = restaurants.find((r) => r.id === selectedRestId);
-      const { data, error } = await supabase
-        .from("waiter_accounts")
-        .insert({
-          owner_id: user.id,
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      const response = await fetch(
+        `${process.env.REACT_APP_SUPABASE_URL}/functions/v1/create-waiter`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${session.access_token}`,
+            apikey: process.env.REACT_APP_SUPABASE_ANON_KEY,
+          },
+          body: JSON.stringify({
+            name: newWaiter.name,
+            email: newWaiter.email.toLowerCase().trim(),
+            password: newWaiter.password,
+            restaurant_id: selectedRestId,
+          }),
+        },
+      );
+
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || "Eroare necunoscută");
+
+      setWaiters((prev) => [
+        ...prev,
+        {
+          id: result.id,
+          name: result.name,
+          email: result.email,
           restaurant_id: selectedRestId,
-          restaurant_name: selectedRest?.name || "",
-          name: newWaiter.name,
-          email: newWaiter.email.toLowerCase().trim(),
-          password_hash: newWaiter.password, // în producție: hash parola
           is_active: true,
-        })
-        .select()
-        .single();
-
-      if (error) throw error;
-
-      setWaiters((prev) => [...prev, data]);
+        },
+      ]);
       setNewWaiter({ name: "", email: "", password: "" });
       setShowAdd(false);
       showToast("✅ Ospătar adăugat! Se poate loga cu datele setate.");
     } catch (err) {
       console.log("Add waiter error:", err);
-      showToast("❌ Eroare la adăugare. Verifică datele.");
+      showToast(`❌ ${err.message || "Eroare la adăugare. Verifică datele."}`);
     }
     setSaving(false);
   };
@@ -424,8 +448,8 @@ export function WaiterManagement({ onBack, onLogout }) {
   const toggleActive = async (id, currentStatus) => {
     try {
       await supabase
-        .from("waiter_accounts")
-        .update({ is_active: !currentStatus })
+        .from("profiles")
+        .update({ status: !currentStatus ? "approved" : "suspended" })
         .eq("id", id);
       setWaiters((prev) =>
         prev.map((w) =>
@@ -441,7 +465,12 @@ export function WaiterManagement({ onBack, onLogout }) {
   // ── Șterge ospătar ──
   const deleteWaiter = async (id) => {
     try {
-      await supabase.from("waiter_accounts").delete().eq("id", id);
+      await supabase.auth.admin;
+      // Stergem din profiles - userul ramane in Auth dar fara rol waiter
+      await supabase
+        .from("profiles")
+        .update({ role: "client", restaurant_id: null })
+        .eq("id", id);
       setWaiters((prev) => prev.filter((w) => w.id !== id));
       showToast("🗑️ Ospătar șters");
     } catch (err) {
