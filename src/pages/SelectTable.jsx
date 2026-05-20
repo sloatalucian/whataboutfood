@@ -638,7 +638,7 @@ export function WaiterTablet({
 
   // ── Încarcă istoricul comenzilor ──
   const loadIstoric = async (date) => {
-    if (!restaurantId) return;
+    if (!restaurantId || !waiterId) return;
     setIstoricLoading(true);
     try {
       // Calculam offset-ul local dinamic (Romania: +02:00 iarna, +03:00 vara)
