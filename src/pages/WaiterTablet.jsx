@@ -1036,6 +1036,7 @@ export function WaiterTablet({
             restaurantId={restaurantId}
             suggestionModal={suggestionModal}
             setSuggestionModal={setSuggestionModal}
+            sendRefusalWithSuggestion={sendRefusalWithSuggestion}
           />
         )}
       </div>

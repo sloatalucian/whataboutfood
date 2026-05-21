@@ -7,6 +7,7 @@ export function WaiterIstoric({
   restaurantId,
   suggestionModal,
   setSuggestionModal,
+  sendRefusalWithSuggestion,
 }) {
   return (
     <div>
