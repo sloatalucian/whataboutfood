@@ -997,7 +997,7 @@ export function WaiterTablet({
             loading={loading}
             waiterCalls={waiterCalls}
             setWaiterCalls={setWaiterCalls}
-            cancellation={cancellation}
+            cancellingOrders={cancellingOrders}
             initCancellation={initCancellation}
             cancelItem={cancelItem}
             acceptOrder={acceptOrder}

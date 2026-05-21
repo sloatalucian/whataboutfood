@@ -5,7 +5,7 @@ export function WaiterOrders({
   loading,
   waiterCalls,
   setWaiterCalls,
-  cancellation,
+  cancellingOrders,
   initCancellation,
   cancelItem,
   acceptOrder,
