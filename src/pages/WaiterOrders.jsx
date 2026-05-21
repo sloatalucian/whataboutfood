@@ -9,11 +9,14 @@ export function WaiterOrders({
   initCancellation,
   cancelItem,
   acceptOrder,
+  acceptOrderWithItems,
   markReady,
   closeOrder,
   confirmPayment,
   pendingOrders,
   cookingOrders,
+  payingOrders,
+  tab,
 }) {
   return (
     <div>

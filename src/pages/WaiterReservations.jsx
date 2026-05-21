@@ -2,11 +2,16 @@ export function WaiterReservations({
   reservations,
   refuseReservation,
   acceptReservation,
+  confirmReservation,
   restaurantId,
   waiterId,
   waiterName,
   pendingRes,
   confirmedRes,
+  noShowModal,
+  setNoShowModal,
+  markNoShow,
+  markPresent,
 }) {
   return (
     <div>

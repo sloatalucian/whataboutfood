@@ -1001,11 +1001,14 @@ export function WaiterTablet({
             initCancellation={initCancellation}
             cancelItem={cancelItem}
             acceptOrder={acceptOrder}
+            acceptOrderWithItems={acceptOrderWithItems}
             markReady={markReady}
             closeOrder={closeOrder}
             confirmPayment={confirmPayment}
             pendingOrders={pendingOrders}
             cookingOrders={cookingOrders}
+            payingOrders={payingOrders}
+            tab={tab}
           />
         )}
 
@@ -1018,11 +1021,16 @@ export function WaiterTablet({
             reservations={reservations}
             refuseReservation={refuseReservation}
             acceptReservation={acceptReservation}
+            confirmReservation={confirmReservation}
             restaurantId={restaurantId}
             waiterId={waiterId}
             waiterName={waiterName}
             pendingRes={pendingRes}
             confirmedRes={confirmedRes}
+            noShowModal={noShowModal}
+            setNoShowModal={setNoShowModal}
+            markNoShow={markNoShow}
+            markPresent={markPresent}
           />
         )}
 
