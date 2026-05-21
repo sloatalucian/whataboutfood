@@ -148,7 +148,8 @@ function Router() {
   }, [state.user?.id]);
 
   const noNav = [
-    "auth",
+    // "auth" e exclus doar daca userul nu e logat
+    ...(!user ? ["auth"] : []),
     "selectTable",
     "newRestaurant",
     "waiterLogin",

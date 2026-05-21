@@ -274,10 +274,28 @@ export function Auth() {
           style={{
             display: "flex",
             alignItems: "center",
-            justifyContent: "center",
+            justifyContent: "space-between",
             marginBottom: 20,
           }}
         >
+          <button
+            onClick={() => navigate("home")}
+            style={{
+              width: 36,
+              height: 36,
+              borderRadius: 10,
+              background: "rgba(255,255,255,.06)",
+              border: "none",
+              color: "var(--cream)",
+              fontSize: 18,
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            ←
+          </button>
           <div
             style={{
               fontFamily: "'Fraunces',serif",
@@ -288,6 +306,7 @@ export function Auth() {
           >
             Contul meu
           </div>
+          <div style={{ width: 36 }} />
         </div>
 
         {/* Avatar */}
