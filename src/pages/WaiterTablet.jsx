@@ -1034,6 +1034,8 @@ export function WaiterTablet({
             istoricLoading={istoricLoading}
             setTab={setTab}
             restaurantId={restaurantId}
+            suggestionModal={suggestionModal}
+            setSuggestionModal={setSuggestionModal}
           />
         )}
       </div>

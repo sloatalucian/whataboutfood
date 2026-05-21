@@ -5,6 +5,8 @@ export function WaiterIstoric({
   istoricLoading,
   setTab,
   restaurantId,
+  suggestionModal,
+  setSuggestionModal,
 }) {
   return (
     <div>
