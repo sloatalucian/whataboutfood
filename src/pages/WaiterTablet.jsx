@@ -1008,12 +1008,23 @@ export function WaiterTablet({
             pendingOrders={pendingOrders}
             cookingOrders={cookingOrders}
             payingOrders={payingOrders}
+            readyOrders={readyOrders}
             tab={tab}
           />
         )}
 
         {tab === "map" && (
-          <WaiterMap tables={tables} restaurantId={restaurantId} />
+          <WaiterMap
+            tables={tables}
+            restaurantId={restaurantId}
+            activeMapFloor={activeMapFloor}
+            dbFloors={dbFloors}
+            mapDate={mapDate}
+            mapReservedTables={mapReservedTables}
+            mapTime={mapTime}
+            mapZoom={mapZoom}
+            tab={tab}
+          />
         )}
 
         {tab === "reservations" && (
@@ -1031,6 +1042,7 @@ export function WaiterTablet({
             setNoShowModal={setNoShowModal}
             markNoShow={markNoShow}
             markPresent={markPresent}
+            tab={tab}
           />
         )}
 
@@ -1045,6 +1057,11 @@ export function WaiterTablet({
             suggestionModal={suggestionModal}
             setSuggestionModal={setSuggestionModal}
             sendRefusalWithSuggestion={sendRefusalWithSuggestion}
+            cookingOrders={cookingOrders}
+            orders={orders}
+            pendingOrders={pendingOrders}
+            pendingRes={pendingRes}
+            tab={tab}
           />
         )}
       </div>

@@ -8,6 +8,11 @@ export function WaiterIstoric({
   suggestionModal,
   setSuggestionModal,
   sendRefusalWithSuggestion,
+  cookingOrders,
+  orders,
+  pendingOrders,
+  pendingRes,
+  tab,
 }) {
   return (
     <>

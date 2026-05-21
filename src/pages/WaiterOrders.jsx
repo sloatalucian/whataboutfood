@@ -16,6 +16,7 @@ export function WaiterOrders({
   pendingOrders,
   cookingOrders,
   payingOrders,
+  readyOrders,
   tab,
 }) {
   return (

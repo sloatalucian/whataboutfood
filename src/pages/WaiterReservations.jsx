@@ -12,6 +12,7 @@ export function WaiterReservations({
   setNoShowModal,
   markNoShow,
   markPresent,
+  tab,
 }) {
   return (
     <div>

@@ -1,4 +1,14 @@
-export function WaiterMap({ tables, restaurantId }) {
+export function WaiterMap({
+  tables,
+  restaurantId,
+  activeMapFloor,
+  dbFloors,
+  mapDate,
+  mapReservedTables,
+  mapTime,
+  mapZoom,
+  tab,
+}) {
   return (
     <div>
       {/* Selector dată/oră */}
