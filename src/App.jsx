@@ -42,6 +42,18 @@ function Router() {
   const [splashDone, setSplashDone] = useState(false);
   const [waiterUser, setWaiterUser] = useState(null);
   const [checkingSession, setCheckingSession] = useState(true);
+  const [isOffline, setIsOffline] = useState(!navigator.onLine);
+
+  useEffect(() => {
+    const goOffline = () => setIsOffline(true);
+    const goOnline = () => setIsOffline(false);
+    window.addEventListener("offline", goOffline);
+    window.addEventListener("online", goOnline);
+    return () => {
+      window.removeEventListener("offline", goOffline);
+      window.removeEventListener("online", goOnline);
+    };
+  }, []);
 
   useEffect(() => {
     // Timeout de siguranta - daca dureaza mai mult de 5 secunde, resetam
@@ -287,6 +299,62 @@ function Router() {
     setSplashDone(false);
     showToast("👋 Ai ieșit din cont.");
   };
+
+  if (isOffline) {
+    return (
+      <div
+        style={{
+          flex: 1,
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "center",
+          padding: 32,
+          gap: 16,
+          textAlign: "center",
+          background: "var(--bg)",
+        }}
+      >
+        <div style={{ fontSize: 64 }}>📡</div>
+        <div
+          style={{
+            fontFamily: "'Fraunces',serif",
+            fontSize: 24,
+            fontWeight: 700,
+            color: "var(--cream)",
+          }}
+        >
+          Fără conexiune
+        </div>
+        <div
+          style={{
+            fontSize: 14,
+            color: "var(--muted)",
+            maxWidth: 280,
+            lineHeight: 1.6,
+          }}
+        >
+          Verifică conexiunea la internet și încearcă din nou.
+        </div>
+        <button
+          onClick={() => window.location.reload()}
+          style={{
+            marginTop: 8,
+            padding: "12px 28px",
+            borderRadius: "var(--radius-pill)",
+            background: "linear-gradient(135deg,#c0622f,#8b3a18)",
+            border: "none",
+            color: "#fff",
+            fontSize: 14,
+            fontWeight: 700,
+            cursor: "pointer",
+          }}
+        >
+          Încearcă din nou
+        </button>
+      </div>
+    );
+  }
 
   if (checkingSession) {
     return (
