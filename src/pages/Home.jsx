@@ -546,6 +546,37 @@ function HomeClient() {
   };
   requestBillRef.current = requestBill;
 
+  // Polling - detecteaza cand ospatarul confirma plata din Home
+  useEffect(() => {
+    if (!activeOrder?.id || !user?.id) return;
+    if (activeOrder.status !== "paying") return;
+
+    const check = async () => {
+      const { data } = await supabase
+        .from("orders")
+        .select("id, status, payment_method")
+        .eq("id", activeOrder.id)
+        .eq("status", "paid")
+        .limit(1);
+
+      if (data && data.length > 0) {
+        dispatch({
+          type: "SET_PAID",
+          payload: {
+            paid: true,
+            method: data[0].payment_method,
+            restaurantId: activeOrder.restaurant_id || null,
+            sessionId: null,
+          },
+        });
+      }
+    };
+
+    const interval = setInterval(check, 5000);
+    check();
+    return () => clearInterval(interval);
+  }, [activeOrder?.id, activeOrder?.status, user?.id]);
+
   // Sync payNote state to global context
   useEffect(() => {
     setPayNoteShow(showPayNote);

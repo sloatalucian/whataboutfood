@@ -672,13 +672,15 @@ function Router() {
                   <span
                     style={{ color: "#c0622f", fontWeight: 700, fontSize: 15 }}
                   >
-                    {state.orders?.reduce(
-                      (s, o) =>
-                        s +
-                        (o.items?.reduce((a, i) => a + i.price * i.qty, 0) ||
-                          0),
-                      0,
-                    ) || "—"}{" "}
+                    {payNoteActiveOrder?.total ||
+                      state.orders?.reduce(
+                        (s, o) =>
+                          s +
+                          (o.items?.reduce((a, i) => a + i.price * i.qty, 0) ||
+                            0),
+                        0,
+                      ) ||
+                      "—"}{" "}
                     lei
                   </span>
                 </div>
