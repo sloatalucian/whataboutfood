@@ -389,6 +389,9 @@ export function AppProvider({ children }) {
           message: `🔔 Masa ${activeOrder.table_label} cheamă ospătarul`,
           is_read: false,
         });
+        console.log(
+          "[callWaiter] SUCCESS - setting waiterCalled=true, cooldown=300",
+        );
         setWaiterCalled(true);
         setWaiterCooldown(300);
         if (waiterTimerRef.current) clearInterval(waiterTimerRef.current);
