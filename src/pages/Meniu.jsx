@@ -1,11 +1,11 @@
 import { useState, useRef, useEffect } from "react";
 import { useApp } from "../context/AppContext";
 import { useTable } from "../context/TableContext";
-import CartBar from "../components/CartBar";
 import { supabase } from "../supabase";
 
 export function Meniu() {
-  const { state, dispatch, navigate, showToast } = useApp();
+  const { state, dispatch, navigate, showToast, cartTotal, cartCount } =
+    useApp();
   const { reload: reloadTables } = useTable();
   const {
     selectedRest,
@@ -209,6 +209,8 @@ export function Meniu() {
   const hasTable = orderTableNum && orderTableNum !== 1;
 
   const [orderLoading, setOrderLoading] = useState(false);
+  const [showCart, setShowCart] = useState(false);
+  const [cartObs, setCartObs] = useState("");
   const [menuSearch, setMenuSearch] = useState("");
   const [searchFocused, setSearchFocused] = useState(false);
   const searchInputRef = useRef(null);
@@ -317,149 +319,87 @@ export function Meniu() {
       }, []);
     const total = allItems.reduce((s, i) => s + i.price * i.qty, 0);
     return (
-      <div
-        className="page"
-        style={{
-          display: "flex",
-          flexDirection: "column",
-          justifyContent: "flex-end",
-          background: "rgba(0,0,0,0.6)",
-          backdropFilter: "blur(6px)",
-          paddingBottom: 0,
-        }}
-      >
-        <style>{`
-          @keyframes paySheetUp {
-            0%   { transform: translateY(100%); opacity: 0; }
-            100% { transform: translateY(0);    opacity: 1; }
-          }
-        `}</style>
-
-        <div
-          style={{ flex: 1 }}
-          onClick={() => dispatch({ type: "SET_PAYMENT", payload: false })}
-        />
-
+      <div className="page fade-in">
         <div
           style={{
-            background: "#111009",
-            borderRadius: "24px 24px 0 0",
-            borderTop: "1px solid #2a2218",
-            padding: "0 20px 32px",
-            animation: "paySheetUp 0.4s cubic-bezier(.23,1,.32,1) both",
-            maxHeight: "85vh",
-            overflowY: "auto",
+            display: "flex",
+            alignItems: "center",
+            gap: 12,
+            padding: "20px 20px 0",
           }}
         >
-          <div
+          <button
+            onClick={() => dispatch({ type: "SET_PAYMENT", payload: false })}
             style={{
-              width: 36,
-              height: 3,
-              borderRadius: 2,
-              background: "#2a2218",
-              margin: "12px auto 20px",
-            }}
-          />
-
-          <div
-            style={{
-              display: "flex",
-              alignItems: "baseline",
-              justifyContent: "space-between",
-              marginBottom: 18,
+              background: "none",
+              border: "none",
+              color: "var(--muted)",
+              cursor: "pointer",
+              fontSize: 14,
             }}
           >
-            <div>
-              <div
-                style={{
-                  fontFamily: "'Fraunces',serif",
-                  fontSize: 20,
-                  fontWeight: 700,
-                  color: "#f0ebe3",
-                }}
-              >
-                Nota de plată
-              </div>
-              <div style={{ fontSize: 12, color: "#8a7a6a", marginTop: 3 }}>
-                Masa {orderTableNum} • {allItems.reduce((s, i) => s + i.qty, 0)}{" "}
-                produse
-              </div>
-            </div>
+            ← Înapoi la meniu
+          </button>
+        </div>
+        <div className="inner">
+          <div
+            style={{
+              background: "var(--card)",
+              border: "1px solid var(--border)",
+              borderRadius: 20,
+              padding: 20,
+              marginBottom: 16,
+            }}
+          >
             <div
               style={{
                 fontFamily: "'Fraunces',serif",
-                fontSize: 26,
-                fontWeight: 700,
-                color: "#c0622f",
+                fontSize: 18,
+                marginBottom: 14,
+                paddingBottom: 12,
+                borderBottom: "1px solid var(--border)",
               }}
             >
-              {total} lei
+              🧾 Nota de plată — Masa {orderTableNum}
             </div>
-          </div>
-
-          <div
-            style={{
-              background: "#161210",
-              border: "1px solid #2a2218",
-              borderRadius: 16,
-              padding: "12px 16px",
-              marginBottom: 20,
-            }}
-          >
             {allItems.map((item) => (
               <div
                 key={item.id}
                 style={{
                   display: "flex",
                   justifyContent: "space-between",
-                  fontSize: 13,
-                  color: "#8a7a6a",
+                  fontSize: 14,
                   marginBottom: 8,
-                  alignItems: "center",
+                  color: "var(--muted)",
                 }}
               >
                 <span>
                   {item.emoji} {item.name} ×{item.qty}
                 </span>
-                <span style={{ color: "#f0ebe3", fontWeight: 500 }}>
-                  {item.price * item.qty} lei
-                </span>
+                <span>{item.price * item.qty} lei</span>
               </div>
             ))}
             <div
               style={{
-                borderTop: "1px solid #2a2218",
-                marginTop: 8,
-                paddingTop: 10,
                 display: "flex",
                 justifyContent: "space-between",
+                fontSize: 17,
+                fontWeight: 700,
+                borderTop: "1px solid var(--border)",
+                marginTop: 10,
+                paddingTop: 10,
               }}
             >
-              <span style={{ fontSize: 14, fontWeight: 600, color: "#f0ebe3" }}>
-                Total
-              </span>
-              <span style={{ fontSize: 16, fontWeight: 700, color: "#c0622f" }}>
-                {total} lei
-              </span>
+              <span>Total</span>
+              <span>{total} lei</span>
             </div>
           </div>
-
           <div
-            style={{
-              fontSize: 11,
-              color: "#8a7a6a",
-              letterSpacing: "1px",
-              textTransform: "uppercase",
-              marginBottom: 12,
-            }}
+            style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}
           >
-            Metoda de plată
-          </div>
-
-          <div style={{ display: "flex", gap: 12, marginBottom: 18 }}>
             {[
-              { method: "cash", icon: "💵", label: "Cash", sub: "La casă" },
-              { method: "card", icon: "💳", label: "Card", sub: "La POS" },
+              { method: "cash", icon: "💵", label: "Cash" },
+              { method: "card", icon: "💳", label: "Card" },
             ].map((p) => (
               <button
                 key={p.method}
@@ -474,70 +414,27 @@ export function Meniu() {
                     },
                   })
                 }
-                onTouchStart={(e) =>
-                  (e.currentTarget.style.background = "#221c14")
-                }
-                onTouchEnd={(e) =>
-                  (e.currentTarget.style.background = "#1a1510")
-                }
                 style={{
-                  flex: 1,
-                  background: "#1a1510",
-                  border: "1px solid #2a2218",
-                  borderRadius: 16,
-                  padding: "14px 12px",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 12,
+                  padding: "20px 14px",
+                  borderRadius: 18,
+                  border: "2px solid var(--border)",
+                  background: "var(--card)",
+                  color: "var(--cream)",
+                  fontFamily: "'Fraunces',serif",
+                  fontSize: 16,
+                  fontWeight: 700,
                   cursor: "pointer",
-                  transition: "background 0.2s",
-                  WebkitTapHighlightColor: "transparent",
+                  textAlign: "center",
                 }}
               >
-                <div
-                  style={{
-                    width: 44,
-                    height: 44,
-                    borderRadius: 12,
-                    background: "#221a10",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    fontSize: 24,
-                    flexShrink: 0,
-                  }}
+                <span
+                  style={{ fontSize: 28, display: "block", marginBottom: 6 }}
                 >
                   {p.icon}
-                </div>
-                <div>
-                  <div
-                    style={{ fontSize: 15, fontWeight: 700, color: "#f0ebe3" }}
-                  >
-                    {p.label}
-                  </div>
-                  <div style={{ fontSize: 11, color: "#8a7a6a", marginTop: 2 }}>
-                    {p.sub}
-                  </div>
-                </div>
+                </span>
+                {p.label}
               </button>
             ))}
-          </div>
-
-          <div style={{ textAlign: "center" }}>
-            <button
-              onClick={() => dispatch({ type: "SET_PAYMENT", payload: false })}
-              style={{
-                background: "none",
-                border: "none",
-                fontSize: 13,
-                color: "#6b6050",
-                cursor: "pointer",
-                textDecoration: "underline",
-                textUnderlineOffset: 3,
-              }}
-            >
-              Anulează
-            </button>
           </div>
         </div>
       </div>
@@ -1442,11 +1339,298 @@ export function Meniu() {
           </button>
         )}
       </div>
-      <CartBar
-        onOrder={placeOrder}
-        loading={orderLoading}
-        hasActiveOrder={!!activeOrder?.id}
-      />
+      {/* FAB + Bottom Sheet Cos */}
+      {cart.length > 0 && (
+        <>
+          <style>{`
+            @keyframes fabAppear {
+              0%   { transform: scale(0); opacity: 0; }
+              60%  { transform: scale(1.15); }
+              100% { transform: scale(1); opacity: 1; }
+            }
+            @keyframes badgePop {
+              0%   { transform: scale(0); }
+              60%  { transform: scale(1.35); }
+              100% { transform: scale(1); }
+            }
+            @keyframes cosSheetUp {
+              from { transform: translateY(100%); opacity: 0; }
+              to   { transform: translateY(0); opacity: 1; }
+            }
+          `}</style>
+
+          {/* Overlay */}
+          {showCart && (
+            <div
+              onClick={() => setShowCart(false)}
+              style={{
+                position: "fixed",
+                inset: 0,
+                background: "rgba(0,0,0,0.55)",
+                zIndex: 88,
+                backdropFilter: "blur(4px)",
+              }}
+            />
+          )}
+
+          {/* Bottom Sheet */}
+          {showCart && (
+            <div
+              style={{
+                position: "fixed",
+                bottom: 0,
+                left: "50%",
+                transform: "translateX(-50%)",
+                width: "100%",
+                maxWidth: 430,
+                background: "#111009",
+                borderRadius: "22px 22px 0 0",
+                borderTop: "1px solid #2a2218",
+                padding: "0 20px 100px",
+                zIndex: 89,
+                animation: "cosSheetUp 0.38s cubic-bezier(.23,1,.32,1) both",
+                maxHeight: "75vh",
+                overflowY: "auto",
+              }}
+            >
+              <div
+                style={{
+                  width: 36,
+                  height: 3,
+                  borderRadius: 2,
+                  background: "#2a2218",
+                  margin: "12px auto 18px",
+                }}
+              />
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  marginBottom: 16,
+                }}
+              >
+                <div
+                  style={{
+                    fontFamily: "'Fraunces',serif",
+                    fontSize: 19,
+                    fontWeight: 700,
+                    color: "#f0ebe3",
+                  }}
+                >
+                  Cosul tau
+                </div>
+                <button
+                  onClick={() => setShowCart(false)}
+                  style={{
+                    background: "none",
+                    border: "none",
+                    color: "#6b6050",
+                    fontSize: 22,
+                    cursor: "pointer",
+                    lineHeight: 1,
+                    padding: 0,
+                  }}
+                >
+                  x
+                </button>
+              </div>
+
+              <div
+                style={{
+                  background: "#161210",
+                  border: "1px solid #2a2218",
+                  borderRadius: 14,
+                  padding: "10px 14px",
+                  marginBottom: 16,
+                }}
+              >
+                {cart.map((item) => (
+                  <div
+                    key={item.id}
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                      fontSize: 13,
+                      paddingBottom: 8,
+                      marginBottom: 8,
+                      borderBottom: "1px solid #1e1a14",
+                    }}
+                  >
+                    <span
+                      style={{ color: "#f0ebe3", fontWeight: 500, flex: 1 }}
+                    >
+                      {item.emoji} {item.name}
+                      <span style={{ color: "#6b6050", marginLeft: 6 }}>
+                        x{item.qty}
+                      </span>
+                    </span>
+                    <span
+                      style={{
+                        color: "#c8a97e",
+                        fontWeight: 700,
+                        marginRight: 12,
+                      }}
+                    >
+                      {item.price * item.qty} lei
+                    </span>
+                    <button
+                      onClick={() =>
+                        dispatch({ type: "CART_REMOVE", payload: item.id })
+                      }
+                      style={{
+                        width: 22,
+                        height: 22,
+                        borderRadius: "50%",
+                        background: "rgba(192,57,43,.15)",
+                        border: "1px solid rgba(192,57,43,.3)",
+                        color: "#e05050",
+                        fontSize: 14,
+                        fontWeight: 700,
+                        cursor: "pointer",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        flexShrink: 0,
+                        padding: 0,
+                        lineHeight: 1,
+                      }}
+                    >
+                      x
+                    </button>
+                  </div>
+                ))}
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    fontFamily: "'Fraunces',serif",
+                    fontSize: 16,
+                    fontWeight: 700,
+                    paddingTop: 4,
+                  }}
+                >
+                  <span style={{ color: "#f0ebe3" }}>Total</span>
+                  <span style={{ color: "#c0622f" }}>{cartTotal} lei</span>
+                </div>
+              </div>
+
+              <textarea
+                maxLength={300}
+                value={cartObs}
+                onChange={(e) => setCartObs(e.target.value)}
+                placeholder="Observatii pentru ospatar (optional)..."
+                rows={2}
+                style={{
+                  width: "100%",
+                  background: "#161210",
+                  border: "1px solid #2a2218",
+                  borderRadius: 12,
+                  padding: "10px 12px",
+                  color: "#f0ebe3",
+                  fontSize: 13,
+                  resize: "none",
+                  marginBottom: 12,
+                  fontFamily: "inherit",
+                  outline: "none",
+                  boxSizing: "border-box",
+                }}
+              />
+
+              <button
+                onClick={() => {
+                  placeOrder(cartObs);
+                  setCartObs("");
+                  setShowCart(false);
+                }}
+                disabled={orderLoading}
+                style={{
+                  width: "100%",
+                  padding: 15,
+                  background: orderLoading
+                    ? "#4a3020"
+                    : "linear-gradient(135deg,#c0622f,#8b3a18)",
+                  border: "none",
+                  borderRadius: 14,
+                  color: orderLoading ? "#6b6050" : "#fff",
+                  fontFamily: "'Fraunces',serif",
+                  fontSize: 16,
+                  fontWeight: 700,
+                  cursor: orderLoading ? "not-allowed" : "pointer",
+                  opacity: orderLoading ? 0.7 : 1,
+                }}
+              >
+                {orderLoading
+                  ? "Se trimite..."
+                  : activeOrder?.id
+                    ? "Adauga la comanda"
+                    : "Trimite comanda la bucatarie"}
+              </button>
+            </div>
+          )}
+
+          {/* FAB Button */}
+          <button
+            onClick={() => setShowCart(true)}
+            style={{
+              position: "fixed",
+              bottom: 86,
+              left: 20,
+              width: 54,
+              height: 54,
+              borderRadius: "50%",
+              background: "linear-gradient(135deg,#c0622f,#8b3a18)",
+              border: "none",
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              zIndex: 87,
+              boxShadow: "0 4px 20px rgba(192,98,47,0.45)",
+              animation: "fabAppear 0.4s cubic-bezier(.23,1,.32,1) both",
+              WebkitTapHighlightColor: "transparent",
+            }}
+          >
+            <svg
+              width="22"
+              height="22"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="#fff"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z" />
+              <line x1="3" y1="6" x2="21" y2="6" />
+              <path d="M16 10a4 4 0 01-8 0" />
+            </svg>
+            <div
+              key={cartCount}
+              style={{
+                position: "absolute",
+                top: -4,
+                right: -4,
+                background: "#f0ebe3",
+                color: "#0d0a07",
+                borderRadius: "50%",
+                width: 20,
+                height: 20,
+                fontSize: 11,
+                fontWeight: 800,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                border: "2px solid #0d0a07",
+                animation: "badgePop 0.3s cubic-bezier(.23,1,.32,1) both",
+              }}
+            >
+              {cartCount}
+            </div>
+          </button>
+        </>
+      )}
     </div>
   );
 }
