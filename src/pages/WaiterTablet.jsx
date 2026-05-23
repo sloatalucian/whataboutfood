@@ -1016,6 +1016,7 @@ export function WaiterTablet({
         {tab === "map" && (
           <WaiterMap
             tables={allTables}
+            tableStates={tableStates}
             restaurantId={restaurantId}
             activeMapFloor={activeMapFloor}
             dbFloors={dbFloors}

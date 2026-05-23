@@ -1,5 +1,6 @@
 export function WaiterMap({
   tables,
+  tableStates,
   restaurantId,
   activeMapFloor,
   dbFloors,
