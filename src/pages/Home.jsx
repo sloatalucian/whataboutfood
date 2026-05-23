@@ -464,7 +464,8 @@ function HomeClient() {
     navigate,
     showToast,
     requestBillRef,
-    setPayNoteData,
+    setPayNoteShow,
+    setPayNoteActiveOrder,
   } = useApp();
   const { user, savedCart } = state;
   const [selectedCity, setSelectedCity] = useState("Toate orașele");
@@ -570,12 +571,15 @@ function HomeClient() {
     setPayNoteLoading(false);
   };
   requestBillRef.current = requestBill;
-  setPayNoteData({
-    activeOrder,
-    loading: payNoteLoading,
-    show: showPayNote,
-    setShow: setShowPayNote,
-  });
+
+  // Sync payNote state to global context
+  useEffect(() => {
+    setPayNoteShow(showPayNote);
+  }, [showPayNote]);
+
+  useEffect(() => {
+    setPayNoteActiveOrder(activeOrder);
+  }, [activeOrder]);
 
   const filteredRestaurants = allRestaurants.filter(
     (r) =>

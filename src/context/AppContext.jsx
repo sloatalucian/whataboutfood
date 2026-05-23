@@ -359,12 +359,8 @@ export function AppProvider({ children }) {
   const cartCount = state.cart.reduce((s, i) => s + i.qty, 0);
   const placeOrderRef = useRef(null);
   const requestBillRef = useRef(null);
-  const [payNoteData, setPayNoteData] = useState({
-    activeOrder: null,
-    loading: false,
-    show: false,
-    setShow: null,
-  });
+  const [payNoteShow, setPayNoteShow] = useState(false);
+  const [payNoteActiveOrder, setPayNoteActiveOrder] = useState(null);
   const cookingCount = state.orders.filter(
     (o) => o.status === "cooking",
   ).length;
@@ -382,8 +378,10 @@ export function AppProvider({ children }) {
         cookingCount,
         placeOrderRef,
         requestBillRef,
-        payNoteData,
-        setPayNoteData,
+        payNoteShow,
+        setPayNoteShow,
+        payNoteActiveOrder,
+        setPayNoteActiveOrder,
       }}
     >
       {children}

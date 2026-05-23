@@ -14,7 +14,8 @@ export function Meniu() {
     cartCount,
     placeOrderRef,
     requestBillRef,
-    setPayNoteData,
+    setPayNoteShow,
+    setPayNoteActiveOrder,
   } = useApp();
   const { reload: reloadTables } = useTable();
   const {
@@ -208,12 +209,15 @@ export function Meniu() {
     setPayNoteLoading(false);
   };
   requestBillRef.current = requestBill;
-  setPayNoteData({
-    activeOrder,
-    loading: payNoteLoading,
-    show: showPayNote,
-    setShow: setShowPayNote,
-  });
+
+  // Sync payNote state to global context
+  useEffect(() => {
+    setPayNoteShow(showPayNote);
+  }, [showPayNote]);
+
+  useEffect(() => {
+    setPayNoteActiveOrder(activeOrder);
+  }, [activeOrder]);
 
   if (!selectedRest) {
     navigate("home");

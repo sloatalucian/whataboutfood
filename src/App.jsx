@@ -34,7 +34,9 @@ function Router() {
     cartCount,
     placeOrderRef,
     requestBillRef,
-    payNoteData,
+    payNoteShow,
+    setPayNoteShow,
+    payNoteActiveOrder,
   } = useApp();
   const [showCart, setShowCart] = useState(false);
   const [cartObs, setCartObs] = useState("");
@@ -1117,8 +1119,8 @@ function Router() {
 
         {/* ── Nota de plata Modal (global) ── */}
         {(screen === "menu" || screen === "home") &&
-          payNoteData.show &&
-          payNoteData.activeOrder && (
+          payNoteShow &&
+          payNoteActiveOrder && (
             <>
               <style>{`
               @keyframes payNoteUp {
@@ -1127,7 +1129,7 @@ function Router() {
               }
             `}</style>
               <div
-                onClick={() => payNoteData.setShow(false)}
+                onClick={() => setPayNoteShow(false)}
                 style={{
                   position: "fixed",
                   inset: 0,
@@ -1186,7 +1188,7 @@ function Router() {
                     <div
                       style={{ fontSize: 12, color: "#8a7a6a", marginTop: 3 }}
                     >
-                      Masa {payNoteData.activeOrder.table_label}
+                      Masa {payNoteActiveOrder.table_label}
                     </div>
                   </div>
                   <div
@@ -1197,7 +1199,7 @@ function Router() {
                       color: "#c0622f",
                     }}
                   >
-                    {payNoteData.activeOrder.total} lei
+                    {payNoteActiveOrder.total} lei
                   </div>
                 </div>
                 <div
@@ -1285,7 +1287,7 @@ function Router() {
                 </div>
                 <div style={{ textAlign: "center" }}>
                   <button
-                    onClick={() => payNoteData.setShow(false)}
+                    onClick={() => setPayNoteShow(false)}
                     style={{
                       background: "none",
                       border: "none",
