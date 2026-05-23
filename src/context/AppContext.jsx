@@ -357,6 +357,8 @@ export function AppProvider({ children }) {
   const cartTotal = state.cart.reduce((s, i) => s + i.price * i.qty, 0);
   const cartCount = state.cart.reduce((s, i) => s + i.qty, 0);
   const placeOrderRef = useRef(null);
+  const requestBillRef = useRef(null);
+  const payNoteDataRef = useRef({ activeOrder: null, loading: false });
   const cookingCount = state.orders.filter(
     (o) => o.status === "cooking",
   ).length;
@@ -373,6 +375,8 @@ export function AppProvider({ children }) {
         cartCount,
         cookingCount,
         placeOrderRef,
+        requestBillRef,
+        payNoteDataRef,
       }}
     >
       {children}

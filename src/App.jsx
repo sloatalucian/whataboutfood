@@ -33,6 +33,8 @@ function Router() {
     cartTotal,
     cartCount,
     placeOrderRef,
+    requestBillRef,
+    payNoteDataRef,
   } = useApp();
   const [showCart, setShowCart] = useState(false);
   const [cartObs, setCartObs] = useState("");
@@ -1112,6 +1114,194 @@ function Router() {
             </button>
           </>
         )}
+
+        {/* ── Nota de plata Modal (global) ── */}
+        {screen === "menu" &&
+          payNoteDataRef.current?.show &&
+          payNoteDataRef.current?.activeOrder && (
+            <>
+              <style>{`
+              @keyframes payNoteUp {
+                from { transform: translateY(100%); opacity: 0; }
+                to   { transform: translateY(0); opacity: 1; }
+              }
+            `}</style>
+              <div
+                onClick={() => payNoteDataRef.current?.setShow(false)}
+                style={{
+                  position: "fixed",
+                  inset: 0,
+                  background: "rgba(0,0,0,0.6)",
+                  zIndex: 288,
+                  backdropFilter: "blur(6px)",
+                }}
+              />
+              <div
+                style={{
+                  position: "fixed",
+                  bottom: 0,
+                  left: 0,
+                  right: 0,
+                  width: "min(100%, 430px)",
+                  marginLeft: "auto",
+                  marginRight: "auto",
+                  background: "#111009",
+                  borderRadius: "24px 24px 0 0",
+                  borderTop: "1px solid #2a2218",
+                  padding: "0 20px 32px",
+                  zIndex: 289,
+                  animation: "payNoteUp 0.4s cubic-bezier(.23,1,.32,1) both",
+                  maxHeight: "85vh",
+                  overflowY: "auto",
+                }}
+              >
+                <div
+                  style={{
+                    width: 36,
+                    height: 3,
+                    borderRadius: 2,
+                    background: "#2a2218",
+                    margin: "12px auto 20px",
+                  }}
+                />
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "baseline",
+                    justifyContent: "space-between",
+                    marginBottom: 18,
+                  }}
+                >
+                  <div>
+                    <div
+                      style={{
+                        fontFamily: "'Fraunces',serif",
+                        fontSize: 20,
+                        fontWeight: 700,
+                        color: "#f0ebe3",
+                      }}
+                    >
+                      Nota de plată
+                    </div>
+                    <div
+                      style={{ fontSize: 12, color: "#8a7a6a", marginTop: 3 }}
+                    >
+                      Masa {payNoteDataRef.current.activeOrder.table_label}
+                    </div>
+                  </div>
+                  <div
+                    style={{
+                      fontFamily: "'Fraunces',serif",
+                      fontSize: 26,
+                      fontWeight: 700,
+                      color: "#c0622f",
+                    }}
+                  >
+                    {payNoteDataRef.current.activeOrder.total} lei
+                  </div>
+                </div>
+                <div
+                  style={{
+                    fontSize: 11,
+                    color: "#8a7a6a",
+                    letterSpacing: "1px",
+                    textTransform: "uppercase",
+                    marginBottom: 12,
+                  }}
+                >
+                  Metoda de plată
+                </div>
+                <div style={{ display: "flex", gap: 12, marginBottom: 18 }}>
+                  {[
+                    {
+                      method: "cash",
+                      icon: "💵",
+                      label: "Cash",
+                      sub: "La casă",
+                    },
+                    {
+                      method: "card",
+                      icon: "💳",
+                      label: "Card",
+                      sub: "La POS",
+                    },
+                  ].map((p) => (
+                    <button
+                      key={p.method}
+                      onClick={() =>
+                        requestBillRef.current &&
+                        requestBillRef.current(p.method)
+                      }
+                      style={{
+                        flex: 1,
+                        background: "#1a1510",
+                        border: "1px solid #2a2218",
+                        borderRadius: 16,
+                        padding: "14px 12px",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 12,
+                        cursor: "pointer",
+                        WebkitTapHighlightColor: "transparent",
+                      }}
+                    >
+                      <div
+                        style={{
+                          width: 44,
+                          height: 44,
+                          borderRadius: 12,
+                          background: "#221a10",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          fontSize: 24,
+                          flexShrink: 0,
+                        }}
+                      >
+                        {p.icon}
+                      </div>
+                      <div>
+                        <div
+                          style={{
+                            fontSize: 15,
+                            fontWeight: 700,
+                            color: "#f0ebe3",
+                          }}
+                        >
+                          {p.label}
+                        </div>
+                        <div
+                          style={{
+                            fontSize: 11,
+                            color: "#8a7a6a",
+                            marginTop: 2,
+                          }}
+                        >
+                          {p.sub}
+                        </div>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+                <div style={{ textAlign: "center" }}>
+                  <button
+                    onClick={() => payNoteDataRef.current?.setShow(false)}
+                    style={{
+                      background: "none",
+                      border: "none",
+                      fontSize: 13,
+                      color: "#6b6050",
+                      cursor: "pointer",
+                      textDecoration: "underline",
+                      textUnderlineOffset: 3,
+                    }}
+                  >
+                    Anulează
+                  </button>
+                </div>
+              </div>
+            </>
+          )}
       </div>
     </TableProvider>
   );
