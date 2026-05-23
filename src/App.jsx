@@ -1116,7 +1116,7 @@ function Router() {
         )}
 
         {/* ── Nota de plata Modal (global) ── */}
-        {screen === "menu" &&
+        {(screen === "menu" || screen === "home") &&
           payNoteDataRef.current?.show &&
           payNoteDataRef.current?.activeOrder && (
             <>
