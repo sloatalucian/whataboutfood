@@ -998,6 +998,7 @@ export function WaiterTablet({
             waiterCalls={waiterCalls}
             setWaiterCalls={setWaiterCalls}
             cancellingOrders={cancellingOrders}
+            setCancellingOrders={setCancellingOrders}
             initCancellation={initCancellation}
             cancelItem={cancelItem}
             acceptOrder={acceptOrder}
@@ -1035,9 +1036,9 @@ export function WaiterTablet({
 
         {tab === "reservations" && (
           <WaiterReservations
-            reservations={reservations}
+            reservations={displayReservations}
             refuseReservation={refuseReservation}
-            acceptReservation={acceptReservation}
+            acceptReservation={confirmReservation}
             confirmReservation={confirmReservation}
             restaurantId={restaurantId}
             waiterId={waiterId}
