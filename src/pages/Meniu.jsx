@@ -856,7 +856,7 @@ export function Meniu() {
                 background: "#111009",
                 borderRadius: "24px 24px 0 0",
                 borderTop: "1px solid #2a2218",
-                padding: "0 20px 32px",
+                padding: "0 20px 100px",
                 zIndex: 101,
                 animation: "paySheetUp 0.4s cubic-bezier(.23,1,.32,1) both",
               }}
