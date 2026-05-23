@@ -34,7 +34,7 @@ function Router() {
     cartCount,
     placeOrderRef,
     requestBillRef,
-    payNoteDataRef,
+    payNoteData,
   } = useApp();
   const [showCart, setShowCart] = useState(false);
   const [cartObs, setCartObs] = useState("");
@@ -1117,8 +1117,8 @@ function Router() {
 
         {/* ── Nota de plata Modal (global) ── */}
         {(screen === "menu" || screen === "home") &&
-          payNoteDataRef.current?.show &&
-          payNoteDataRef.current?.activeOrder && (
+          payNoteData.show &&
+          payNoteData.activeOrder && (
             <>
               <style>{`
               @keyframes payNoteUp {
@@ -1127,7 +1127,7 @@ function Router() {
               }
             `}</style>
               <div
-                onClick={() => payNoteDataRef.current?.setShow(false)}
+                onClick={() => payNoteData.setShow(false)}
                 style={{
                   position: "fixed",
                   inset: 0,
@@ -1186,7 +1186,7 @@ function Router() {
                     <div
                       style={{ fontSize: 12, color: "#8a7a6a", marginTop: 3 }}
                     >
-                      Masa {payNoteDataRef.current.activeOrder.table_label}
+                      Masa {payNoteData.activeOrder.table_label}
                     </div>
                   </div>
                   <div
@@ -1197,7 +1197,7 @@ function Router() {
                       color: "#c0622f",
                     }}
                   >
-                    {payNoteDataRef.current.activeOrder.total} lei
+                    {payNoteData.activeOrder.total} lei
                   </div>
                 </div>
                 <div
@@ -1285,7 +1285,7 @@ function Router() {
                 </div>
                 <div style={{ textAlign: "center" }}>
                   <button
-                    onClick={() => payNoteDataRef.current?.setShow(false)}
+                    onClick={() => payNoteData.setShow(false)}
                     style={{
                       background: "none",
                       border: "none",

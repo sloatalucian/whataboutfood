@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from "react";
+import ActiveOrderCard from "../components/ActiveOrderCard";
 import { useApp } from "../context/AppContext";
 import { useTable } from "../context/TableContext";
 import { supabase } from "../supabase";
@@ -13,7 +14,7 @@ export function Meniu() {
     cartCount,
     placeOrderRef,
     requestBillRef,
-    payNoteDataRef,
+    setPayNoteData,
   } = useApp();
   const { reload: reloadTables } = useTable();
   const {
@@ -207,12 +208,12 @@ export function Meniu() {
     setPayNoteLoading(false);
   };
   requestBillRef.current = requestBill;
-  payNoteDataRef.current = {
+  setPayNoteData({
     activeOrder,
     loading: payNoteLoading,
     show: showPayNote,
     setShow: setShowPayNote,
-  };
+  });
 
   if (!selectedRest) {
     navigate("home");
@@ -631,216 +632,14 @@ export function Meniu() {
         style={{ paddingBottom: cart.length > 0 ? 160 : 90 }}
       >
         {/* ── Status Bar Comandă Activă ── */}
-        {activeOrder && (
-          <div
-            style={{
-              background:
-                activeOrder.status === "paying"
-                  ? "rgba(91,141,217,.1)"
-                  : activeOrder.status === "ready"
-                    ? "rgba(107,158,107,.1)"
-                    : activeOrder.status === "cooking"
-                      ? "rgba(224,122,71,.1)"
-                      : "rgba(200,169,126,.1)",
-              border: `1px solid ${
-                activeOrder.status === "paying"
-                  ? "rgba(91,141,217,.4)"
-                  : activeOrder.status === "ready"
-                    ? "rgba(107,158,107,.4)"
-                    : activeOrder.status === "cooking"
-                      ? "rgba(224,122,71,.4)"
-                      : "rgba(200,169,126,.4)"
-              }`,
-              borderRadius: 16,
-              padding: "14px 16px",
-              marginBottom: 16,
-            }}
-          >
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-                marginBottom: 10,
-              }}
-            >
-              <div style={{ fontSize: 13, fontWeight: 700 }}>
-                {activeOrder.status === "pending" &&
-                  "⏳ Comanda ta a fost trimisă"}
-                {activeOrder.status === "cooking" && "👨‍🍳 Comanda ta se prepară"}
-                {activeOrder.status === "ready" &&
-                  "✅ Comanda e gata! Ospătarul vine"}
-                {activeOrder.status === "paying" &&
-                  "🧾 Nota cerută — ospătarul vine"}
-              </div>
-              <span
-                style={{
-                  fontSize: 10,
-                  fontWeight: 800,
-                  padding: "3px 8px",
-                  borderRadius: 10,
-                  background:
-                    activeOrder.status === "paying"
-                      ? "rgba(91,141,217,.2)"
-                      : activeOrder.status === "ready"
-                        ? "rgba(107,158,107,.2)"
-                        : activeOrder.status === "cooking"
-                          ? "rgba(224,122,71,.2)"
-                          : "rgba(200,169,126,.2)",
-                  color:
-                    activeOrder.status === "paying"
-                      ? "#5b8dd9"
-                      : activeOrder.status === "ready"
-                        ? "#6b9e6b"
-                        : activeOrder.status === "cooking"
-                          ? "#e07a47"
-                          : "#c8a97e",
-                }}
-              >
-                Masa {activeOrder.table_label}
-              </span>
-            </div>
-            {/* Pași status */}
-            <div style={{ display: "flex", gap: 4, marginBottom: 12 }}>
-              {[
-                { s: "pending", label: "Trimisă" },
-                { s: "cooking", label: "Preparare" },
-                { s: "ready", label: "Gata" },
-                { s: "paying", label: "Plată" },
-              ].map((step, idx) => {
-                const statuses = ["pending", "cooking", "ready", "paying"];
-                const currentIdx = statuses.indexOf(activeOrder.status);
-                const stepIdx = statuses.indexOf(step.s);
-                const isDone = stepIdx <= currentIdx;
-                return (
-                  <div key={step.s} style={{ flex: 1 }}>
-                    <div
-                      style={{
-                        height: 4,
-                        borderRadius: 4,
-                        background: isDone ? "#c0622f" : "rgba(255,255,255,.1)",
-                        marginBottom: 4,
-                      }}
-                    />
-                    <div
-                      style={{
-                        fontSize: 9,
-                        color: isDone ? "#c0622f" : "#6b6050",
-                        textAlign: "center",
-                      }}
-                    >
-                      {step.label}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-            {/* Buton Cheamă ospătarul */}
-            {activeOrder.status !== "pending" &&
-              activeOrder.status !== "paying" && (
-                <div style={{ marginBottom: 8 }}>
-                  {waiterCalled && waiterCooldown > 0 ? (
-                    <div
-                      style={{
-                        background: "rgba(200,169,126,.08)",
-                        border: "1px solid rgba(200,169,126,.2)",
-                        borderRadius: 12,
-                        padding: "10px 14px",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "space-between",
-                      }}
-                    >
-                      <span style={{ fontSize: 13, color: "#c8a97e" }}>
-                        🔔 Ospătarul a fost chemat
-                      </span>
-                      <span
-                        style={{
-                          fontSize: 12,
-                          color: "#6b6050",
-                          fontWeight: 600,
-                        }}
-                      >
-                        {Math.floor(waiterCooldown / 60)}:
-                        {String(waiterCooldown % 60).padStart(2, "0")}
-                      </span>
-                    </div>
-                  ) : (
-                    <button
-                      onClick={callWaiter}
-                      style={{
-                        width: "100%",
-                        padding: "10px",
-                        borderRadius: 12,
-                        background: "rgba(200,169,126,.1)",
-                        border: "1px solid rgba(200,169,126,.3)",
-                        color: "#c8a97e",
-                        fontSize: 13,
-                        fontWeight: 600,
-                        cursor: "pointer",
-                        fontFamily: "inherit",
-                      }}
-                    >
-                      🔔 Cheamă ospătarul
-                    </button>
-                  )}
-                </div>
-              )}
-            {/* Buton Cere Nota - doar cand e ready si nu are produse noi neconfirmate */}
-            {activeOrder.status === "ready" && !activeOrder.has_new_items && (
-              <button
-                onClick={() => setShowPayNote(true)}
-                style={{
-                  width: "100%",
-                  padding: "12px",
-                  borderRadius: 14,
-                  background: "linear-gradient(135deg,#c0622f,#8b3a18)",
-                  border: "none",
-                  color: "#fff",
-                  fontFamily: "'Fraunces',serif",
-                  fontSize: 15,
-                  fontWeight: 700,
-                  cursor: "pointer",
-                }}
-              >
-                🧾 Cere nota de plată
-              </button>
-            )}
-            {/* Mesaj cand are produse noi neconfirmate */}
-            {activeOrder.has_new_items && (
-              <div
-                style={{
-                  width: "100%",
-                  padding: "12px",
-                  borderRadius: 14,
-                  background: "#1e1a14",
-                  border: "1px solid #c8a97e44",
-                  color: "#c8a97e",
-                  fontFamily: "'Fraunces',serif",
-                  fontSize: 13,
-                  fontWeight: 600,
-                  textAlign: "center",
-                }}
-              >
-                🆕 Produse noi in asteptare...
-              </div>
-            )}
-            {activeOrder.status === "paying" && (
-              <div
-                style={{
-                  fontSize: 12,
-                  color: "var(--muted)",
-                  textAlign: "center",
-                }}
-              >
-                Ai ales:{" "}
-                {activeOrder.payment_method === "cash" ? "💵 Cash" : "💳 Card"}
-              </div>
-            )}
-          </div>
-        )}
+        <ActiveOrderCard
+          activeOrder={activeOrder}
+          waiterCalled={waiterCalled}
+          waiterCooldown={waiterCooldown}
+          callWaiter={callWaiter}
+          onCereNota={() => setShowPayNote(true)}
+        />
 
-        {/* ── Modal Cere Nota ── */}
         {/* Loading */}
         {menuLoading ? (
           <div
