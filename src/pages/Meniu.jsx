@@ -847,7 +847,7 @@ export function Meniu() {
             <div
               style={{
                 position: "fixed",
-                bottom: 0,
+                bottom: 74,
                 left: 0,
                 right: 0,
                 width: "min(100%, 430px)",
