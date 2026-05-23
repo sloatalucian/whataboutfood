@@ -23,6 +23,7 @@ body {
 
 /* ─── VARIABLES ──────────────────────────────────────────────────────────── */
 :root {
+  --nav-height: 74px;
   --cream: #f0ebe3;
   --warm: #c8a97e;
   --terra: #c0622f;
