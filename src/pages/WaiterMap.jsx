@@ -1,6 +1,7 @@
 export function WaiterMap({
   tables,
   tableStates,
+  markPaid,
   restaurantId,
   activeMapFloor,
   setActiveMapFloor,

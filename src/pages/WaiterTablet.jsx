@@ -1017,6 +1017,7 @@ export function WaiterTablet({
           <WaiterMap
             tables={allTables}
             tableStates={tableStates}
+            markPaid={markPaid}
             restaurantId={restaurantId}
             activeMapFloor={activeMapFloor}
             setActiveMapFloor={setActiveMapFloor}
