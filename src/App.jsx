@@ -870,9 +870,10 @@ function Router() {
                 style={{
                   position: "fixed",
                   bottom: 0,
-                  left: 0,
-                  right: 0,
+                  left: "50%",
+                  transform: "translateX(-50%)",
                   width: "100%",
+                  maxWidth: 430,
                   background: "#111009",
                   borderRadius: "22px 22px 0 0",
                   borderTop: "1px solid #2a2218",
