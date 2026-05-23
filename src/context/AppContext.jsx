@@ -367,18 +367,11 @@ export function AppProvider({ children }) {
 
   const callWaiter = useCallback(
     async (activeOrder) => {
-      if (!activeOrder || waiterCooldown > 0) {
-        console.log(
-          "[callWaiter] blocked - activeOrder:",
-          !!activeOrder,
-          "cooldown:",
-          waiterCooldown,
-        );
-        return;
-      }
+      if (!activeOrder || waiterCooldown > 0) return;
       try {
         await supabase.from("notifications").insert({
           restaurant_id: activeOrder.restaurant_id,
+          user_id: activeOrder.waiter_id || null,
           type: "waiter_call",
           message: `🔔 Masa ${activeOrder.table_label} cheamă ospătarul`,
           is_read: false,
@@ -395,9 +388,7 @@ export function AppProvider({ children }) {
             return prev - 1;
           });
         }, 1000);
-      } catch (e) {
-        console.error("[callWaiter] ERROR:", e);
-      }
+      } catch (e) {}
     },
     [waiterCooldown],
   );
