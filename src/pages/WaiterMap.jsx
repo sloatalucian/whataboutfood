@@ -3,11 +3,15 @@ export function WaiterMap({
   tableStates,
   restaurantId,
   activeMapFloor,
+  setActiveMapFloor,
   dbFloors,
   mapDate,
+  setMapDate,
   mapReservedTables,
   mapTime,
+  setMapTime,
   mapZoom,
+  setMapZoom,
   tab,
 }) {
   return (

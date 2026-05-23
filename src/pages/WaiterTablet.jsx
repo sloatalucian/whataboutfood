@@ -1019,11 +1019,15 @@ export function WaiterTablet({
             tableStates={tableStates}
             restaurantId={restaurantId}
             activeMapFloor={activeMapFloor}
+            setActiveMapFloor={setActiveMapFloor}
             dbFloors={dbFloors}
             mapDate={mapDate}
+            setMapDate={setMapDate}
             mapReservedTables={mapReservedTables}
             mapTime={mapTime}
+            setMapTime={setMapTime}
             mapZoom={mapZoom}
+            setMapZoom={setMapZoom}
             tab={tab}
           />
         )}
