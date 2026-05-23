@@ -740,6 +740,59 @@ export default function Restaurant() {
     selectedRest?.program || DEFAULT_PROGRAM,
   );
 
+  // ── Favorite ──────────────────────────────────────────────────────────────
+  const [isFav, setIsFav] = useState(false);
+  const [favLoading, setFavLoading] = useState(false);
+  const [heartAnim, setHeartAnim] = useState(false);
+  const [particles, setParticles] = useState([]);
+
+  useEffect(() => {
+    if (!user?.id || !selectedRest?.id) return;
+    supabase
+      .from("favorites")
+      .select("id")
+      .eq("user_id", user.id)
+      .eq("restaurant_id", selectedRest.id)
+      .maybeSingle()
+      .then(({ data }) => setIsFav(!!data));
+  }, [user?.id, selectedRest?.id]);
+
+  const toggleFavorite = async () => {
+    if (favLoading || !user?.id) return;
+    setFavLoading(true);
+
+    // Animație inimă
+    setHeartAnim(true);
+    setTimeout(() => setHeartAnim(false), 500);
+
+    // Particles burst doar la adăugare
+    if (!isFav) {
+      const newParticles = Array.from({ length: 8 }, (_, i) => ({
+        id: Date.now() + i,
+        angle: (i / 8) * 360,
+      }));
+      setParticles(newParticles);
+      setTimeout(() => setParticles([]), 700);
+    }
+
+    if (isFav) {
+      await supabase
+        .from("favorites")
+        .delete()
+        .eq("user_id", user.id)
+        .eq("restaurant_id", selectedRest.id);
+      setIsFav(false);
+      showToast("Scos din favorite");
+    } else {
+      await supabase
+        .from("favorites")
+        .insert({ user_id: user.id, restaurant_id: selectedRest.id });
+      setIsFav(true);
+      showToast("Adăugat la favorite ❤️");
+    }
+    setFavLoading(false);
+  };
+
   // Încarcă programul din Supabase
   useEffect(() => {
     if (!selectedRest?.id) return;
@@ -1080,9 +1133,73 @@ export default function Restaurant() {
             >
               ←
             </button>
-            <span className={`plan-badge plan-${selectedRest.plan}`}>
-              {PLANS[selectedRest.plan]?.label}
-            </span>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <span className={`plan-badge plan-${selectedRest.plan}`}>
+                {PLANS[selectedRest.plan]?.label}
+              </span>
+              {/* ── Buton Favorite ── */}
+              <div style={{ position: "relative" }}>
+                {particles.map((p) => (
+                  <div
+                    key={p.id}
+                    style={{
+                      position: "absolute",
+                      top: "50%",
+                      left: "50%",
+                      width: 6,
+                      height: 6,
+                      borderRadius: "50%",
+                      background: "#c0622f",
+                      transform: `translate(-50%, -50%) rotate(${p.angle}deg) translateY(-18px)`,
+                      animation: "particleFly 0.6s ease-out forwards",
+                      pointerEvents: "none",
+                    }}
+                  />
+                ))}
+                <button
+                  onClick={toggleFavorite}
+                  style={{
+                    width: 38,
+                    height: 38,
+                    borderRadius: 12,
+                    background: isFav
+                      ? "rgba(192,98,47,0.2)"
+                      : "rgba(13,10,7,0.6)",
+                    border: `1px solid ${isFav ? "rgba(192,98,47,0.5)" : "rgba(255,255,255,.15)"}`,
+                    color: isFav ? "#c0622f" : "#fff",
+                    fontSize: 18,
+                    cursor: "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    transition: "background 0.2s, border 0.2s, color 0.2s",
+                    animation: heartAnim ? "heartPop 0.5s ease" : "none",
+                  }}
+                >
+                  {isFav ? (
+                    <svg
+                      width="18"
+                      height="18"
+                      viewBox="0 0 24 24"
+                      fill="#c0622f"
+                    >
+                      <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
+                    </svg>
+                  ) : (
+                    <svg
+                      width="18"
+                      height="18"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                    >
+                      <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
+                    </svg>
+                  )}
+                </button>
+              </div>
+            </div>
           </div>
           <div style={{ fontSize: 48, marginBottom: 10 }}>
             {selectedRest.emoji}

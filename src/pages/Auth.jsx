@@ -9,6 +9,8 @@ export function Auth() {
   const [rezervari, setRezervari] = useState([]);
   const [comenzi, setComenzi] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [favorite, setFavorite] = useState([]);
+  const [favLoading, setFavLoading] = useState(false);
 
   const today = new Date().toISOString().split("T")[0];
 
@@ -35,10 +37,29 @@ export function Auth() {
         .limit(50);
       if (ord) setComenzi(ord);
 
+      // Favorite
+      const { data: favData } = await supabase
+        .from("favorites")
+        .select("restaurant_id, restaurants(id, name, emoji, type, cover)")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false });
+      if (favData)
+        setFavorite(favData.map((f) => f.restaurants).filter(Boolean));
+
       setLoading(false);
     };
     load();
   }, [user?.id]);
+
+  const removeFavorite = async (restaurantId) => {
+    await supabase
+      .from("favorites")
+      .delete()
+      .eq("user_id", user.id)
+      .eq("restaurant_id", restaurantId);
+    setFavorite((prev) => prev.filter((r) => r.id !== restaurantId));
+    showToast("Scos din favorite");
+  };
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -241,13 +262,116 @@ export function Auth() {
             ))}
 
           {/* Favorite */}
-          {tab === "favorite" && (
-            <EmptyState
-              icon="❤️"
-              title="Niciun restaurant favorit"
-              desc="Această funcționalitate vine în curând"
-            />
-          )}
+          {tab === "favorite" &&
+            (favLoading ? (
+              <div
+                style={{
+                  textAlign: "center",
+                  padding: 40,
+                  color: "var(--muted)",
+                }}
+              >
+                Se încarcă...
+              </div>
+            ) : favorite.length === 0 ? (
+              <EmptyState
+                icon="❤️"
+                title="Niciun restaurant favorit"
+                desc="Apasă inima pe pagina unui restaurant pentru a-l salva"
+              />
+            ) : (
+              <div
+                style={{ display: "flex", flexDirection: "column", gap: 12 }}
+              >
+                {favorite.map((rest) => (
+                  <div
+                    key={rest.id}
+                    style={{
+                      background: "var(--card)",
+                      border: "1px solid var(--border)",
+                      borderRadius: 16,
+                      padding: "14px 16px",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 14,
+                    }}
+                  >
+                    {/* Cover / Emoji */}
+                    <div
+                      style={{
+                        width: 52,
+                        height: 52,
+                        borderRadius: 12,
+                        background: rest.cover
+                          ? `url(${rest.cover}) center/cover`
+                          : "linear-gradient(135deg,#2d1507,#1a0e05)",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        fontSize: 24,
+                        flexShrink: 0,
+                        overflow: "hidden",
+                      }}
+                    >
+                      {!rest.cover && (rest.emoji || "🍽️")}
+                    </div>
+                    {/* Info */}
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div
+                        style={{
+                          fontWeight: 700,
+                          fontSize: 15,
+                          color: "var(--cream)",
+                          whiteSpace: "nowrap",
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                        }}
+                      >
+                        {rest.name}
+                      </div>
+                      <div
+                        style={{
+                          fontSize: 12,
+                          color: "var(--muted)",
+                          marginTop: 2,
+                        }}
+                      >
+                        {rest.type || "Restaurant"}
+                      </div>
+                    </div>
+                    {/* Buton ștergere */}
+                    <button
+                      onClick={() => removeFavorite(rest.id)}
+                      style={{
+                        width: 34,
+                        height: 34,
+                        borderRadius: 10,
+                        background: "rgba(192,98,47,0.1)",
+                        border: "1px solid rgba(192,98,47,0.3)",
+                        color: "#c0622f",
+                        fontSize: 16,
+                        cursor: "pointer",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        flexShrink: 0,
+                        transition: "background 0.2s",
+                      }}
+                      title="Scoate din favorite"
+                    >
+                      <svg
+                        width="15"
+                        height="15"
+                        viewBox="0 0 24 24"
+                        fill="currentColor"
+                      >
+                        <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
+                      </svg>
+                    </button>
+                  </div>
+                ))}
+              </div>
+            ))}
 
           {/* Schimba parola */}
           {tab === "parola" && <SchimbaParola showToast={showToast} />}
