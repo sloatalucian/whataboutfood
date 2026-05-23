@@ -367,7 +367,21 @@ export function AppProvider({ children }) {
 
   const callWaiter = useCallback(
     async (activeOrder) => {
-      if (!activeOrder || waiterCooldown > 0) return;
+      console.log(
+        "[callWaiter] called with:",
+        activeOrder?.table_label,
+        "cooldown:",
+        waiterCooldown,
+      );
+      if (!activeOrder || waiterCooldown > 0) {
+        console.log(
+          "[callWaiter] blocked - activeOrder:",
+          !!activeOrder,
+          "cooldown:",
+          waiterCooldown,
+        );
+        return;
+      }
       try {
         await supabase.from("notifications").insert({
           restaurant_id: activeOrder.restaurant_id,
