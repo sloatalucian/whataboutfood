@@ -25,7 +25,17 @@ import "./styles/global.css";
 const ADMIN_EMAIL = "sloatalucian@yahoo.com";
 
 function Router() {
-  const { state, dispatch, navigate, showToast } = useApp();
+  const {
+    state,
+    dispatch,
+    navigate,
+    showToast,
+    cartTotal,
+    cartCount,
+    placeOrderRef,
+  } = useApp();
+  const [showCart, setShowCart] = useState(false);
+  const [cartObs, setCartObs] = useState("");
   const {
     screen,
     selectedRest,
@@ -820,6 +830,286 @@ function Router() {
             waiterLoggedIn={!!waiterUser}
             unreadCount={state.unreadCount}
           />
+        )}
+
+        {/* ── FAB Cos ── */}
+        {state.cart.length > 0 && screen === "menu" && (
+          <>
+            <style>{`
+              @keyframes fabAppear {
+                0%   { transform: scale(0); opacity: 0; }
+                60%  { transform: scale(1.15); }
+                100% { transform: scale(1); opacity: 1; }
+              }
+              @keyframes badgePop {
+                0%   { transform: scale(0); }
+                60%  { transform: scale(1.35); }
+                100% { transform: scale(1); }
+              }
+              @keyframes cosSheetUp {
+                from { transform: translateY(100%); opacity: 0; }
+                to   { transform: translateY(0); opacity: 1; }
+              }
+            `}</style>
+
+            {showCart && (
+              <div
+                onClick={() => setShowCart(false)}
+                style={{
+                  position: "fixed",
+                  inset: 0,
+                  background: "rgba(0,0,0,0.55)",
+                  zIndex: 188,
+                  backdropFilter: "blur(4px)",
+                }}
+              />
+            )}
+
+            {showCart && (
+              <div
+                style={{
+                  position: "fixed",
+                  bottom: 0,
+                  left: "50%",
+                  transform: "translateX(-50%)",
+                  width: "100%",
+                  maxWidth: 430,
+                  background: "#111009",
+                  borderRadius: "22px 22px 0 0",
+                  borderTop: "1px solid #2a2218",
+                  padding: "0 20px 100px",
+                  zIndex: 189,
+                  animation: "cosSheetUp 0.38s cubic-bezier(.23,1,.32,1) both",
+                  maxHeight: "75vh",
+                  overflowY: "auto",
+                }}
+              >
+                <div
+                  style={{
+                    width: 36,
+                    height: 3,
+                    borderRadius: 2,
+                    background: "#2a2218",
+                    margin: "12px auto 18px",
+                  }}
+                />
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    marginBottom: 16,
+                  }}
+                >
+                  <div
+                    style={{
+                      fontFamily: "'Fraunces',serif",
+                      fontSize: 19,
+                      fontWeight: 700,
+                      color: "#f0ebe3",
+                    }}
+                  >
+                    Cosul tau
+                  </div>
+                  <button
+                    onClick={() => setShowCart(false)}
+                    style={{
+                      background: "none",
+                      border: "none",
+                      color: "#6b6050",
+                      fontSize: 22,
+                      cursor: "pointer",
+                      lineHeight: 1,
+                      padding: 0,
+                    }}
+                  >
+                    ✕
+                  </button>
+                </div>
+                <div
+                  style={{
+                    background: "#161210",
+                    border: "1px solid #2a2218",
+                    borderRadius: 14,
+                    padding: "10px 14px",
+                    marginBottom: 16,
+                  }}
+                >
+                  {state.cart.map((item) => (
+                    <div
+                      key={item.id}
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                        fontSize: 13,
+                        paddingBottom: 8,
+                        marginBottom: 8,
+                        borderBottom: "1px solid #1e1a14",
+                      }}
+                    >
+                      <span
+                        style={{ color: "#f0ebe3", fontWeight: 500, flex: 1 }}
+                      >
+                        {item.emoji} {item.name}
+                        <span style={{ color: "#6b6050", marginLeft: 6 }}>
+                          ×{item.qty}
+                        </span>
+                      </span>
+                      <span
+                        style={{
+                          color: "#c8a97e",
+                          fontWeight: 700,
+                          marginRight: 12,
+                        }}
+                      >
+                        {item.price * item.qty} lei
+                      </span>
+                      <button
+                        onClick={() =>
+                          dispatch({ type: "CART_REMOVE", payload: item.id })
+                        }
+                        style={{
+                          width: 22,
+                          height: 22,
+                          borderRadius: "50%",
+                          background: "rgba(192,57,43,.15)",
+                          border: "1px solid rgba(192,57,43,.3)",
+                          color: "#e05050",
+                          fontSize: 14,
+                          fontWeight: 700,
+                          cursor: "pointer",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          flexShrink: 0,
+                          padding: 0,
+                        }}
+                      >
+                        ×
+                      </button>
+                    </div>
+                  ))}
+                  <div
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      fontFamily: "'Fraunces',serif",
+                      fontSize: 16,
+                      fontWeight: 700,
+                      paddingTop: 4,
+                    }}
+                  >
+                    <span style={{ color: "#f0ebe3" }}>Total</span>
+                    <span style={{ color: "#c0622f" }}>{cartTotal} lei</span>
+                  </div>
+                </div>
+                <textarea
+                  maxLength={300}
+                  value={cartObs}
+                  onChange={(e) => setCartObs(e.target.value)}
+                  placeholder="Observatii pentru ospatar (optional)..."
+                  rows={2}
+                  style={{
+                    width: "100%",
+                    background: "#161210",
+                    border: "1px solid #2a2218",
+                    borderRadius: 12,
+                    padding: "10px 12px",
+                    color: "#f0ebe3",
+                    fontSize: 13,
+                    resize: "none",
+                    marginBottom: 12,
+                    fontFamily: "inherit",
+                    outline: "none",
+                    boxSizing: "border-box",
+                  }}
+                />
+                <button
+                  onClick={() => {
+                    if (placeOrderRef.current) {
+                      placeOrderRef.current(cartObs);
+                      setCartObs("");
+                      setShowCart(false);
+                    }
+                  }}
+                  style={{
+                    width: "100%",
+                    padding: 15,
+                    background: "linear-gradient(135deg,#c0622f,#8b3a18)",
+                    border: "none",
+                    borderRadius: 14,
+                    color: "#fff",
+                    fontFamily: "'Fraunces',serif",
+                    fontSize: 16,
+                    fontWeight: 700,
+                    cursor: "pointer",
+                  }}
+                >
+                  Trimite comanda la bucatarie
+                </button>
+              </div>
+            )}
+
+            <button
+              onClick={() => setShowCart(true)}
+              style={{
+                position: "fixed",
+                bottom: 86,
+                left: 20,
+                width: 54,
+                height: 54,
+                borderRadius: "50%",
+                background: "linear-gradient(135deg,#c0622f,#8b3a18)",
+                border: "none",
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                zIndex: 187,
+                boxShadow: "0 4px 20px rgba(192,98,47,0.45)",
+                animation: "fabAppear 0.4s cubic-bezier(.23,1,.32,1) both",
+                WebkitTapHighlightColor: "transparent",
+              }}
+            >
+              <svg
+                width="22"
+                height="22"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="#fff"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z" />
+                <line x1="3" y1="6" x2="21" y2="6" />
+                <path d="M16 10a4 4 0 01-8 0" />
+              </svg>
+              <div
+                key={cartCount}
+                style={{
+                  position: "absolute",
+                  top: -4,
+                  right: -4,
+                  background: "#f0ebe3",
+                  color: "#0d0a07",
+                  borderRadius: "50%",
+                  width: 20,
+                  height: 20,
+                  fontSize: 11,
+                  fontWeight: 800,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  border: "2px solid #0d0a07",
+                  animation: "badgePop 0.3s cubic-bezier(.23,1,.32,1) both",
+                }}
+              >
+                {cartCount}
+              </div>
+            </button>
+          </>
         )}
       </div>
     </TableProvider>

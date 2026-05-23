@@ -4,6 +4,7 @@ import {
   useReducer,
   useCallback,
   useEffect,
+  useRef,
 } from "react";
 import { supabase } from "../supabase";
 
@@ -355,6 +356,7 @@ export function AppProvider({ children }) {
 
   const cartTotal = state.cart.reduce((s, i) => s + i.price * i.qty, 0);
   const cartCount = state.cart.reduce((s, i) => s + i.qty, 0);
+  const placeOrderRef = useRef(null);
   const cookingCount = state.orders.filter(
     (o) => o.status === "cooking",
   ).length;
@@ -370,6 +372,7 @@ export function AppProvider({ children }) {
         cartTotal,
         cartCount,
         cookingCount,
+        placeOrderRef,
       }}
     >
       {children}
