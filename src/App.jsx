@@ -457,67 +457,238 @@ function Router() {
               position: "fixed",
               inset: 0,
               zIndex: 8888,
-              background: "rgba(0,0,0,.75)",
+              background: "rgba(0,0,0,.82)",
+              backdropFilter: "blur(8px)",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
               padding: 20,
             }}
           >
+            <style>{`
+              @keyframes grazieIn {
+                0%   { opacity: 0; transform: translateY(28px) scale(0.96); }
+                100% { opacity: 1; transform: translateY(0) scale(1); }
+              }
+              @keyframes checkRing {
+                0%   { stroke-dashoffset: 220; opacity: 0; }
+                20%  { opacity: 1; }
+                100% { stroke-dashoffset: 0; }
+              }
+              @keyframes checkTick {
+                0%, 40% { stroke-dashoffset: 50; opacity: 0; }
+                50%  { opacity: 1; }
+                100% { stroke-dashoffset: 0; opacity: 1; }
+              }
+              @keyframes starBounce {
+                0%   { transform: scale(1); }
+                40%  { transform: scale(1.35); }
+                70%  { transform: scale(0.9); }
+                100% { transform: scale(1.1); }
+              }
+            `}</style>
+
             <div
-              className="fade-in"
               style={{
-                background: "#1a1510",
-                border: "1px solid #2a2218",
-                borderRadius: 24,
-                padding: "32px 24px",
+                background: "#120e07",
+                border: "1px solid rgba(192,98,47,0.2)",
+                borderRadius: 28,
+                padding: "32px 24px 28px",
                 width: "100%",
                 maxWidth: 380,
-                maxHeight: "85vh",
+                maxHeight: "88vh",
                 overflowY: "auto",
                 textAlign: "center",
+                animation: "grazieIn 0.5s cubic-bezier(.23,1,.32,1) both",
+                position: "relative",
               }}
             >
-              <div style={{ fontSize: 68, marginBottom: 16 }}>
-                {payMethod === "cash" ? "💵" : "💳"}
+              {/* Shimmer line top */}
+              <div
+                style={{
+                  position: "absolute",
+                  top: 0,
+                  left: "15%",
+                  right: "15%",
+                  height: 1,
+                  background:
+                    "linear-gradient(90deg,transparent,rgba(192,98,47,0.5),transparent)",
+                  borderRadius: 1,
+                }}
+              />
+
+              {/* Check animat */}
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "center",
+                  marginBottom: 20,
+                }}
+              >
+                <svg width="72" height="72" viewBox="0 0 80 80">
+                  <circle cx="40" cy="40" r="36" fill="rgba(192,98,47,0.08)" />
+                  <circle
+                    cx="40"
+                    cy="40"
+                    r="34"
+                    fill="none"
+                    stroke="#c0622f"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeDasharray="220"
+                    strokeDashoffset="220"
+                    transform="rotate(-90 40 40)"
+                    style={{
+                      animation:
+                        "checkRing 0.8s cubic-bezier(.23,1,.32,1) 0.2s both",
+                    }}
+                  />
+                  <polyline
+                    points="24,41 35,53 57,28"
+                    fill="none"
+                    stroke="#c0622f"
+                    strokeWidth="3.5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeDasharray="50"
+                    strokeDashoffset="50"
+                    style={{
+                      animation:
+                        "checkTick 0.5s cubic-bezier(.23,1,.32,1) 0.9s both",
+                    }}
+                  />
+                </svg>
               </div>
+
+              {/* Titlu */}
               <div
                 style={{
                   fontFamily: "'Fraunces',serif",
                   fontSize: 28,
                   fontWeight: 900,
-                  marginBottom: 8,
+                  color: "#f0ebe3",
+                  marginBottom: 6,
+                  animation: "grazieIn 0.4s ease 1.1s both",
+                  opacity: 0,
                 }}
               >
                 Grazie mille!
               </div>
               <div
                 style={{
-                  fontSize: 14,
-                  color: "var(--muted)",
-                  lineHeight: 1.6,
-                  marginBottom: 24,
+                  fontSize: 13,
+                  color: "#8a7a6a",
+                  marginBottom: 22,
+                  animation: "grazieIn 0.4s ease 1.2s both",
+                  opacity: 0,
                 }}
               >
-                Plata confirmată. Vă așteptăm din nou! 🍝
+                Plata a fost confirmată cu succes
               </div>
+
+              {/* Rezumat plată */}
+              <div
+                style={{
+                  background: "#161210",
+                  border: "1px solid #2a2218",
+                  borderRadius: 16,
+                  padding: "14px 16px",
+                  marginBottom: 16,
+                  textAlign: "left",
+                  animation: "grazieIn 0.4s ease 1.3s both",
+                  opacity: 0,
+                }}
+              >
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    marginBottom: 10,
+                  }}
+                >
+                  <span
+                    style={{
+                      fontSize: 11,
+                      color: "#8a7a6a",
+                      letterSpacing: "1px",
+                      textTransform: "uppercase",
+                    }}
+                  >
+                    Rezumat
+                  </span>
+                  <span
+                    style={{
+                      background: "rgba(74,110,74,0.15)",
+                      border: "1px solid rgba(74,110,74,0.3)",
+                      borderRadius: 20,
+                      padding: "3px 10px",
+                      fontSize: 11,
+                      color: "#6b9e6b",
+                      fontWeight: 600,
+                    }}
+                  >
+                    {payMethod === "cash" ? "💵 Cash" : "💳 Card"}
+                  </span>
+                </div>
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    fontSize: 13,
+                    color: "#8a7a6a",
+                    marginBottom: 6,
+                  }}
+                >
+                  <span>Restaurant</span>
+                  <span style={{ color: "#f0ebe3" }}>{selectedRest?.name}</span>
+                </div>
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    fontSize: 13,
+                    color: "#8a7a6a",
+                    borderTop: "1px solid #2a2218",
+                    marginTop: 8,
+                    paddingTop: 8,
+                  }}
+                >
+                  <span>Total achitat</span>
+                  <span
+                    style={{ color: "#c0622f", fontWeight: 700, fontSize: 15 }}
+                  >
+                    {state.orders?.reduce(
+                      (s, o) =>
+                        s +
+                        (o.items?.reduce((a, i) => a + i.price * i.qty, 0) ||
+                          0),
+                      0,
+                    ) || "—"}{" "}
+                    lei
+                  </span>
+                </div>
+              </div>
+
+              {/* Review */}
               {!reviewSent ? (
                 <div
                   style={{
-                    background: "var(--card)",
+                    background: "#161210",
+                    border: "1px solid #2a2218",
                     borderRadius: 16,
-                    padding: 20,
-                    marginBottom: 20,
-                    textAlign: "left",
+                    padding: "16px",
+                    marginBottom: 16,
+                    animation: "grazieIn 0.4s ease 1.4s both",
+                    opacity: 0,
                   }}
                 >
                   <div
                     style={{
-                      fontFamily: "'Fraunces',serif",
-                      fontSize: 16,
-                      fontWeight: 700,
-                      marginBottom: 12,
-                      textAlign: "center",
+                      fontSize: 13,
+                      fontWeight: 600,
+                      color: "#f0ebe3",
+                      marginBottom: 14,
                     }}
                   >
                     Cum a fost experiența la {selectedRest?.name}?
@@ -526,8 +697,8 @@ function Router() {
                     style={{
                       display: "flex",
                       justifyContent: "center",
-                      gap: 4,
-                      marginBottom: 16,
+                      gap: 6,
+                      marginBottom: 14,
                     }}
                   >
                     {[1, 2, 3, 4, 5].map((star) => (
@@ -535,16 +706,19 @@ function Router() {
                         key={star}
                         onClick={() => setReviewRating(star)}
                         style={{
-                          fontSize: 40,
+                          fontSize: 36,
                           background: "none",
                           border: "none",
                           cursor: "pointer",
-                          color: star <= reviewRating ? "#f5c518" : "#3a2e22",
-                          transition: "color .15s, transform .15s",
-                          transform:
-                            star <= reviewRating ? "scale(1.15)" : "scale(1)",
+                          color: star <= reviewRating ? "#f5c518" : "#2a2218",
+                          transition: "color .15s",
+                          animation:
+                            star <= reviewRating
+                              ? "starBounce 0.35s ease"
+                              : "none",
                           lineHeight: 1,
-                          padding: "4px 2px",
+                          padding: "2px",
+                          WebkitTapHighlightColor: "transparent",
                         }}
                       >
                         ★
@@ -558,16 +732,18 @@ function Router() {
                     onChange={(e) => setReviewComment(e.target.value)}
                     style={{
                       width: "100%",
-                      background: "var(--card2)",
-                      border: "1px solid var(--border)",
-                      borderRadius: 10,
-                      padding: 12,
-                      color: "var(--cream)",
+                      background: "#0d0a07",
+                      border: "1px solid #2a2218",
+                      borderRadius: 12,
+                      padding: "10px 12px",
+                      color: "#f0ebe3",
                       fontSize: 13,
-                      minHeight: 80,
+                      minHeight: 72,
                       resize: "none",
                       boxSizing: "border-box",
                       marginBottom: 12,
+                      fontFamily: "inherit",
+                      outline: "none",
                     }}
                   />
                   <button
@@ -577,14 +753,13 @@ function Router() {
                       width: "100%",
                       padding: 12,
                       borderRadius: 12,
-                      background: reviewRating
-                        ? "linear-gradient(135deg,#c0622f,#8b3a18)"
-                        : "#2a2218",
-                      border: "none",
-                      color: reviewRating ? "#fff" : "#6b6050",
-                      fontWeight: 700,
+                      background: reviewRating ? "#2a1a0e" : "#1e1a14",
+                      border: `1px solid ${reviewRating ? "rgba(192,98,47,0.3)" : "#2a2218"}`,
+                      color: reviewRating ? "#c8a97e" : "#6b6050",
+                      fontWeight: 600,
                       cursor: reviewRating ? "pointer" : "not-allowed",
                       fontSize: 14,
+                      transition: "all 0.2s",
                     }}
                   >
                     Trimite recenzia
@@ -592,13 +767,23 @@ function Router() {
                 </div>
               ) : (
                 <div
-                  style={{ color: "#6b9e6b", fontSize: 14, marginBottom: 20 }}
+                  style={{
+                    background: "rgba(74,110,74,0.1)",
+                    border: "1px solid rgba(74,110,74,0.25)",
+                    borderRadius: 14,
+                    padding: "12px 16px",
+                    color: "#6b9e6b",
+                    fontSize: 14,
+                    marginBottom: 16,
+                    fontWeight: 600,
+                  }}
                 >
-                  ✅ Recenzie trimisă! Mulțumim!
+                  ✓ Recenzie trimisă! Mulțumim!
                 </div>
               )}
+
+              {/* Buton acasa */}
               <button
-                className="btn-primary"
                 onClick={() => {
                   dispatch({
                     type: "SET_PAID",
@@ -606,6 +791,20 @@ function Router() {
                   });
                   dispatch({ type: "SET_PAYMENT", payload: false });
                   navigate("home");
+                }}
+                style={{
+                  width: "100%",
+                  padding: "14px",
+                  background: "linear-gradient(135deg,#c0622f,#8b3a18)",
+                  border: "none",
+                  borderRadius: 16,
+                  color: "#fff",
+                  fontFamily: "'Fraunces',serif",
+                  fontSize: 16,
+                  fontWeight: 700,
+                  cursor: "pointer",
+                  animation: "grazieIn 0.4s ease 1.5s both",
+                  opacity: 0,
                 }}
               >
                 Înapoi acasă

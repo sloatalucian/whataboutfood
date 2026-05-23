@@ -235,7 +235,7 @@ export default function CartBar({
       <div
         style={{
           position: "fixed",
-          bottom: 70,
+          bottom: 68,
           left: "50%",
           transform: "translateX(-50%)",
           width: "calc(100% - 32px)",

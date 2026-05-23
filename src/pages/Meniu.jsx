@@ -317,87 +317,149 @@ export function Meniu() {
       }, []);
     const total = allItems.reduce((s, i) => s + i.price * i.qty, 0);
     return (
-      <div className="page fade-in">
+      <div
+        className="page"
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          justifyContent: "flex-end",
+          background: "rgba(0,0,0,0.6)",
+          backdropFilter: "blur(6px)",
+          paddingBottom: 0,
+        }}
+      >
+        <style>{`
+          @keyframes paySheetUp {
+            0%   { transform: translateY(100%); opacity: 0; }
+            100% { transform: translateY(0);    opacity: 1; }
+          }
+        `}</style>
+
+        <div
+          style={{ flex: 1 }}
+          onClick={() => dispatch({ type: "SET_PAYMENT", payload: false })}
+        />
+
         <div
           style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 12,
-            padding: "20px 20px 0",
+            background: "#111009",
+            borderRadius: "24px 24px 0 0",
+            borderTop: "1px solid #2a2218",
+            padding: "0 20px 32px",
+            animation: "paySheetUp 0.4s cubic-bezier(.23,1,.32,1) both",
+            maxHeight: "85vh",
+            overflowY: "auto",
           }}
         >
-          <button
-            onClick={() => dispatch({ type: "SET_PAYMENT", payload: false })}
-            style={{
-              background: "none",
-              border: "none",
-              color: "var(--muted)",
-              cursor: "pointer",
-              fontSize: 14,
-            }}
-          >
-            ← Înapoi la meniu
-          </button>
-        </div>
-        <div className="inner">
           <div
             style={{
-              background: "var(--card)",
-              border: "1px solid var(--border)",
-              borderRadius: 20,
-              padding: 20,
-              marginBottom: 16,
+              width: 36,
+              height: 3,
+              borderRadius: 2,
+              background: "#2a2218",
+              margin: "12px auto 20px",
+            }}
+          />
+
+          <div
+            style={{
+              display: "flex",
+              alignItems: "baseline",
+              justifyContent: "space-between",
+              marginBottom: 18,
             }}
           >
+            <div>
+              <div
+                style={{
+                  fontFamily: "'Fraunces',serif",
+                  fontSize: 20,
+                  fontWeight: 700,
+                  color: "#f0ebe3",
+                }}
+              >
+                Nota de plată
+              </div>
+              <div style={{ fontSize: 12, color: "#8a7a6a", marginTop: 3 }}>
+                Masa {orderTableNum} • {allItems.reduce((s, i) => s + i.qty, 0)}{" "}
+                produse
+              </div>
+            </div>
             <div
               style={{
                 fontFamily: "'Fraunces',serif",
-                fontSize: 18,
-                marginBottom: 14,
-                paddingBottom: 12,
-                borderBottom: "1px solid var(--border)",
+                fontSize: 26,
+                fontWeight: 700,
+                color: "#c0622f",
               }}
             >
-              🧾 Nota de plată — Masa {orderTableNum}
+              {total} lei
             </div>
+          </div>
+
+          <div
+            style={{
+              background: "#161210",
+              border: "1px solid #2a2218",
+              borderRadius: 16,
+              padding: "12px 16px",
+              marginBottom: 20,
+            }}
+          >
             {allItems.map((item) => (
               <div
                 key={item.id}
                 style={{
                   display: "flex",
                   justifyContent: "space-between",
-                  fontSize: 14,
+                  fontSize: 13,
+                  color: "#8a7a6a",
                   marginBottom: 8,
-                  color: "var(--muted)",
+                  alignItems: "center",
                 }}
               >
                 <span>
                   {item.emoji} {item.name} ×{item.qty}
                 </span>
-                <span>{item.price * item.qty} lei</span>
+                <span style={{ color: "#f0ebe3", fontWeight: 500 }}>
+                  {item.price * item.qty} lei
+                </span>
               </div>
             ))}
             <div
               style={{
+                borderTop: "1px solid #2a2218",
+                marginTop: 8,
+                paddingTop: 10,
                 display: "flex",
                 justifyContent: "space-between",
-                fontSize: 17,
-                fontWeight: 700,
-                borderTop: "1px solid var(--border)",
-                marginTop: 10,
-                paddingTop: 10,
               }}
             >
-              <span>Total</span>
-              <span>{total} lei</span>
+              <span style={{ fontSize: 14, fontWeight: 600, color: "#f0ebe3" }}>
+                Total
+              </span>
+              <span style={{ fontSize: 16, fontWeight: 700, color: "#c0622f" }}>
+                {total} lei
+              </span>
             </div>
           </div>
+
           <div
-            style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}
+            style={{
+              fontSize: 11,
+              color: "#8a7a6a",
+              letterSpacing: "1px",
+              textTransform: "uppercase",
+              marginBottom: 12,
+            }}
           >
+            Metoda de plată
+          </div>
+
+          <div style={{ display: "flex", gap: 12, marginBottom: 18 }}>
             {[
-              { method: "cash", icon: "💵", label: "Cash" },
-              { method: "card", icon: "💳", label: "Card" },
+              { method: "cash", icon: "💵", label: "Cash", sub: "La casă" },
+              { method: "card", icon: "💳", label: "Card", sub: "La POS" },
             ].map((p) => (
               <button
                 key={p.method}
@@ -412,27 +474,70 @@ export function Meniu() {
                     },
                   })
                 }
+                onTouchStart={(e) =>
+                  (e.currentTarget.style.background = "#221c14")
+                }
+                onTouchEnd={(e) =>
+                  (e.currentTarget.style.background = "#1a1510")
+                }
                 style={{
-                  padding: "20px 14px",
-                  borderRadius: 18,
-                  border: "2px solid var(--border)",
-                  background: "var(--card)",
-                  color: "var(--cream)",
-                  fontFamily: "'Fraunces',serif",
-                  fontSize: 16,
-                  fontWeight: 700,
+                  flex: 1,
+                  background: "#1a1510",
+                  border: "1px solid #2a2218",
+                  borderRadius: 16,
+                  padding: "14px 12px",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 12,
                   cursor: "pointer",
-                  textAlign: "center",
+                  transition: "background 0.2s",
+                  WebkitTapHighlightColor: "transparent",
                 }}
               >
-                <span
-                  style={{ fontSize: 28, display: "block", marginBottom: 6 }}
+                <div
+                  style={{
+                    width: 44,
+                    height: 44,
+                    borderRadius: 12,
+                    background: "#221a10",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    fontSize: 24,
+                    flexShrink: 0,
+                  }}
                 >
                   {p.icon}
-                </span>
-                {p.label}
+                </div>
+                <div>
+                  <div
+                    style={{ fontSize: 15, fontWeight: 700, color: "#f0ebe3" }}
+                  >
+                    {p.label}
+                  </div>
+                  <div style={{ fontSize: 11, color: "#8a7a6a", marginTop: 2 }}>
+                    {p.sub}
+                  </div>
+                </div>
               </button>
             ))}
+          </div>
+
+          <div style={{ textAlign: "center" }}>
+            <button
+              onClick={() => dispatch({ type: "SET_PAYMENT", payload: false })}
+              style={{
+                background: "none",
+                border: "none",
+                fontSize: 13,
+                color: "#6b6050",
+                cursor: "pointer",
+                textDecoration: "underline",
+                textUnderlineOffset: 3,
+              }}
+            >
+              Anulează
+            </button>
           </div>
         </div>
       </div>
