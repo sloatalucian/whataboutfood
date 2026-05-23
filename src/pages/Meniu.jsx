@@ -125,6 +125,7 @@ export function Meniu() {
                   method,
                   restaurantId: restId,
                   sessionId: sessId,
+                  total: activeOrder?.total || null,
                 },
               });
               dispatch({ type: "RESET_TABLE_SESSION" });
@@ -464,7 +465,7 @@ export function Meniu() {
                       method: p.method,
                       restaurantId: selectedRest?.id || null,
                       sessionId: tableSessionId || null,
-                      total,
+                      total: total,
                     },
                   })
                 }
