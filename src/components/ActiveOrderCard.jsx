@@ -6,6 +6,14 @@ export default function ActiveOrderCard({
   onCereNota,
 }) {
   if (!activeOrder) return null;
+  console.log(
+    "[ActiveOrderCard] status:",
+    activeOrder.status,
+    "waiterCalled:",
+    waiterCalled,
+    "waiterCooldown:",
+    waiterCooldown,
+  );
 
   const STATUS_BG = {
     paying: "rgba(91,141,217,.1)",
