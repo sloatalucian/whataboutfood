@@ -470,6 +470,12 @@ function HomeClient() {
     waiterCooldown,
     callWaiter: callWaiterGlobal,
   } = useApp();
+  console.log(
+    "[Home render] waiterCalled:",
+    waiterCalled,
+    "waiterCooldown:",
+    waiterCooldown,
+  );
   const { user, savedCart } = state;
   const [selectedCity, setSelectedCity] = useState("Toate orașele");
   const [allRestaurants, setAllRestaurants] = useState([]);
