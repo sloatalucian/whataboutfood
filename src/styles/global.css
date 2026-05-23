@@ -455,3 +455,15 @@ h3 {
       translateY(-24px);
   }
 }
+
+/* ── Bottom nav desktop fix ──────────────────────────────────────────────── */
+@media (min-width: 431px) {
+  .waf-bottom-nav {
+    left: 50% !important;
+    right: auto !important;
+    transform: translateX(-50%) !important;
+    width: 430px !important;
+    border-left: 1px solid #1e1a14;
+    border-right: 1px solid #1e1a14;
+  }
+}

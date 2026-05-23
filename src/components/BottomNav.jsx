@@ -180,6 +180,7 @@ function GlowNav({ items, activeId, onNavigate, badge }) {
 
   return (
     <nav
+      className="waf-bottom-nav"
       style={{
         position: "fixed",
         bottom: 0,
