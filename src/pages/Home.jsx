@@ -469,6 +469,7 @@ function HomeClient() {
     waiterCalled,
     waiterCooldown,
     callWaiter: callWaiterGlobal,
+    setPaidTotal,
   } = useApp();
   const { user, savedCart } = state;
   const [selectedCity, setSelectedCity] = useState("Toate orașele");
@@ -514,6 +515,7 @@ function HomeClient() {
 
   const requestBill = async (method) => {
     if (!activeOrder) return;
+    setPaidTotal(activeOrder.total || null);
     setPayNoteLoading(true);
     try {
       const { error } = await supabase

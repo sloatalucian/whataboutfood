@@ -37,6 +37,7 @@ function Router() {
     payNoteShow,
     setPayNoteShow,
     payNoteActiveOrder,
+    paidTotal,
   } = useApp();
   const [showCart, setShowCart] = useState(false);
   const [cartObs, setCartObs] = useState("");
@@ -673,17 +674,7 @@ function Router() {
                   <span
                     style={{ color: "#c0622f", fontWeight: 700, fontSize: 15 }}
                   >
-                    {state.paidTotal ||
-                      payNoteActiveOrder?.total ||
-                      state.orders?.reduce(
-                        (s, o) =>
-                          s +
-                          (o.items?.reduce((a, i) => a + i.price * i.qty, 0) ||
-                            0),
-                        0,
-                      ) ||
-                      "—"}{" "}
-                    lei
+                    {paidTotal || "—"} lei
                   </span>
                 </div>
               </div>

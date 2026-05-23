@@ -362,6 +362,7 @@ export function AppProvider({ children }) {
   const placeOrderRef = useRef(null);
   const requestBillRef = useRef(null);
   const [payNoteShow, setPayNoteShow] = useState(false);
+  const [paidTotal, setPaidTotal] = useState(null);
   const [payNoteActiveOrder, setPayNoteActiveOrder] = useState(null);
   const [waiterCalled, setWaiterCalled] = useState(false);
   const [waiterCooldown, setWaiterCooldown] = useState(0);
@@ -414,6 +415,8 @@ export function AppProvider({ children }) {
         requestBillRef,
         payNoteShow,
         setPayNoteShow,
+        paidTotal,
+        setPaidTotal,
         payNoteActiveOrder,
         setPayNoteActiveOrder,
         waiterCalled,

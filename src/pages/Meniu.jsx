@@ -19,6 +19,7 @@ export function Meniu() {
     waiterCalled,
     waiterCooldown,
     callWaiter: callWaiterGlobal,
+    setPaidTotal,
   } = useApp();
   const { reload: reloadTables } = useTable();
   const {
@@ -144,6 +145,7 @@ export function Meniu() {
 
   const requestBill = async (method) => {
     if (!activeOrder) return;
+    setPaidTotal(activeOrder.total || null);
     setPayNoteLoading(true);
     try {
       // Actualizează TOATE comenzile sesiunii curente la "paying"
@@ -457,7 +459,8 @@ export function Meniu() {
             ].map((p) => (
               <button
                 key={p.method}
-                onClick={() =>
+                onClick={() => {
+                  setPaidTotal(total);
                   dispatch({
                     type: "SET_PAID",
                     payload: {
@@ -465,10 +468,9 @@ export function Meniu() {
                       method: p.method,
                       restaurantId: selectedRest?.id || null,
                       sessionId: tableSessionId || null,
-                      total: total,
                     },
-                  })
-                }
+                  });
+                }}
                 onTouchStart={(e) =>
                   (e.currentTarget.style.background = "#221c14")
                 }
