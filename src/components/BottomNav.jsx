@@ -2,131 +2,299 @@ import { useState, useEffect, useRef } from "react";
 import { useApp } from "../context/AppContext";
 import { supabase } from "../supabase";
 
+// ── SVG Icons ─────────────────────────────────────────────────────────────────
+const Icons = {
+  home: (
+    <svg
+      width="22"
+      height="22"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.7"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M3 9.5L12 3l9 6.5V20a1 1 0 01-1 1H4a1 1 0 01-1-1V9.5z" />
+      <path d="M9 21V12h6v9" />
+    </svg>
+  ),
+  reserve: (
+    <svg
+      width="22"
+      height="22"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.7"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <rect x="3" y="4" width="18" height="18" rx="2" />
+      <path d="M16 2v4M8 2v4M3 10h18" />
+    </svg>
+  ),
+  menu: (
+    <svg
+      width="22"
+      height="22"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.7"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2" />
+      <rect x="9" y="3" width="6" height="4" rx="1" />
+      <path d="M9 12h6M9 16h4" />
+    </svg>
+  ),
+  notifications: (
+    <svg
+      width="22"
+      height="22"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.7"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9" />
+      <path d="M13.73 21a2 2 0 01-3.46 0" />
+    </svg>
+  ),
+  auth: (
+    <svg
+      width="22"
+      height="22"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.7"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <circle cx="12" cy="8" r="4" />
+      <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" />
+    </svg>
+  ),
+  adminFloor: (
+    <svg
+      width="22"
+      height="22"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.7"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <rect x="3" y="3" width="8" height="8" rx="1" />
+      <rect x="13" y="3" width="8" height="8" rx="1" />
+      <rect x="3" y="13" width="8" height="8" rx="1" />
+      <rect x="13" y="13" width="8" height="8" rx="1" />
+    </svg>
+  ),
+  menuEditor: (
+    <svg
+      width="22"
+      height="22"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.7"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2" />
+      <rect x="9" y="3" width="6" height="4" rx="1" />
+      <path d="M9 12h6M9 16h4" />
+    </svg>
+  ),
+  statistici: (
+    <svg
+      width="22"
+      height="22"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.7"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M18 20V10M12 20V4M6 20v-6" />
+    </svg>
+  ),
+  admin: (
+    <svg
+      width="22"
+      height="22"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.7"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <circle cx="8" cy="8" r="3" />
+      <circle cx="16" cy="8" r="3" />
+      <path d="M2 20c0-3.3 2.7-6 6-6h8c3.3 0 6 2.7 6 6" />
+    </svg>
+  ),
+};
+
 const CLIENT_ITEMS = [
-  { id: "home", icon: "🏠", label: "Acasă" },
-  { id: "reserve", icon: "📅", label: "Rezervare", needsRest: true },
-  { id: "menu", icon: "🍽️", label: "Meniu", needsRest: true },
-  { id: "notifications", icon: "🔔", label: "Notificări" },
-  { id: "auth", icon: "👤", label: "Cont" },
+  { id: "home", label: "Acasă" },
+  { id: "reserve", label: "Rezervare", needsRest: true },
+  { id: "menu", label: "Meniu", needsRest: true },
+  { id: "notifications", label: "Notificări" },
+  { id: "auth", label: "Cont" },
 ];
 
 const OWNER_ITEMS = [
-  { id: "home", icon: "🏠", label: "Acasă" },
-  { id: "adminFloor", icon: "🏗️", label: "Planșeu" },
-  { id: "menuEditor", icon: "🍽️", label: "Meniu" },
-  { id: "statistici", icon: "📊", label: "Statistici" },
-  { id: "admin", icon: "🤵", label: "Ospătari" },
+  { id: "home", label: "Acasă" },
+  { id: "adminFloor", label: "Planșeu" },
+  { id: "menuEditor", label: "Meniu" },
+  { id: "statistici", label: "Statistici" },
+  { id: "admin", label: "Ospătari" },
 ];
 
-// ── Bula animata ──────────────────────────────────────────────────────────────
-function BubbleNav({ items, activeId, onNavigate, badge }) {
+const ACTIVE_COLOR = "#c0622f";
+const INACTIVE_COLOR = "#8a7a6a";
+
+// ── NavBar ────────────────────────────────────────────────────────────────────
+function GlowNav({ items, activeId, onNavigate, badge }) {
   const activeIdx = items.findIndex((i) => i.id === activeId);
   const current = activeIdx >= 0 ? activeIdx : 0;
-  const navRef = useRef(null);
-  const [bubbleStyle, setBubbleStyle] = useState({
-    left: 0,
-    width: 0,
-    opacity: 0,
-  });
+  const [animIdx, setAnimIdx] = useState(current);
+  const prevIdx = useRef(current);
 
-  useEffect(() => {
-    if (!navRef.current) return;
-    const nav = navRef.current;
-    const tabs = nav.querySelectorAll("[data-tab]");
-    const tab = tabs[current];
-    if (!tab) return;
-    const navRect = nav.getBoundingClientRect();
-    const tabRect = tab.getBoundingClientRect();
-    setBubbleStyle({
-      left: tabRect.left - navRect.left,
-      width: tabRect.width,
-      opacity: 1,
-    });
-  }, [current]);
+  const handleClick = (item, idx) => {
+    if (idx === prevIdx.current) return;
+    prevIdx.current = idx;
+    setAnimIdx(idx);
+    onNavigate(item);
+  };
 
   return (
     <nav
-      ref={navRef}
       style={{
         position: "fixed",
-        bottom: 12,
-        left: "50%",
-        transform: "translateX(-50%)",
-        width: "calc(100% - 32px)",
-        maxWidth: 398,
+        bottom: 0,
+        left: 0,
+        right: 0,
         zIndex: 80,
-        background: "rgba(22,18,16,.97)",
-        borderRadius: 999,
-        backdropFilter: "blur(20px)",
+        background: "#0d0a07",
+        borderTop: "1px solid #1e1a14",
         display: "flex",
-        padding: "6px",
-        paddingBottom: "calc(6px + env(safe-area-inset-bottom, 0px))",
-        boxShadow: "0 4px 24px rgba(0,0,0,.4)",
-        border: "1px solid rgba(255,255,255,0.06)",
-        overflow: "hidden",
-        position: "fixed",
+        paddingBottom: "env(safe-area-inset-bottom, 0px)",
       }}
     >
-      {/* Bula alunecatoare */}
-      <div
-        style={{
-          position: "absolute",
-          top: 6,
-          left: bubbleStyle.left,
-          width: bubbleStyle.width,
-          height: "calc(100% - 12px)",
-          background: "#2a2218",
-          borderRadius: 999,
-          transition:
-            "left 0.35s cubic-bezier(.34,1.56,.64,1), width 0.35s cubic-bezier(.34,1.56,.64,1)",
-          opacity: bubbleStyle.opacity,
-          zIndex: 0,
-        }}
-      />
+      <style>{`
+        @keyframes wafGlowPop {
+          0%   { box-shadow: 0 0 0px 0px rgba(192,98,47,0); transform: scale(0.82); }
+          50%  { box-shadow: 0 0 18px 6px rgba(192,98,47,0.42); transform: scale(1.13); }
+          100% { box-shadow: 0 0 12px 3px rgba(192,98,47,0.28); transform: scale(1); }
+        }
+        @keyframes wafBounce {
+          0%   { transform: translateY(0); }
+          35%  { transform: translateY(-5px); }
+          65%  { transform: translateY(1px); }
+          100% { transform: translateY(0); }
+        }
+        @keyframes wafLabelIn {
+          0%   { opacity: 0; transform: translateY(4px); }
+          100% { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes wafRipple {
+          0%   { transform: scale(0); opacity: 0.45; }
+          100% { transform: scale(3); opacity: 0; }
+        }
+        .waf-ripple {
+          position: absolute;
+          width: 42px; height: 42px;
+          border-radius: 50%;
+          background: rgba(192,98,47,0.22);
+          pointer-events: none;
+          animation: wafRipple 0.55s ease-out forwards;
+        }
+        .waf-wrap-active {
+          animation: wafGlowPop 0.45s cubic-bezier(.23,1,.32,1) forwards;
+        }
+        .waf-icon-active {
+          animation: wafBounce 0.4s cubic-bezier(.23,1,.32,1) forwards;
+        }
+        .waf-label-active {
+          animation: wafLabelIn 0.3s ease forwards;
+        }
+      `}</style>
 
       {items.map((item, idx) => {
         const isActive = idx === current;
+        const wasJustActivated = idx === animIdx && isActive;
+
         return (
-          <div
+          <button
             key={item.id}
-            data-tab={item.id}
-            onClick={() => onNavigate(item)}
+            onClick={() => {
+              if (!isActive) {
+                // ripple
+                const wrap = document.getElementById(`waf-wrap-${idx}`);
+                if (wrap) {
+                  const r = document.createElement("div");
+                  r.className = "waf-ripple";
+                  wrap.appendChild(r);
+                  setTimeout(() => r.remove(), 600);
+                }
+              }
+              handleClick(item, idx);
+            }}
             style={{
               flex: 1,
               display: "flex",
               flexDirection: "column",
               alignItems: "center",
               justifyContent: "center",
-              gap: 2,
+              padding: "10px 4px 8px",
+              border: "none",
+              background: "transparent",
               cursor: "pointer",
-              padding: "8px 4px",
-              position: "relative",
-              zIndex: 1,
-              borderRadius: 999,
-              transition: "transform 0.2s ease",
+              WebkitTapHighlightColor: "transparent",
+              gap: 0,
             }}
           >
-            <div style={{ position: "relative" }}>
-              <span
-                style={{
-                  fontSize: 20,
-                  lineHeight: 1,
-                  display: "block",
-                  transition: "transform 0.35s cubic-bezier(.34,1.56,.64,1)",
-                  transform: isActive
-                    ? "scale(1.18) translateY(-1px)"
-                    : "scale(1)",
-                }}
-              >
-                {item.icon}
-              </span>
-              {/* Badge notificari */}
+            {/* Icon wrapper */}
+            <div
+              id={`waf-wrap-${idx}`}
+              className={wasJustActivated ? "waf-wrap-active" : ""}
+              style={{
+                width: 42,
+                height: 42,
+                borderRadius: 14,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                position: "relative",
+                color: isActive ? ACTIVE_COLOR : INACTIVE_COLOR,
+                boxShadow: isActive
+                  ? "0 0 12px 3px rgba(192,98,47,0.28)"
+                  : "none",
+                transition: "color 0.25s ease, box-shadow 0.25s ease",
+              }}
+            >
+              <div className={wasJustActivated ? "waf-icon-active" : ""}>
+                {Icons[item.id]}
+              </div>
+
+              {/* Badge notificări */}
               {item.id === "notifications" && badge > 0 && (
                 <span
                   style={{
                     position: "absolute",
-                    top: -4,
-                    right: -8,
+                    top: 4,
+                    right: 4,
                     minWidth: 16,
                     height: 16,
                     background: "#c0622f",
@@ -138,25 +306,29 @@ function BubbleNav({ items, activeId, onNavigate, badge }) {
                     justifyContent: "center",
                     color: "#fff",
                     padding: "0 3px",
+                    border: "1.5px solid #0d0a07",
                   }}
                 >
                   {badge > 9 ? "9+" : badge}
                 </span>
               )}
             </div>
+
+            {/* Label */}
             <span
+              className={wasJustActivated ? "waf-label-active" : ""}
               style={{
-                fontSize: 9,
-                letterSpacing: 0.5,
-                textTransform: "uppercase",
-                fontWeight: isActive ? 700 : 400,
-                color: isActive ? "#f0ebe3" : "#6b6050",
-                transition: "color 0.2s ease, font-weight 0.2s ease",
+                fontSize: 10,
+                marginTop: 4,
+                letterSpacing: 0.2,
+                fontWeight: isActive ? 600 : 400,
+                color: isActive ? ACTIVE_COLOR : INACTIVE_COLOR,
+                transition: "color 0.25s ease",
               }}
             >
               {item.label}
             </span>
-          </div>
+          </button>
         );
       })}
     </nav>
@@ -245,14 +417,26 @@ export default function BottomNav({
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          fontSize: 18,
+          color: "#c0622f",
         }}
       >
-        🔔
+        <svg
+          width="18"
+          height="18"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.8"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9" />
+          <path d="M13.73 21a2 2 0 01-3.46 0" />
+        </svg>
       </div>
       <div style={{ flex: 1 }}>
         <div style={{ fontSize: 13, fontWeight: 700, color: "#f0ebe3" }}>
-          🔔 Ai o notificare nouă
+          Ai o notificare nouă
         </div>
         <div style={{ fontSize: 11, color: "#c8a97e", marginTop: 2 }}>
           Apasă pentru a vedea detaliile
@@ -267,7 +451,7 @@ export default function BottomNav({
     return (
       <>
         {popupUI}
-        <BubbleNav
+        <GlowNav
           items={OWNER_ITEMS}
           activeId={screen}
           onNavigate={(item) => navigate(item.id)}
@@ -281,7 +465,7 @@ export default function BottomNav({
   return (
     <>
       {popupUI}
-      <BubbleNav
+      <GlowNav
         items={CLIENT_ITEMS}
         activeId={screen}
         onNavigate={(item) => {
