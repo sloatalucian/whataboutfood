@@ -16,6 +16,9 @@ export function Meniu() {
     requestBillRef,
     setPayNoteShow,
     setPayNoteActiveOrder,
+    waiterCalled,
+    waiterCooldown,
+    callWaiter: callWaiterGlobal,
   } = useApp();
   const { reload: reloadTables } = useTable();
   const {
@@ -35,9 +38,6 @@ export function Meniu() {
   const [menuLoading, setMenuLoading] = useState(true);
   const [activeOrder, setActiveOrder] = useState(null);
   const [showPayNote, setShowPayNote] = useState(false);
-  const [waiterCalled, setWaiterCalled] = useState(false);
-  const [waiterCooldown, setWaiterCooldown] = useState(0);
-  const waiterTimerRef = useRef(null);
   const [showReview, setShowReview] = useState(false);
   const [reviewRating, setReviewRating] = useState(0);
   const [reviewComment, setReviewComment] = useState("");
@@ -140,31 +140,6 @@ export function Meniu() {
     const interval = setInterval(loadActiveOrder, 5000);
     return () => clearInterval(interval);
   }, [user?.id, selectedRest?.id, tableSessionId]);
-
-  const callWaiter = async () => {
-    if (!activeOrder || waiterCooldown > 0) return;
-    try {
-      await supabase.from("notifications").insert({
-        restaurant_id: activeOrder.restaurant_id,
-        user_id: activeOrder.waiter_id || null,
-        type: "waiter_call",
-        message: `🔔 Masa ${activeOrder.table_label} cheamă ospătarul`,
-        is_read: false,
-      });
-      setWaiterCalled(true);
-      setWaiterCooldown(300);
-      if (waiterTimerRef.current) clearInterval(waiterTimerRef.current);
-      waiterTimerRef.current = setInterval(() => {
-        setWaiterCooldown((prev) => {
-          if (prev <= 1) {
-            clearInterval(waiterTimerRef.current);
-            return 0;
-          }
-          return prev - 1;
-        });
-      }, 1000);
-    } catch (e) {}
-  };
 
   const requestBill = async (method) => {
     if (!activeOrder) return;
@@ -640,7 +615,7 @@ export function Meniu() {
           activeOrder={activeOrder}
           waiterCalled={waiterCalled}
           waiterCooldown={waiterCooldown}
-          callWaiter={callWaiter}
+          callWaiter={() => callWaiterGlobal(activeOrder)}
           onCereNota={() => setShowPayNote(true)}
         />
 

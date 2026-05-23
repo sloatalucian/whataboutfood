@@ -361,6 +361,34 @@ export function AppProvider({ children }) {
   const requestBillRef = useRef(null);
   const [payNoteShow, setPayNoteShow] = useState(false);
   const [payNoteActiveOrder, setPayNoteActiveOrder] = useState(null);
+  const [waiterCalled, setWaiterCalled] = useState(false);
+  const [waiterCooldown, setWaiterCooldown] = useState(0);
+  const waiterTimerRef = useRef(null);
+
+  const callWaiter = async (activeOrder) => {
+    if (!activeOrder || waiterCooldown > 0) return;
+    try {
+      await supabase.from("notifications").insert({
+        restaurant_id: activeOrder.restaurant_id,
+        type: "waiter_call",
+        message: `🔔 Masa ${activeOrder.table_label} cheamă ospătarul`,
+        is_read: false,
+      });
+      setWaiterCalled(true);
+      setWaiterCooldown(300);
+      if (waiterTimerRef.current) clearInterval(waiterTimerRef.current);
+      waiterTimerRef.current = setInterval(() => {
+        setWaiterCooldown((prev) => {
+          if (prev <= 1) {
+            clearInterval(waiterTimerRef.current);
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    } catch (e) {}
+  };
+
   const cookingCount = state.orders.filter(
     (o) => o.status === "cooking",
   ).length;
@@ -382,6 +410,9 @@ export function AppProvider({ children }) {
         setPayNoteShow,
         payNoteActiveOrder,
         setPayNoteActiveOrder,
+        waiterCalled,
+        waiterCooldown,
+        callWaiter,
       }}
     >
       {children}

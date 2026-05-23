@@ -466,6 +466,9 @@ function HomeClient() {
     requestBillRef,
     setPayNoteShow,
     setPayNoteActiveOrder,
+    waiterCalled,
+    waiterCooldown,
+    callWaiter: callWaiterGlobal,
   } = useApp();
   const { user, savedCart } = state;
   const [selectedCity, setSelectedCity] = useState("Toate orașele");
@@ -474,9 +477,6 @@ function HomeClient() {
   const [activeOrder, setActiveOrder] = useState(null);
   const [showPayNote, setShowPayNote] = useState(false);
   const [payNoteLoading, setPayNoteLoading] = useState(false);
-  const [waiterCalled, setWaiterCalled] = useState(false);
-  const [waiterCooldown, setWaiterCooldown] = useState(0);
-  const waiterTimerRef = useRef(null);
 
   useEffect(() => {
     const load = async () => {
@@ -511,32 +511,6 @@ function HomeClient() {
     const interval = setInterval(loadActiveOrder, 5000);
     return () => clearInterval(interval);
   }, [user?.id]);
-
-  const callWaiter = async () => {
-    if (!activeOrder || waiterCooldown > 0) return;
-    try {
-      await supabase.from("notifications").insert({
-        restaurant_id: activeOrder.restaurant_id,
-        type: "waiter_call",
-        message: `🔔 Masa ${activeOrder.table_label} cheamă ospătarul`,
-        is_read: false,
-      });
-      setWaiterCalled(true);
-      setWaiterCooldown(300); // 5 minute = 300 secunde
-
-      // Temporizator countdown
-      if (waiterTimerRef.current) clearInterval(waiterTimerRef.current);
-      waiterTimerRef.current = setInterval(() => {
-        setWaiterCooldown((prev) => {
-          if (prev <= 1) {
-            clearInterval(waiterTimerRef.current);
-            return 0;
-          }
-          return prev - 1;
-        });
-      }, 1000);
-    } catch (e) {}
-  };
 
   const requestBill = async (method) => {
     if (!activeOrder) return;
@@ -785,7 +759,7 @@ function HomeClient() {
           activeOrder={activeOrder}
           waiterCalled={waiterCalled}
           waiterCooldown={waiterCooldown}
-          callWaiter={callWaiter}
+          callWaiter={() => callWaiterGlobal(activeOrder)}
           onCereNota={() => setShowPayNote(true)}
         />
 
