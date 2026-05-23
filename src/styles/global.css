@@ -264,7 +264,7 @@ h3 {
 /* ─── ANIMATIONS ─────────────────────────────────────────────────────────── */
 
 .page-transition {
-  animation: pageEnter 0.22s cubic-bezier(0.22, 0.68, 0, 1.2) both;
+  animation: pageEnter 0.25s ease both;
   position: relative;
   flex: 1;
   min-height: 0;
@@ -272,11 +272,9 @@ h3 {
 @keyframes pageEnter {
   from {
     opacity: 0;
-    transform: scale(0.97) translateY(7px);
   }
   to {
     opacity: 1;
-    transform: scale(1) translateY(0);
   }
 }
 
