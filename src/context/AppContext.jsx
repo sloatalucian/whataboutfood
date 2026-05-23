@@ -401,7 +401,9 @@ export function AppProvider({ children }) {
             return prev - 1;
           });
         }, 1000);
-      } catch (e) {}
+      } catch (e) {
+        console.error("[callWaiter] ERROR:", e);
+      }
     },
     [waiterCooldown],
   );
