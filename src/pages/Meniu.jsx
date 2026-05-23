@@ -464,6 +464,7 @@ export function Meniu() {
                       method: p.method,
                       restaurantId: selectedRest?.id || null,
                       sessionId: tableSessionId || null,
+                      total,
                     },
                   })
                 }

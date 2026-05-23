@@ -280,7 +280,7 @@ function Router() {
         // Verificam daca exista comenzi paid (ospatarul a confirmat)
         const { data: paidOrders } = await supabase
           .from("orders")
-          .select("id, status, payment_method")
+          .select("id, status, payment_method, total")
           .eq("user_id", user.id)
           .eq("restaurant_id", selectedRest.id)
           .eq("table_session_id", tableSessionId)
@@ -295,6 +295,7 @@ function Router() {
               method: paidOrders[0].payment_method,
               restaurantId: selectedRest?.id || null,
               sessionId: tableSessionId || null,
+              total: paidOrders[0].total || null,
             },
           });
           dispatch({ type: "RESET_TABLE_SESSION" });

@@ -554,7 +554,7 @@ function HomeClient() {
     const check = async () => {
       const { data } = await supabase
         .from("orders")
-        .select("id, status, payment_method")
+        .select("id, status, payment_method, total")
         .eq("id", activeOrder.id)
         .eq("status", "paid")
         .limit(1);
@@ -567,7 +567,7 @@ function HomeClient() {
             method: data[0].payment_method,
             restaurantId: activeOrder.restaurant_id || null,
             sessionId: null,
-            total: activeOrder.total || null,
+            total: data[0].total || null,
           },
         });
       }
