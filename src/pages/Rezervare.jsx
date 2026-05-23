@@ -311,51 +311,262 @@ export function Rezervare() {
 
   if (resForm.done)
     return (
-      <div className="page fade-in">
-        <div style={{ padding: "60px 20px" }}>
+      <div
+        className="page"
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "center",
+          minHeight: "100dvh",
+          padding: "0 24px",
+          background: "var(--bg)",
+          overflow: "hidden",
+          position: "relative",
+        }}
+      >
+        {/* Particule confetti */}
+        {[...Array(18)].map((_, i) => (
+          <div
+            key={i}
+            style={{
+              position: "absolute",
+              width: i % 3 === 0 ? 8 : i % 3 === 1 ? 5 : 10,
+              height: i % 3 === 0 ? 8 : i % 3 === 1 ? 5 : 4,
+              borderRadius: i % 3 === 2 ? 2 : "50%",
+              background: [
+                "#c0622f",
+                "#e8a87c",
+                "#f0ebe3",
+                "#8b3a18",
+                "#d4845a",
+              ][i % 5],
+              left: `${10 + ((i * 73) % 80)}%`,
+              top: `${-10}%`,
+              animation: `confettiFall ${1.2 + ((i * 0.15) % 1.2)}s cubic-bezier(.23,1,.32,1) ${i * 0.08}s both`,
+              opacity: 0,
+            }}
+          />
+        ))}
+
+        <style>{`
+          @keyframes confettiFall {
+            0%   { opacity: 0; transform: translateY(0) rotate(0deg) scale(0); }
+            15%  { opacity: 1; transform: translateY(20px) rotate(45deg) scale(1); }
+            100% { opacity: 0; transform: translateY(60vh) rotate(${Math.random() > 0.5 ? "" : "-"}720deg) scale(0.5); }
+          }
+          @keyframes checkCircle {
+            0%   { stroke-dashoffset: 220; opacity: 0; }
+            30%  { opacity: 1; }
+            100% { stroke-dashoffset: 0; }
+          }
+          @keyframes checkMark {
+            0%   { stroke-dashoffset: 60; opacity: 0; }
+            40%  { opacity: 0; }
+            100% { stroke-dashoffset: 0; opacity: 1; }
+          }
+          @keyframes cardReveal {
+            0%   { opacity: 0; transform: translateY(40px) scale(0.95); }
+            100% { opacity: 1; transform: translateY(0) scale(1); }
+          }
+          @keyframes titleReveal {
+            0%   { opacity: 0; transform: translateY(16px); }
+            100% { opacity: 1; transform: translateY(0); }
+          }
+          @keyframes rowReveal {
+            0%   { opacity: 0; transform: translateX(-12px); }
+            100% { opacity: 1; transform: translateX(0); }
+          }
+          @keyframes btnReveal {
+            0%   { opacity: 0; transform: translateY(12px); }
+            100% { opacity: 1; transform: translateY(0); }
+          }
+          @keyframes glowPulse {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(192,98,47,0); }
+            50% { box-shadow: 0 0 40px 12px rgba(192,98,47,0.18); }
+          }
+        `}</style>
+
+        {/* Card principal */}
+        <div
+          style={{
+            width: "100%",
+            maxWidth: 400,
+            background: "linear-gradient(160deg, #1c1409 0%, #120e07 100%)",
+            border: "1px solid rgba(192,98,47,0.25)",
+            borderRadius: 28,
+            padding: "40px 28px 32px",
+            textAlign: "center",
+            animation:
+              "cardReveal 0.6s cubic-bezier(.23,1,.32,1) 0.1s both, glowPulse 2.5s ease 0.7s 2",
+            position: "relative",
+            overflow: "hidden",
+          }}
+        >
+          {/* Shimmer top line */}
           <div
             style={{
-              background: "linear-gradient(135deg,#1a2010,#243020)",
-              border: "1px solid rgba(200,169,126,.3)",
-              borderRadius: 24,
-              padding: "32px 24px",
-              textAlign: "center",
+              position: "absolute",
+              top: 0,
+              left: "10%",
+              right: "10%",
+              height: 1,
+              background:
+                "linear-gradient(90deg, transparent, rgba(192,98,47,0.6), transparent)",
+            }}
+          />
+
+          {/* Check SVG animat */}
+          <div
+            style={{
+              marginBottom: 24,
+              display: "flex",
+              justifyContent: "center",
             }}
           >
-            <div style={{ fontSize: 56, marginBottom: 14 }}>⏳</div>
-            <div
-              style={{
-                fontFamily: "'Fraunces',serif",
-                fontSize: 24,
-                fontWeight: 900,
-                marginBottom: 10,
-              }}
-            >
-              Rezervare trimisă!
-            </div>
-            <div
-              style={{
-                fontSize: 14,
-                lineHeight: 1.8,
-                color: "rgba(240,235,227,.75)",
-                marginBottom: 16,
-              }}
-            >
-              {selectedRest.emoji} {selectedRest.name}
-              <br />
-              📅 {resForm.date} • 🕐 {resForm.time}
-              <br />
-              {floor?.name}
-              <br />
-              👥 {resForm.persons} persoane
-            </div>
-            <button
-              className="btn-primary"
-              onClick={() => dispatch({ type: "RES_RESET" })}
-            >
-              Altă rezervare
-            </button>
+            <svg width="80" height="80" viewBox="0 0 80 80">
+              {/* Cerc de fundal */}
+              <circle cx="40" cy="40" r="36" fill="rgba(192,98,47,0.08)" />
+              {/* Cerc animat */}
+              <circle
+                cx="40"
+                cy="40"
+                r="34"
+                fill="none"
+                stroke="#c0622f"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+                strokeDasharray="220"
+                strokeDashoffset="220"
+                transform="rotate(-90 40 40)"
+                style={{
+                  animation:
+                    "checkCircle 0.8s cubic-bezier(.23,1,.32,1) 0.3s both",
+                }}
+              />
+              {/* Bifă animată */}
+              <polyline
+                points="24,41 35,53 57,28"
+                fill="none"
+                stroke="#c0622f"
+                strokeWidth="3.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeDasharray="60"
+                strokeDashoffset="60"
+                style={{
+                  animation:
+                    "checkMark 0.5s cubic-bezier(.23,1,.32,1) 0.9s both",
+                }}
+              />
+            </svg>
           </div>
+
+          {/* Titlu */}
+          <div
+            style={{
+              fontFamily: "'Fraunces', serif",
+              fontSize: 26,
+              fontWeight: 900,
+              color: "#f0ebe3",
+              letterSpacing: "-0.5px",
+              marginBottom: 6,
+              animation: "titleReveal 0.5s ease 1.1s both",
+            }}
+          >
+            Rezervare trimisă!
+          </div>
+          <div
+            style={{
+              fontSize: 13,
+              color: "rgba(192,98,47,0.8)",
+              marginBottom: 28,
+              animation: "titleReveal 0.5s ease 1.2s both",
+            }}
+          >
+            Ospătarul va confirma în scurt timp
+          </div>
+
+          {/* Detalii rezervare */}
+          <div
+            style={{
+              background: "rgba(255,255,255,0.03)",
+              border: "1px solid rgba(255,255,255,0.06)",
+              borderRadius: 16,
+              padding: "16px 20px",
+              display: "flex",
+              flexDirection: "column",
+              gap: 12,
+              marginBottom: 28,
+              textAlign: "left",
+            }}
+          >
+            {[
+              {
+                icon: "🍽️",
+                label: `${selectedRest.emoji} ${selectedRest.name}`,
+                delay: "1.3s",
+              },
+              {
+                icon: "📅",
+                label: `${resForm.date}  •  ${resForm.time}`,
+                delay: "1.4s",
+              },
+              { icon: "🏠", label: floor?.name || "—", delay: "1.5s" },
+              {
+                icon: "👥",
+                label: `${resForm.persons} persoane`,
+                delay: "1.6s",
+              },
+            ].map((row, i) => (
+              <div
+                key={i}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 12,
+                  animation: `rowReveal 0.4s ease ${row.delay} both`,
+                  opacity: 0,
+                }}
+              >
+                <span
+                  style={{
+                    fontSize: 16,
+                    width: 22,
+                    textAlign: "center",
+                    flexShrink: 0,
+                  }}
+                >
+                  {row.icon}
+                </span>
+                <span
+                  style={{
+                    fontSize: 14,
+                    color: "rgba(240,235,227,0.8)",
+                    fontWeight: 500,
+                  }}
+                >
+                  {row.label}
+                </span>
+              </div>
+            ))}
+          </div>
+
+          {/* Buton */}
+          <button
+            className="btn-primary"
+            onClick={() => {
+              dispatch({ type: "RES_RESET" });
+              navigate("home");
+            }}
+            style={{
+              width: "100%",
+              animation: "btnReveal 0.4s ease 1.7s both",
+              opacity: 0,
+            }}
+          >
+            Explorează restaurante
+          </button>
         </div>
       </div>
     );
