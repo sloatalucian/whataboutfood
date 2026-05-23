@@ -672,7 +672,8 @@ function Router() {
                   <span
                     style={{ color: "#c0622f", fontWeight: 700, fontSize: 15 }}
                   >
-                    {payNoteActiveOrder?.total ||
+                    {state.paidTotal ||
+                      payNoteActiveOrder?.total ||
                       state.orders?.reduce(
                         (s, o) =>
                           s +

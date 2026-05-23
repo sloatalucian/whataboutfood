@@ -567,6 +567,7 @@ function HomeClient() {
             method: data[0].payment_method,
             restaurantId: activeOrder.restaurant_id || null,
             sessionId: null,
+            total: activeOrder.total || null,
           },
         });
       }

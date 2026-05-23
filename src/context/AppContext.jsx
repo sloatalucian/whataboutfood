@@ -23,6 +23,7 @@ const initialState = {
   paid: false,
   payMethod: null,
   reviewRestId: null,
+  paidTotal: null,
   reviewSessionId: null,
   orders: [],
   reservations: {},
@@ -77,6 +78,7 @@ function reducer(state, { type, payload }) {
         payMethod: payload.method,
         reviewRestId: payload.restaurantId || state.selectedRest?.id || null,
         reviewSessionId: payload.sessionId || null,
+        paidTotal: payload.total || null,
       };
     case "RESET_TABLE_SESSION":
       // Resetare completa dupa plata - pastreaza datele pentru review
