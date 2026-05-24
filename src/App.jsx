@@ -1305,227 +1305,173 @@ function Router() {
 }
 
 function BurgerLoader() {
-  const [step, setStep] = useState(0);
-  const [phase, setPhase] = useState("building");
-  const [dotIdx, setDotIdx] = useState(0);
-  const layers = ["l0", "l1", "l2", "l3", "l4", "l5"];
-
-  useEffect(() => {
-    if (phase === "building") {
-      if (step < layers.length) {
-        const t = setTimeout(() => setStep((s) => s + 1), 420);
-        return () => clearTimeout(t);
-      } else {
-        const t = setTimeout(() => setPhase("waiting"), 1000);
-        return () => clearTimeout(t);
-      }
-    } else if (phase === "waiting") {
-      const t = setTimeout(() => setPhase("hiding"), 100);
-      return () => clearTimeout(t);
-    } else if (phase === "hiding") {
-      const t = setTimeout(() => {
-        setStep(0);
-        setPhase("building");
-      }, 600);
-      return () => clearTimeout(t);
-    }
-  }, [step, phase]);
-
-  useEffect(() => {
-    const t = setInterval(() => setDotIdx((i) => i + 1), 400);
-    return () => clearInterval(t);
-  }, []);
-
-  const ls = (idx) => ({
-    position: "absolute",
-    left: 0,
-    right: 0,
-    opacity: phase === "hiding" ? 0 : step > idx ? 1 : 0,
-    transform:
-      phase === "hiding"
-        ? "scale(0.94) translateY(6px)"
-        : step > idx
-          ? "translateY(0)"
-          : "translateY(-14px)",
-    transition:
-      phase === "hiding"
-        ? "opacity 0.4s ease, transform 0.4s ease"
-        : step > idx
-          ? "opacity 0.35s cubic-bezier(.22,.68,0,1.2), transform 0.35s cubic-bezier(.22,.68,0,1.2)"
-          : "none",
-  });
-
-  const dot = (i) => ({
-    color: "#c0622f",
-    opacity: i === dotIdx % 3 ? 1 : 0.15,
-  });
-
   return (
     <div
-      style={{ display: "flex", flexDirection: "column", alignItems: "center" }}
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "center",
+        gap: 28,
+      }}
     >
-      <div style={{ position: "relative", width: 180, height: 160 }}>
-        <div style={{ ...ls(0), bottom: 0, height: 36 }}>
-          <svg width="180" height="36" viewBox="0 0 180 36" fill="none">
-            <path
-              d="M10 10 Q90 2 170 10 L172 36 Q90 38 8 36 Z"
-              fill="#d4751e"
-            />
-            <path
-              d="M10 10 Q90 3 170 10 L170 18 Q90 12 10 18 Z"
-              fill="#e8852a"
-            />
-          </svg>
-        </div>
-        <div style={{ ...ls(1), bottom: 28, height: 28 }}>
-          <svg width="180" height="28" viewBox="0 0 180 28" fill="none">
-            <path d="M8 4 Q90 0 172 4 L174 28 Q90 30 6 28 Z" fill="#6b3318" />
-            <path d="M8 4 Q90 1 172 4 L172 14 Q90 8 8 14 Z" fill="#8b4426" />
-            <ellipse
-              cx="45"
-              cy="12"
-              rx="18"
-              ry="5"
-              fill="#5a2a12"
-              opacity="0.4"
-            />
-            <ellipse
-              cx="120"
-              cy="13"
-              rx="16"
-              ry="4"
-              fill="#5a2a12"
-              opacity="0.4"
-            />
-          </svg>
-        </div>
-        <div style={{ ...ls(2), bottom: 48, height: 18 }}>
-          <svg width="180" height="18" viewBox="0 0 180 18" fill="none">
-            <path d="M10 2 Q90 0 170 2 L172 18 Q90 20 8 18 Z" fill="#f5c518" />
-            <path d="M10 2 Q90 0 170 2 L170 8 Q90 5 10 8 Z" fill="#fad84a" />
-            <path d="M155 4 L178 10 L168 20 L148 13 Z" fill="#f5c518" />
-          </svg>
-        </div>
-        <div style={{ ...ls(3), bottom: 60, height: 18 }}>
-          <svg width="180" height="18" viewBox="0 0 180 18" fill="none">
-            <path d="M12 2 Q90 0 168 2 L170 18 Q90 20 10 18 Z" fill="#c0392b" />
-            <path
-              d="M12 2 Q90 0 168 2 L168 8 Q90 5 12 8 Z"
-              fill="#e74c3c"
-              opacity="0.7"
-            />
-            <ellipse
-              cx="48"
-              cy="10"
-              rx="7"
-              ry="2.5"
-              fill="#922b21"
-              opacity="0.6"
-            />
-            <ellipse
-              cx="90"
-              cy="8"
-              rx="7"
-              ry="2.5"
-              fill="#922b21"
-              opacity="0.6"
-            />
-            <ellipse
-              cx="132"
-              cy="10"
-              rx="7"
-              ry="2.5"
-              fill="#922b21"
-              opacity="0.6"
-            />
-          </svg>
-        </div>
-        <div style={{ ...ls(4), bottom: 72, height: 20 }}>
-          <svg width="180" height="20" viewBox="0 0 180 20" fill="none">
-            <path
-              d="M2 10 Q20 2 38 8 Q56 1 74 9 Q90 1 106 8 Q124 1 142 8 Q160 2 178 10 L176 20 Q90 22 4 20 Z"
-              fill="#3a8a4c"
-            />
-            <path
-              d="M2 10 Q20 3 38 9 Q56 2 74 10 Q90 2 106 9 Q124 2 142 9 Q160 3 178 10 L178 16 Q90 18 2 16 Z"
-              fill="#4aa85e"
-              opacity="0.5"
-            />
-          </svg>
-        </div>
-        <div style={{ ...ls(5), bottom: 84, height: 72 }}>
-          <svg width="180" height="72" viewBox="0 0 180 72" fill="none">
-            <ellipse cx="90" cy="70" rx="72" ry="5" fill="#000" opacity="0.2" />
-            <path d="M18 52 Q16 16 90 4 Q164 16 162 52 Z" fill="#e8852a" />
-            <rect x="16" y="50" width="148" height="14" rx="4" fill="#c8691a" />
-            <path
-              d="M36 22 Q90 8 144 22 Q118 12 90 10 Q62 12 36 22Z"
-              fill="white"
-              opacity="0.07"
-            />
-            <ellipse
-              cx="62"
-              cy="28"
-              rx="6"
-              ry="2.2"
-              fill="#b05e14"
-              opacity="0.75"
-              transform="rotate(-18 62 28)"
-            />
-            <ellipse
-              cx="90"
-              cy="20"
-              rx="6"
-              ry="2.2"
-              fill="#b05e14"
-              opacity="0.75"
-              transform="rotate(4 90 20)"
-            />
-            <ellipse
-              cx="118"
-              cy="28"
-              rx="6"
-              ry="2.2"
-              fill="#b05e14"
-              opacity="0.75"
-              transform="rotate(18 118 28)"
-            />
-            <ellipse
-              cx="74"
-              cy="38"
-              rx="5"
-              ry="2"
-              fill="#b05e14"
-              opacity="0.65"
-              transform="rotate(-10 74 38)"
-            />
-            <ellipse
-              cx="106"
-              cy="38"
-              rx="5"
-              ry="2"
-              fill="#b05e14"
-              opacity="0.65"
-              transform="rotate(10 106 38)"
-            />
-          </svg>
-        </div>
-      </div>
+      <style>{`
+        @keyframes blRingRotate { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }
+        @keyframes blRingRev    { from{transform:rotate(0deg)} to{transform:rotate(-360deg)} }
+        @keyframes blGlowPulse  { 0%,100%{box-shadow:0 0 0 0 rgba(192,98,47,0)} 50%{box-shadow:0 0 20px 6px rgba(192,98,47,0.15)} }
+        @keyframes blOrbit0 { from{transform:rotate(0deg)   translateX(52px) rotate(0deg)}   to{transform:rotate(360deg)  translateX(52px) rotate(-360deg)} }
+        @keyframes blOrbit1 { from{transform:rotate(60deg)  translateX(52px) rotate(-60deg)} to{transform:rotate(420deg)  translateX(52px) rotate(-420deg)} }
+        @keyframes blOrbit2 { from{transform:rotate(120deg) translateX(52px) rotate(-120deg)}to{transform:rotate(480deg)  translateX(52px) rotate(-480deg)} }
+        @keyframes blOrbit3 { from{transform:rotate(180deg) translateX(52px) rotate(-180deg)}to{transform:rotate(540deg)  translateX(52px) rotate(-540deg)} }
+        @keyframes blOrbit4 { from{transform:rotate(240deg) translateX(52px) rotate(-240deg)}to{transform:rotate(600deg)  translateX(52px) rotate(-600deg)} }
+        @keyframes blOrbit5 { from{transform:rotate(300deg) translateX(52px) rotate(-300deg)}to{transform:rotate(660deg)  translateX(52px) rotate(-660deg)} }
+        @keyframes blShimmer { 0%{background-position:-200% center} 100%{background-position:200% center} }
+        @keyframes blDotP { 0%,80%,100%{opacity:0.2;transform:translateY(0)} 40%{opacity:1;transform:translateY(-4px)} }
+      `}</style>
+
+      {/* Spinner */}
       <div
         style={{
-          marginTop: 32,
-          color: "#6b4e2a",
-          fontFamily: "Georgia, serif",
-          fontSize: 18,
-          letterSpacing: 5,
-          textTransform: "uppercase",
-          width: 210,
-          textAlign: "center",
+          position: "relative",
+          width: 140,
+          height: 140,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
         }}
       >
-        Se încarcă<span style={dot(0)}>.</span>
-        <span style={dot(1)}>.</span>
-        <span style={dot(2)}>.</span>
+        {/* Inel exterior */}
+        <div
+          style={{
+            position: "absolute",
+            width: 120,
+            height: 120,
+            borderRadius: "50%",
+            border: "1.5px solid #1e1a14",
+            borderTopColor: "#c0622f",
+            borderRightColor: "rgba(192,98,47,0.25)",
+            animation: "blRingRotate 2.4s linear infinite",
+          }}
+        />
+        {/* Inel interior */}
+        <div
+          style={{
+            position: "absolute",
+            width: 88,
+            height: 88,
+            borderRadius: "50%",
+            border: "1px dashed rgba(192,98,47,0.1)",
+            animation: "blRingRev 4s linear infinite",
+          }}
+        />
+        {/* Farfurie centru */}
+        <div
+          style={{
+            width: 60,
+            height: 60,
+            borderRadius: "50%",
+            background: "linear-gradient(145deg,#1e1a14,#141009)",
+            border: "1.5px solid #2a2218",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 2,
+            animation: "blGlowPulse 2s ease infinite",
+          }}
+        >
+          <svg width="36" height="36" viewBox="0 0 36 36" fill="none">
+            <circle
+              cx="18"
+              cy="18"
+              r="14"
+              stroke="#c0622f"
+              strokeWidth="1.3"
+              fill="none"
+            />
+            <circle
+              cx="18"
+              cy="18"
+              r="8"
+              stroke="#c0622f"
+              strokeWidth="0.7"
+              fill="none"
+              opacity="0.35"
+            />
+          </svg>
+        </div>
+        {/* Elemente in orbita */}
+        {["🍴", "🍷", "🍔", "🔪", "🥗", "🍰"].map((emoji, i) => (
+          <div
+            key={i}
+            style={{
+              position: "absolute",
+              top: "50%",
+              left: "50%",
+              width: 0,
+              height: 0,
+            }}
+          >
+            <div
+              style={{
+                position: "absolute",
+                top: 0,
+                left: 0,
+                transformOrigin: "0 0",
+                fontSize: 20,
+                lineHeight: 1,
+                marginTop: -10,
+                marginLeft: -10,
+                filter: "drop-shadow(0 2px 4px rgba(0,0,0,0.5))",
+                animation: `blOrbit${i} 2.4s linear infinite`,
+              }}
+            >
+              {emoji}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Text */}
+      <div
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          gap: 6,
+        }}
+      >
+        <div
+          style={{
+            fontFamily: "'Fraunces', serif",
+            fontSize: 20,
+            fontWeight: 700,
+            fontStyle: "italic",
+            background:
+              "linear-gradient(90deg,#f0ebe3 0%,#c0622f 40%,#f0ebe3 60%,#c8a97e 100%)",
+            backgroundSize: "200% auto",
+            WebkitBackgroundClip: "text",
+            WebkitTextFillColor: "transparent",
+            backgroundClip: "text",
+            animation: "blShimmer 2.5s linear infinite",
+            letterSpacing: "-0.3px",
+          }}
+        >
+          Se încarcă
+        </div>
+        <div style={{ display: "flex", gap: 5, alignItems: "center" }}>
+          {[0, 0.2, 0.4].map((delay, i) => (
+            <div
+              key={i}
+              style={{
+                width: 4,
+                height: 4,
+                borderRadius: "50%",
+                background: "#c0622f",
+                animation: `blDotP 1.2s ease ${delay}s infinite`,
+              }}
+            />
+          ))}
+        </div>
       </div>
     </div>
   );
