@@ -1219,16 +1219,50 @@ export default function StatisticiProprietar() {
               >
                 <div
                   style={{
-                    fontFamily: "'Fraunces',serif",
-                    fontSize: 16,
-                    fontWeight: 700,
-                    marginBottom: 14,
                     display: "flex",
                     alignItems: "center",
-                    gap: 8,
+                    justifyContent: "space-between",
+                    marginBottom: 14,
                   }}
                 >
-                  👨‍🍳 Performanță per ospătar
+                  <div
+                    style={{
+                      fontFamily: "'Fraunces',serif",
+                      fontSize: 16,
+                      fontWeight: 700,
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 8,
+                    }}
+                  >
+                    👨‍🍳 Performanță per ospătar
+                  </div>
+                  <div style={{ display: "flex", gap: 4 }}>
+                    {[
+                      { key: "zi", label: "Azi" },
+                      { key: "saptamana", label: "7 zile" },
+                      { key: "luna", label: "Lună" },
+                    ].map((p) => (
+                      <button
+                        key={p.key}
+                        onClick={() => setPeriod(p.key)}
+                        style={{
+                          padding: "4px 10px",
+                          borderRadius: 20,
+                          border: "none",
+                          background:
+                            period === p.key ? "#c0622f" : "transparent",
+                          color: period === p.key ? "#fff" : "#6b6050",
+                          fontSize: 11,
+                          fontWeight: period === p.key ? 700 : 400,
+                          cursor: "pointer",
+                          fontFamily: "inherit",
+                        }}
+                      >
+                        {p.label}
+                      </button>
+                    ))}
+                  </div>
                 </div>
                 {waiterLoading ? (
                   <div
@@ -1354,7 +1388,7 @@ export default function StatisticiProprietar() {
                               ? w.avgTime >= 1
                                 ? ` • ${w.avgTime} min avg`
                                 : ` • ${w.avgTimeSec}s avg`
-                              : ""}
+                              : " • — avg"}
                           </div>
                         </div>
                         <div
