@@ -351,8 +351,31 @@ export function AppProvider({ children }) {
   const isLocked = useCallback(
     (feature) => {
       const plan = state.user?.plan || "free";
-      const locked = { orders: ["free"], multifloor: ["free"] };
-      return locked[feature]?.includes(plan);
+      // Pro features - locked for free
+      const proFeatures = [
+        "stats_waiter", // Performanta per ospatar
+        "stats_noshow", // Rata no-show rezervari
+        "stats_occupancy", // Rata ocupare mese
+        "stats_rating", // Rating clienti in timp
+        "export_csv", // Export CSV/PDF
+        "history_3months", // Date istorice 3 luni
+      ];
+      // Business features - locked for free and pro
+      const businessFeatures = [
+        "multi_location", // Mai multe restaurante
+        "stats_comparative", // Rapoarte comparative
+        "email_reports", // Rapoarte automate email
+        "menu_advanced", // Personalizare avansata meniu
+        "support_priority", // Suport prioritar
+        "history_unlimited", // Date istorice nelimitate
+      ];
+      if (businessFeatures.includes(feature)) {
+        return plan === "free" || plan === "pro";
+      }
+      if (proFeatures.includes(feature)) {
+        return plan === "free";
+      }
+      return false;
     },
     [state.user],
   );
