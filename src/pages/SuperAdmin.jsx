@@ -374,14 +374,16 @@ export default function SuperAdmin() {
     }
   };
 
-  const changePlan = async (restaurantId, plan) => {
+  const changePlan = async (ownerId, plan) => {
     try {
-      await supabase
-        .from("restaurants")
-        .update({ plan, plan_updated_at: new Date().toISOString() })
-        .eq("id", restaurantId);
+      await supabase.from("profiles").update({ plan }).eq("id", ownerId);
+      // Update proprietari list
+      setProprietari((prev) =>
+        prev.map((p) => (p.id === ownerId ? { ...p, plan } : p)),
+      );
+      // Update restaurante list - toate restaurantele proprietarului
       setRestaurante((prev) =>
-        prev.map((r) => (r.id === restaurantId ? { ...r, plan } : r)),
+        prev.map((r) => (r.owner_id === ownerId ? { ...r, plan } : r)),
       );
       showToast(`✅ Plan schimbat la ${plan.toUpperCase()}!`);
     } catch {
@@ -1329,6 +1331,41 @@ export default function SuperAdmin() {
                     </button>
                   </div>
                 </div>
+                {/* Selector plan pe proprietar */}
+                <div
+                  style={{
+                    marginTop: 10,
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 8,
+                  }}
+                >
+                  <span
+                    style={{ fontSize: 11, color: "#6b6050", flexShrink: 0 }}
+                  >
+                    Plan:
+                  </span>
+                  <select
+                    value={p.plan || "free"}
+                    onChange={(e) => changePlan(p.id, e.target.value)}
+                    style={{
+                      flex: 1,
+                      padding: "6px 10px",
+                      borderRadius: 8,
+                      background: PLAN_BG[p.plan || "free"],
+                      border: `1px solid ${PLAN_COLOR[p.plan || "free"]}`,
+                      color: PLAN_COLOR[p.plan || "free"],
+                      fontSize: 11,
+                      fontWeight: 800,
+                      cursor: "pointer",
+                      outline: "none",
+                    }}
+                  >
+                    <option value="free">FREE</option>
+                    <option value="pro">PRO — 250 lei/lună</option>
+                    <option value="business">BUSINESS — 800 lei/lună</option>
+                  </select>
+                </div>
               </div>
             ))}
           </div>
@@ -1542,9 +1579,7 @@ export default function SuperAdmin() {
                   </div>
                 </div>
                 <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                  <select
-                    value={r.plan || "free"}
-                    onChange={(e) => changePlan(r.id, e.target.value)}
+                  <div
                     style={{
                       flex: 1,
                       background: PLAN_BG[r.plan || "free"],
@@ -1554,15 +1589,14 @@ export default function SuperAdmin() {
                       fontSize: 11,
                       fontWeight: 800,
                       padding: "7px 10px",
-                      cursor: "pointer",
-                      outline: "none",
-                      appearance: "none",
+                      textAlign: "center",
                     }}
                   >
-                    <option value="free">FREE</option>
-                    <option value="pro">PRO — 250 lei/lună</option>
-                    <option value="business">BUSINESS — 800 lei/lună</option>
-                  </select>
+                    {(r.plan || "free").toUpperCase()}
+                    <span style={{ fontSize: 9, opacity: 0.7, marginLeft: 4 }}>
+                      (plan proprietar)
+                    </span>
+                  </div>
                   <button
                     onClick={() => loadViewStats(r)}
                     style={{
