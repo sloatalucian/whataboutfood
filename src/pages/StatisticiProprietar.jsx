@@ -428,6 +428,9 @@ export default function StatisticiProprietar() {
         }
 
         // Incarca comenzile platite cu waiter_id din perioada selectata
+        // Folosim ISO string simplu fara timezone pentru compatibilitate Supabase
+        const startDateISO = new Date(startDate).toISOString();
+
         const { data: orders, error } = await supabase
           .from("orders")
           .select(
@@ -435,8 +438,8 @@ export default function StatisticiProprietar() {
           )
           .eq("restaurant_id", selectedRestId)
           .eq("status", "paid")
-          .not("waiter_id", "is", null)
-          .gte("created_at", startDate);
+          .not("waiter_id", "is", "null")
+          .gte("created_at", startDateISO);
 
         if (error || !orders || orders.length === 0) {
           setWaiterStats([]);
