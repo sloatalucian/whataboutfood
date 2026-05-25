@@ -119,9 +119,11 @@ export default function StatisticiProprietar() {
   const [exportLoading, setExportLoading] = useState(false);
   const [waiterStats, setWaiterStats] = useState([]);
   const [waiterLoading, setWaiterLoading] = useState(false);
-  const [occupancyStats, setOccupancyStats] = useState([]);
-  const [totalTables, setTotalTables] = useState(0);
+  const [occupancyData, setOccupancyData] = useState({});
+  const [occupancyTables, setOccupancyTables] = useState([]);
+  const [occupancyProgram, setOccupancyProgram] = useState(null);
   const [occupancyLoading, setOccupancyLoading] = useState(false);
+  const [occupancyWeek, setOccupancyWeek] = useState(1);
   const [myRestaurants, setMyRestaurants] = useState([]);
   const [selectedRestId, setSelectedRestId] = useState(null);
 
@@ -523,117 +525,135 @@ export default function StatisticiProprietar() {
     loadWaiterStats();
   }, [selectedRestId, period]);
 
-  // ── Rata ocupare mese ──
+  // ── Rata ocupare mese (heatmap) ──
   useEffect(() => {
     if (!selectedRestId || isLocked("stats_waiter")) return;
 
     const loadOccupancy = async () => {
       setOccupancyLoading(true);
       try {
-        // 1. Ia toate mesele restaurantului prin floors
+        // 1. Ia programul restaurantului
+        const { data: restData } = await supabase
+          .from("restaurants")
+          .select("program")
+          .eq("id", selectedRestId)
+          .single();
+        const program = restData?.program || {};
+        setOccupancyProgram(program);
+
+        // 2. Ia mesele restaurantului
         const { data: floors } = await supabase
           .from("floors")
           .select("id")
           .eq("restaurant_id", selectedRestId);
-
-        if (!floors || floors.length === 0) {
-          setOccupancyStats([]);
-          setTotalTables(0);
-          return;
-        }
-
-        const floorIds = floors.map((f) => f.id);
+        const floorIds = (floors || []).map((f) => f.id);
         const { data: tables } = await supabase
           .from("tables")
           .select("id, label")
           .in("floor_id", floorIds);
-
-        const total = (tables || []).length;
-        setTotalTables(total);
-        if (total === 0) {
-          setOccupancyStats([]);
+        setOccupancyTables(tables || []);
+        if (!tables || tables.length === 0) {
+          setOccupancyData({});
           return;
         }
 
-        // 2. Calculeaza startDate
+        // 3. Calculeaza saptamana selectata din luna curenta
         const now = new Date();
-        const offsetMin = -now.getTimezoneOffset();
-        const sign = offsetMin >= 0 ? "+" : "-";
-        const tzHH = String(Math.floor(Math.abs(offsetMin) / 60)).padStart(
-          2,
-          "0",
+        const year = now.getFullYear();
+        const month = now.getMonth();
+        // Saptamanile din luna curenta (bazate pe calendar)
+        const firstDay = new Date(year, month, 1);
+        const lastDay = new Date(year, month + 1, 0);
+        // Saptamana 1: zilele 1-7, 2: 8-14, 3: 15-21, 4: 22-sfarsit
+        const weekStarts = [1, 8, 15, 22];
+        const weekEnds = [7, 14, 21, lastDay.getDate()];
+        const wStart = new Date(year, month, weekStarts[occupancyWeek - 1]);
+        const wEnd = new Date(
+          year,
+          month,
+          weekEnds[occupancyWeek - 1],
+          23,
+          59,
+          59,
         );
-        const tzMM = String(Math.abs(offsetMin) % 60).padStart(2, "0");
-        const tz = `${sign}${tzHH}:${tzMM}`;
-        const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
-        let startDate;
-        if (period === "zi") {
-          startDate = `${todayStr}T00:00:00${tz}`;
-        } else if (period === "saptamana") {
-          const d7 = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-          const d7Str = `${d7.getFullYear()}-${String(d7.getMonth() + 1).padStart(2, "0")}-${String(d7.getDate()).padStart(2, "0")}`;
-          startDate = `${d7Str}T00:00:00${tz}`;
-        } else {
-          const monthStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-01`;
-          startDate = `${monthStr}T00:00:00${tz}`;
-        }
-        const startDateISO = new Date(startDate).toISOString();
 
-        // 3. Ia sesiunile din perioada selectata
+        // 4. Ia sesiunile din saptamana selectata
         const { data: sessions } = await supabase
           .from("table_sessions")
-          .select("table_label, started_at, closed_at, paid_at, status")
+          .select("table_label, started_at, closed_at, paid_at")
           .eq("restaurant_id", selectedRestId)
-          .gte("started_at", startDateISO);
+          .gte("started_at", wStart.toISOString())
+          .lte("started_at", wEnd.toISOString());
 
-        // 4. Calculeaza ocupare per masa
-        const byTable = {};
-        (tables || []).forEach((t) => {
-          byTable[t.label] = { label: t.label, sessions: 0, totalMinutes: 0 };
+        // 5. Construieste heatmap: { "Luni_10:00": pct }
+        const ZILE_RO = [
+          "Luni",
+          "Marți",
+          "Miercuri",
+          "Joi",
+          "Vineri",
+          "Sâmbătă",
+          "Duminică",
+        ];
+        const DAY_IDX = { 0: 6, 1: 0, 2: 1, 3: 2, 4: 3, 5: 4, 6: 5 };
+
+        // Genereaza orele din program
+        const getHours = () => {
+          const allHours = new Set();
+          Object.entries(program).forEach(([zi, info]) => {
+            if (!info?.deschis) return;
+            let h = parseInt(info.start);
+            const endH = info.end === "00:00" ? 24 : parseInt(info.end);
+            while (h < endH) {
+              allHours.add(`${String(h).padStart(2, "0")}:00`);
+              h++;
+            }
+          });
+          return [...allHours].sort();
+        };
+        const hours = getHours();
+
+        // Calculeaza ocuparea per zi/ora
+        const heatmap = {};
+        ZILE_RO.forEach((zi) => {
+          heatmap[zi] = {};
+          hours.forEach((h) => {
+            heatmap[zi][h] = { occupied: 0, total: tables.length };
+          });
         });
 
         (sessions || []).forEach((s) => {
-          if (!byTable[s.table_label]) return;
           const start = new Date(s.started_at);
           const end = s.closed_at
             ? new Date(s.closed_at)
             : s.paid_at
               ? new Date(s.paid_at)
-              : now;
-          const minutes = Math.max(0, (end - start) / 60000);
-          if (minutes < 600) {
-            // max 10 ore per sesiune
-            byTable[s.table_label].sessions += 1;
-            byTable[s.table_label].totalMinutes += minutes;
+              : new Date(start.getTime() + 60 * 60000);
+          const dayIdx = DAY_IDX[start.getDay()];
+          const zi = ZILE_RO[dayIdx];
+          if (!heatmap[zi]) return;
+          // Marca fiecare ora ocupata de sesiune
+          let cur = new Date(start);
+          cur.setMinutes(0, 0, 0);
+          while (cur < end) {
+            const hKey = `${String(cur.getHours()).padStart(2, "0")}:00`;
+            if (heatmap[zi][hKey] !== undefined) {
+              heatmap[zi][hKey].occupied += 1;
+            }
+            cur.setHours(cur.getHours() + 1);
           }
         });
 
-        // 5. Calculeaza intervalul total in minute
-        const periodMinutes =
-          period === "zi" ? 1440 : period === "saptamana" ? 10080 : 43200;
-
-        const stats = Object.values(byTable)
-          .map((t) => ({
-            ...t,
-            occupancyPct: Math.min(
-              100,
-              Math.round((t.totalMinutes / periodMinutes) * 100),
-            ),
-            avgDuration:
-              t.sessions > 0 ? Math.round(t.totalMinutes / t.sessions) : 0,
-          }))
-          .sort((a, b) => b.occupancyPct - a.occupancyPct);
-
-        setOccupancyStats(stats);
+        setOccupancyData({ heatmap, hours, weekStart: wStart, weekEnd: wEnd });
       } catch (e) {
-        setOccupancyStats([]);
+        setOccupancyData({});
       } finally {
         setOccupancyLoading(false);
       }
     };
 
     loadOccupancy();
-  }, [selectedRestId, period]);
+  }, [selectedRestId, occupancyWeek]);
 
   const totalPeriod = revenueData.reduce((s, d) => s + d.value, 0);
   const topDay =
@@ -1534,6 +1554,7 @@ export default function StatisticiProprietar() {
                   border: "1px solid #1e1a14",
                 }}
               >
+                {/* Header */}
                 <div
                   style={{
                     display: "flex",
@@ -1551,10 +1572,35 @@ export default function StatisticiProprietar() {
                   >
                     🪑 Ocupare mese
                   </div>
-                  <div style={{ fontSize: 11, color: "#6b6050" }}>
-                    {totalTables} {totalTables === 1 ? "masă" : "mese"} total
+                  <div style={{ fontSize: 10, color: "#6b6050" }}>
+                    {occupancyTables.length} mese • luna curentă
                   </div>
                 </div>
+
+                {/* Selector saptamana */}
+                <div style={{ display: "flex", gap: 4, marginBottom: 14 }}>
+                  {[1, 2, 3, 4].map((w) => (
+                    <button
+                      key={w}
+                      onClick={() => setOccupancyWeek(w)}
+                      style={{
+                        flex: 1,
+                        padding: "5px 0",
+                        borderRadius: 20,
+                        border: "none",
+                        background: occupancyWeek === w ? "#c0622f" : "#161210",
+                        color: occupancyWeek === w ? "#fff" : "#6b6050",
+                        fontSize: 11,
+                        fontWeight: occupancyWeek === w ? 700 : 400,
+                        cursor: "pointer",
+                        fontFamily: "inherit",
+                      }}
+                    >
+                      Săpt. {w}
+                    </button>
+                  ))}
+                </div>
+
                 {occupancyLoading ? (
                   <div
                     style={{
@@ -1566,7 +1612,7 @@ export default function StatisticiProprietar() {
                   >
                     Se încarcă...
                   </div>
-                ) : occupancyStats.length === 0 ? (
+                ) : !occupancyData?.heatmap ? (
                   <div
                     style={{
                       textAlign: "center",
@@ -1576,136 +1622,194 @@ export default function StatisticiProprietar() {
                     }}
                   >
                     <div style={{ fontSize: 28, marginBottom: 8 }}>🪑</div>
-                    Nu există sesiuni în perioada selectată
+                    Nu există sesiuni în această perioadă
                   </div>
                 ) : (
-                  <>
-                    {/* Sumar general */}
-                    <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
-                      {[
-                        {
-                          label: "Ocupare medie",
-                          value: `${Math.round(occupancyStats.reduce((s, t) => s + t.occupancyPct, 0) / occupancyStats.length)}%`,
-                          color: "#c0622f",
-                        },
-                        {
-                          label: "Sesiuni totale",
-                          value: occupancyStats.reduce(
-                            (s, t) => s + t.sessions,
-                            0,
-                          ),
-                          color: "#f0ebe3",
-                        },
-                        {
-                          label: "Durată medie",
-                          value: `${Math.round(occupancyStats.filter((t) => t.avgDuration > 0).reduce((s, t) => s + t.avgDuration, 0) / Math.max(1, occupancyStats.filter((t) => t.avgDuration > 0).length))} min`,
-                          color: "#f0ebe3",
-                        },
-                      ].map((s) => (
-                        <div
-                          key={s.label}
+                  (() => {
+                    const { heatmap, hours } = occupancyData;
+                    const ZILE = [
+                      "Luni",
+                      "Marți",
+                      "Miercuri",
+                      "Joi",
+                      "Vineri",
+                      "Sâmbătă",
+                      "Duminică",
+                    ];
+                    const ZILE_SHORT = [
+                      "Lun",
+                      "Mar",
+                      "Mie",
+                      "Joi",
+                      "Vin",
+                      "Sâm",
+                      "Dum",
+                    ];
+                    const totalTables = occupancyTables.length;
+
+                    const getCellColor = (pct) => {
+                      if (pct === 0)
+                        return {
+                          bg: "rgba(255,255,255,0.03)",
+                          color: "#3a3028",
+                        };
+                      if (pct >= 80)
+                        return { bg: "rgba(192,98,47,0.9)", color: "#fff" };
+                      if (pct >= 60)
+                        return { bg: "rgba(192,98,47,0.6)", color: "#fff" };
+                      if (pct >= 40)
+                        return { bg: "rgba(192,98,47,0.35)", color: "#f0ebe3" };
+                      if (pct >= 20)
+                        return { bg: "rgba(192,98,47,0.18)", color: "#c8a97e" };
+                      return { bg: "rgba(192,98,47,0.08)", color: "#8a7a6a" };
+                    };
+
+                    // Verifica daca ziua e deschisa
+                    const isOpen = (zi) => occupancyProgram?.[zi]?.deschis;
+
+                    return (
+                      <div style={{ overflowX: "auto" }}>
+                        <table
                           style={{
-                            flex: 1,
-                            background: "#161210",
-                            borderRadius: 10,
-                            padding: "10px 12px",
+                            width: "100%",
+                            borderCollapse: "collapse",
+                            fontSize: 11,
                           }}
                         >
-                          <div
-                            style={{
-                              fontSize: 18,
-                              fontWeight: 700,
-                              color: s.color,
-                              fontFamily: "'Fraunces',serif",
-                            }}
-                          >
-                            {s.value}
-                          </div>
-                          <div
-                            style={{
-                              fontSize: 10,
-                              color: "#6b6050",
-                              marginTop: 2,
-                            }}
-                          >
-                            {s.label}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
+                          <thead>
+                            <tr>
+                              <th
+                                style={{
+                                  width: 44,
+                                  color: "#6b6050",
+                                  fontWeight: 400,
+                                  paddingBottom: 6,
+                                  textAlign: "left",
+                                }}
+                              ></th>
+                              {ZILE.map((zi, i) => (
+                                <th
+                                  key={zi}
+                                  style={{
+                                    color: isOpen(zi) ? "#8a7a6a" : "#3a3028",
+                                    fontWeight: 600,
+                                    paddingBottom: 6,
+                                    textAlign: "center",
+                                    fontSize: 10,
+                                  }}
+                                >
+                                  {ZILE_SHORT[i]}
+                                </th>
+                              ))}
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {(hours || []).map((h) => (
+                              <tr key={h}>
+                                <td
+                                  style={{
+                                    color: "#6b6050",
+                                    fontSize: 10,
+                                    paddingRight: 6,
+                                    whiteSpace: "nowrap",
+                                    paddingBottom: 3,
+                                  }}
+                                >
+                                  {h}
+                                </td>
+                                {ZILE.map((zi) => {
+                                  const cell = heatmap[zi]?.[h];
+                                  const pct =
+                                    cell && totalTables > 0
+                                      ? Math.round(
+                                          (cell.occupied / totalTables) * 100,
+                                        )
+                                      : 0;
+                                  const { bg, color } = getCellColor(pct);
+                                  const open = isOpen(zi);
+                                  return (
+                                    <td
+                                      key={zi}
+                                      style={{
+                                        paddingBottom: 3,
+                                        paddingLeft: 2,
+                                        paddingRight: 2,
+                                        textAlign: "center",
+                                      }}
+                                    >
+                                      <div
+                                        style={{
+                                          height: 22,
+                                          borderRadius: 4,
+                                          background: open
+                                            ? bg
+                                            : "rgba(255,255,255,0.01)",
+                                          color,
+                                          display: "flex",
+                                          alignItems: "center",
+                                          justifyContent: "center",
+                                          fontSize: 9,
+                                          fontWeight: 600,
+                                        }}
+                                      >
+                                        {open && pct > 0
+                                          ? `${pct}%`
+                                          : open
+                                            ? "—"
+                                            : ""}
+                                      </div>
+                                    </td>
+                                  );
+                                })}
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
 
-                    {/* Per masa - timeline bars */}
-                    {occupancyStats.map((t) => {
-                      const pct = t.occupancyPct;
-                      const color =
-                        pct >= 70
-                          ? "#c0622f"
-                          : pct >= 40
-                            ? "#c8a97e"
-                            : "#5b8dd9";
-                      return (
-                        <div key={t.label} style={{ marginBottom: 10 }}>
-                          <div
-                            style={{
-                              display: "flex",
-                              justifyContent: "space-between",
-                              alignItems: "center",
-                              marginBottom: 4,
-                            }}
-                          >
+                        {/* Legenda */}
+                        <div
+                          style={{
+                            display: "flex",
+                            gap: 8,
+                            marginTop: 12,
+                            alignItems: "center",
+                            flexWrap: "wrap",
+                          }}
+                        >
+                          <span style={{ fontSize: 10, color: "#6b6050" }}>
+                            Ocupare:
+                          </span>
+                          {[
+                            { bg: "rgba(192,98,47,0.08)", label: "< 20%" },
+                            { bg: "rgba(192,98,47,0.35)", label: "40%" },
+                            { bg: "rgba(192,98,47,0.6)", label: "60%" },
+                            { bg: "rgba(192,98,47,0.9)", label: "80%+" },
+                          ].map((l) => (
                             <div
+                              key={l.label}
                               style={{
                                 display: "flex",
                                 alignItems: "center",
-                                gap: 8,
+                                gap: 4,
                               }}
                             >
-                              <span
+                              <div
                                 style={{
-                                  fontSize: 12,
-                                  fontWeight: 600,
-                                  color: "#f0ebe3",
+                                  width: 12,
+                                  height: 12,
+                                  borderRadius: 3,
+                                  background: l.bg,
                                 }}
-                              >
-                                Masa {t.label}
-                              </span>
+                              />
                               <span style={{ fontSize: 10, color: "#6b6050" }}>
-                                {t.sessions}{" "}
-                                {t.sessions === 1 ? "sesiune" : "sesiuni"}
-                                {t.avgDuration > 0
-                                  ? ` • ${t.avgDuration} min avg`
-                                  : ""}
+                                {l.label}
                               </span>
                             </div>
-                            <span
-                              style={{ fontSize: 12, fontWeight: 700, color }}
-                            >
-                              {pct}%
-                            </span>
-                          </div>
-                          <div
-                            style={{
-                              height: 6,
-                              background: "#1e1a14",
-                              borderRadius: 4,
-                              overflow: "hidden",
-                            }}
-                          >
-                            <div
-                              style={{
-                                height: "100%",
-                                width: `${pct}%`,
-                                background: `linear-gradient(90deg, ${color}, ${color}99)`,
-                                borderRadius: 4,
-                                transition:
-                                  "width 0.6s cubic-bezier(.23,1,.32,1)",
-                              }}
-                            />
-                          </div>
+                          ))}
                         </div>
-                      );
-                    })}
-                  </>
+                      </div>
+                    );
+                  })()
                 )}
               </div>
             )}
