@@ -117,6 +117,8 @@ export default function StatisticiProprietar() {
   const [period, setPeriod] = useState("saptamana");
   const [loading, setLoading] = useState(true);
   const [exportLoading, setExportLoading] = useState(false);
+  const [waiterStats, setWaiterStats] = useState([]);
+  const [waiterLoading, setWaiterLoading] = useState(false);
   const [myRestaurants, setMyRestaurants] = useState([]);
   const [selectedRestId, setSelectedRestId] = useState(null);
 
@@ -396,6 +398,74 @@ export default function StatisticiProprietar() {
       setExportLoading(false);
     }, 400);
   };
+
+  // ── Performanta per ospatar ──
+  useEffect(() => {
+    if (!selectedRestId || isLocked("stats_waiter")) return;
+
+    const loadWaiterStats = async () => {
+      setWaiterLoading(true);
+      try {
+        const { data: orders, error } = await supabase
+          .from("orders")
+          .select(
+            "id, waiter_id, waiter_name, total, accepted_at, completed_at",
+          )
+          .eq("restaurant_id", selectedRestId)
+          .eq("status", "paid")
+          .not("waiter_id", "is", null);
+
+        if (error || !orders || orders.length === 0) {
+          setWaiterStats([]);
+          return;
+        }
+
+        const byWaiter = {};
+        orders.forEach((o) => {
+          const id = o.waiter_id;
+          const name = o.waiter_name || "Ospătar necunoscut";
+          if (!byWaiter[id]) {
+            byWaiter[id] = {
+              id,
+              name,
+              orders: 0,
+              revenue: 0,
+              totalTime: 0,
+              timedOrders: 0,
+            };
+          }
+          byWaiter[id].orders += 1;
+          byWaiter[id].revenue += Number(o.total || 0);
+          if (o.accepted_at && o.completed_at) {
+            const diff =
+              (new Date(o.completed_at) - new Date(o.accepted_at)) / 60000;
+            if (diff > 0 && diff < 180) {
+              byWaiter[id].totalTime += diff;
+              byWaiter[id].timedOrders += 1;
+            }
+          }
+        });
+
+        const stats = Object.values(byWaiter)
+          .map((w) => ({
+            ...w,
+            avgTime:
+              w.timedOrders > 0
+                ? Math.round(w.totalTime / w.timedOrders)
+                : null,
+          }))
+          .sort((a, b) => b.revenue - a.revenue);
+
+        setWaiterStats(stats);
+      } catch (e) {
+        setWaiterStats([]);
+      } finally {
+        setWaiterLoading(false);
+      }
+    };
+
+    loadWaiterStats();
+  }, [selectedRestId]);
 
   const totalPeriod = revenueData.reduce((s, d) => s + d.value, 0);
   const topDay =
@@ -1082,6 +1152,170 @@ export default function StatisticiProprietar() {
                 </div>
               ))}
             </div>
+
+            {/* ── PERFORMANTA PER OSPATAR (Pro) ── */}
+            {!isLocked("stats_waiter") && (
+              <div
+                style={{
+                  background: "#111009",
+                  borderRadius: 16,
+                  padding: "16px",
+                  marginBottom: 16,
+                  border: "1px solid #1e1a14",
+                }}
+              >
+                <div
+                  style={{
+                    fontFamily: "'Fraunces',serif",
+                    fontSize: 16,
+                    fontWeight: 700,
+                    marginBottom: 14,
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 8,
+                  }}
+                >
+                  👨‍🍳 Performanță per ospătar
+                </div>
+                {waiterLoading ? (
+                  <div
+                    style={{
+                      textAlign: "center",
+                      padding: "20px 0",
+                      color: "#6b6050",
+                      fontSize: 13,
+                    }}
+                  >
+                    Se încarcă...
+                  </div>
+                ) : waiterStats.length === 0 ? (
+                  <div
+                    style={{
+                      textAlign: "center",
+                      padding: "20px 0",
+                      color: "#6b6050",
+                      fontSize: 13,
+                    }}
+                  >
+                    <div style={{ fontSize: 28, marginBottom: 8 }}>👨‍🍳</div>
+                    Nu există comenzi cu ospătar asignat în această perioadă
+                  </div>
+                ) : (
+                  <>
+                    <div style={{ display: "flex", gap: 8, marginBottom: 14 }}>
+                      {[
+                        { label: "Ospătari activi", value: waiterStats.length },
+                        {
+                          label: "Comenzi totale",
+                          value: waiterStats.reduce((s, w) => s + w.orders, 0),
+                        },
+                      ].map((s) => (
+                        <div
+                          key={s.label}
+                          style={{
+                            flex: 1,
+                            background: "#161210",
+                            borderRadius: 10,
+                            padding: "10px 12px",
+                          }}
+                        >
+                          <div
+                            style={{
+                              fontSize: 20,
+                              fontWeight: 700,
+                              color: "#f0ebe3",
+                              fontFamily: "'Fraunces',serif",
+                            }}
+                          >
+                            {s.value}
+                          </div>
+                          <div
+                            style={{
+                              fontSize: 10,
+                              color: "#6b6050",
+                              marginTop: 2,
+                            }}
+                          >
+                            {s.label}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                    {waiterStats.map((w, i) => (
+                      <div
+                        key={w.id}
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 10,
+                          padding: "10px 12px",
+                          background: "#161210",
+                          borderRadius: 10,
+                          marginBottom: 8,
+                        }}
+                      >
+                        <div
+                          style={{
+                            width: 32,
+                            height: 32,
+                            borderRadius: "50%",
+                            background:
+                              i === 0
+                                ? "#c0622f"
+                                : i === 1
+                                  ? "#5b8dd9"
+                                  : "#2a2218",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            fontSize: 13,
+                            color: "#fff",
+                            fontWeight: 700,
+                            flexShrink: 0,
+                          }}
+                        >
+                          {w.name.charAt(0).toUpperCase()}
+                        </div>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div
+                            style={{
+                              fontSize: 13,
+                              fontWeight: 600,
+                              color: "#f0ebe3",
+                              whiteSpace: "nowrap",
+                              overflow: "hidden",
+                              textOverflow: "ellipsis",
+                            }}
+                          >
+                            {w.name}
+                          </div>
+                          <div
+                            style={{
+                              fontSize: 11,
+                              color: "#6b6050",
+                              marginTop: 1,
+                            }}
+                          >
+                            {w.orders} comenzi
+                            {w.avgTime ? ` • ${w.avgTime} min avg` : ""}
+                          </div>
+                        </div>
+                        <div
+                          style={{
+                            fontSize: 14,
+                            fontWeight: 700,
+                            color: "#c0622f",
+                            flexShrink: 0,
+                          }}
+                        >
+                          {fmt(w.revenue)} lei
+                        </div>
+                      </div>
+                    ))}
+                  </>
+                )}
+              </div>
+            )}
 
             {/* ── PRO LOCK OVERLAY ── */}
             {isLocked("stats_waiter") && (
