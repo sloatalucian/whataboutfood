@@ -431,17 +431,24 @@ export default function StatisticiProprietar() {
         // Folosim ISO string simplu fara timezone pentru compatibilitate Supabase
         const startDateISO = new Date(startDate).toISOString();
 
-        const { data: orders, error } = await supabase
+        const { data: allOrders, error } = await supabase
           .from("orders")
           .select(
             "id, waiter_id, waiter_name, total, accepted_at, completed_at",
           )
           .eq("restaurant_id", selectedRestId)
           .eq("status", "paid")
-          .not("waiter_id", "is", "null")
           .gte("created_at", startDateISO);
 
-        if (error || !orders || orders.length === 0) {
+        if (error) {
+          setWaiterStats([]);
+          return;
+        }
+
+        // Filtram doar comenzile cu ospatar asignat
+        const orders = (allOrders || []).filter((o) => o.waiter_id !== null);
+
+        if (orders.length === 0) {
           setWaiterStats([]);
           return;
         }
