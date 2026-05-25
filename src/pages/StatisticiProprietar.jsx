@@ -142,6 +142,7 @@ export default function StatisticiProprietar() {
   const [waiterLoading, setWaiterLoading] = useState(false);
   const [ratingStats, setRatingStats] = useState(null);
   const [ratingLoading, setRatingLoading] = useState(false);
+  const [ratingPeriod, setRatingPeriod] = useState("luna");
   const [occupancyData, setOccupancyData] = useState({});
   const [occupancyTables, setOccupancyTables] = useState([]);
   const [occupancyProgram, setOccupancyProgram] = useState(null);
@@ -555,16 +556,21 @@ export default function StatisticiProprietar() {
     const loadRating = async () => {
       setRatingLoading(true);
       try {
-        // Calculeaza startDate bazat pe luna selectata
+        // Calculeaza startDate bazat pe ratingPeriod
+        const now = new Date();
         const startDateISO =
-          period === "luna"
+          ratingPeriod === "luna"
             ? new Date(selectedYear, selectedMonth, 1).toISOString()
-            : period === "zi"
-              ? new Date(new Date().setHours(0, 0, 0, 0)).toISOString()
+            : ratingPeriod === "zi"
+              ? new Date(
+                  now.getFullYear(),
+                  now.getMonth(),
+                  now.getDate(),
+                ).toISOString()
               : new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
 
         const endDateISO =
-          period === "luna"
+          ratingPeriod === "luna"
             ? new Date(
                 selectedYear,
                 selectedMonth + 1,
@@ -573,7 +579,7 @@ export default function StatisticiProprietar() {
                 59,
                 59,
               ).toISOString()
-            : new Date().toISOString();
+            : now.toISOString();
 
         const { data: reviews, error } = await supabase
           .from("restaurant_reviews")
@@ -638,7 +644,7 @@ export default function StatisticiProprietar() {
     };
 
     loadRating();
-  }, [selectedRestId, period, selectedYear, selectedMonth]);
+  }, [selectedRestId, ratingPeriod, selectedYear, selectedMonth]);
 
   // ── Rata ocupare mese (heatmap) ──
   useEffect(() => {
@@ -1995,13 +2001,47 @@ export default function StatisticiProprietar() {
               >
                 <div
                   style={{
-                    fontFamily: "'Fraunces',serif",
-                    fontSize: 16,
-                    fontWeight: 700,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
                     marginBottom: 14,
                   }}
                 >
-                  ⭐ Rating clienți
+                  <div
+                    style={{
+                      fontFamily: "'Fraunces',serif",
+                      fontSize: 16,
+                      fontWeight: 700,
+                    }}
+                  >
+                    ⭐ Rating clienți
+                  </div>
+                  <div style={{ display: "flex", gap: 4 }}>
+                    {[
+                      { key: "zi", label: "Azi" },
+                      { key: "saptamana", label: "7 zile" },
+                      { key: "luna", label: "Lună" },
+                    ].map((p) => (
+                      <button
+                        key={p.key}
+                        onClick={() => setRatingPeriod(p.key)}
+                        style={{
+                          padding: "4px 10px",
+                          borderRadius: 20,
+                          border: "none",
+                          background:
+                            ratingPeriod === p.key ? "#c0622f" : "transparent",
+                          color: ratingPeriod === p.key ? "#fff" : "#6b6050",
+                          fontSize: 11,
+                          fontWeight: ratingPeriod === p.key ? 700 : 400,
+                          cursor: "pointer",
+                          fontFamily: "inherit",
+                        }}
+                      >
+                        {p.label}
+                      </button>
+                    ))}
+                  </div>
                 </div>
 
                 {ratingLoading ? (
