@@ -171,6 +171,7 @@ function ProgramEditor({ program, onSave, onClose }) {
                   type="time"
                   value={prog[zi]?.start || "10:00"}
                   onChange={(e) => update(zi, "start", e.target.value)}
+                  lang="ro"
                   style={{
                     flex: 1,
                     background: "#1e1a14",
@@ -181,6 +182,7 @@ function ProgramEditor({ program, onSave, onClose }) {
                     fontFamily: "'Plus Jakarta Sans',sans-serif",
                     fontSize: 12,
                     outline: "none",
+                    WebkitAppearance: "none",
                   }}
                 />
                 <span style={{ fontSize: 12, color: "#6b6050" }}>—</span>
@@ -188,6 +190,7 @@ function ProgramEditor({ program, onSave, onClose }) {
                   type="time"
                   value={prog[zi]?.end || "22:00"}
                   onChange={(e) => update(zi, "end", e.target.value)}
+                  lang="ro"
                   style={{
                     flex: 1,
                     background: "#1e1a14",
@@ -198,6 +201,7 @@ function ProgramEditor({ program, onSave, onClose }) {
                     fontFamily: "'Plus Jakarta Sans',sans-serif",
                     fontSize: 12,
                     outline: "none",
+                    WebkitAppearance: "none",
                   }}
                 />
               </div>
@@ -1770,6 +1774,7 @@ export function ProgramEditorModal({
                     type="time"
                     value={prog[zi]?.start || "10:00"}
                     onChange={(e) => update(zi, "start", e.target.value)}
+                    lang="ro"
                     style={{
                       flex: 1,
                       background: "#1e1a14",
@@ -1780,6 +1785,7 @@ export function ProgramEditorModal({
                       fontFamily: "inherit",
                       fontSize: 12,
                       outline: "none",
+                      WebkitAppearance: "none",
                     }}
                   />
                   <span style={{ fontSize: 12, color: "#6b6050" }}>—</span>
@@ -1787,6 +1793,7 @@ export function ProgramEditorModal({
                     type="time"
                     value={prog[zi]?.end || "22:00"}
                     onChange={(e) => update(zi, "end", e.target.value)}
+                    lang="ro"
                     style={{
                       flex: 1,
                       background: "#1e1a14",
@@ -1797,6 +1804,7 @@ export function ProgramEditorModal({
                       fontFamily: "inherit",
                       fontSize: 12,
                       outline: "none",
+                      WebkitAppearance: "none",
                     }}
                   />
                 </div>
