@@ -198,12 +198,14 @@ export default function SuperAdmin() {
       const restWithOwner = (restData || []).map((r) => ({
         ...r,
         profiles: propMap[r.owner_id] || null,
+        plan: propMap[r.owner_id]?.plan || "free",
       }));
       setRestaurante(restWithOwner);
       // Restaurante sterse
       const sterseWithOwner = (sterseData || []).map((r) => ({
         ...r,
         profiles: propMap[r.owner_id] || null,
+        plan: propMap[r.owner_id]?.plan || "free",
       }));
       setSterseRestaurante(sterseWithOwner);
       // Mapam proprietarii si restaurantele pe abonamente
