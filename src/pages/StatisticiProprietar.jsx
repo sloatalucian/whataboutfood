@@ -115,6 +115,27 @@ export default function StatisticiProprietar() {
   const { navigate, state, isLocked } = useApp();
   const { user } = state;
   const [period, setPeriod] = useState("saptamana");
+  const now = new Date();
+  const [selectedYear, setSelectedYear] = useState(now.getFullYear());
+  const [selectedMonth, setSelectedMonth] = useState(now.getMonth()); // 0-indexed
+
+  // Lunile disponibile bazate pe plan
+  const getAvailableMonths = () => {
+    const plan = state.user?.plan || "free";
+    const months = [];
+    const today = new Date();
+    // Business: ultimii 3 ani, Pro: ultimele 3 luni, Free: luna curenta
+    const maxMonths = plan === "business" ? 36 : plan === "pro" ? 3 : 1;
+    for (let i = 0; i < maxMonths; i++) {
+      const d = new Date(today.getFullYear(), today.getMonth() - i, 1);
+      months.push({
+        year: d.getFullYear(),
+        month: d.getMonth(),
+        label: d.toLocaleString("ro-RO", { month: "long", year: "numeric" }),
+      });
+    }
+    return months;
+  };
   const [loading, setLoading] = useState(true);
   const [exportLoading, setExportLoading] = useState(false);
   const [waiterStats, setWaiterStats] = useState([]);
@@ -159,7 +180,7 @@ export default function StatisticiProprietar() {
   useEffect(() => {
     if (!selectedRestId) return;
     loadStats();
-  }, [selectedRestId, period]);
+  }, [selectedRestId, period, selectedYear, selectedMonth]);
 
   const loadStats = async () => {
     setLoading(true);
@@ -190,7 +211,7 @@ export default function StatisticiProprietar() {
         const d7Str = `${d7.getFullYear()}-${String(d7.getMonth() + 1).padStart(2, "0")}-${String(d7.getDate()).padStart(2, "0")}`;
         startDate = `${d7Str}T00:00:00${tz}`;
       } else {
-        const monthStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-01`;
+        const monthStr = `${selectedYear}-${String(selectedMonth + 1).padStart(2, "0")}-01`;
         startDate = `${monthStr}T00:00:00${tz}`;
       }
 
@@ -906,6 +927,54 @@ export default function StatisticiProprietar() {
                   ))}
                 </div>
               </div>
+
+              {/* Selector luna/an - vizibil cand period = luna */}
+              {period === "luna" && (
+                <div style={{ marginBottom: 12 }}>
+                  <select
+                    value={`${selectedYear}-${selectedMonth}`}
+                    onChange={(e) => {
+                      const [y, m] = e.target.value.split("-");
+                      setSelectedYear(Number(y));
+                      setSelectedMonth(Number(m));
+                    }}
+                    style={{
+                      width: "100%",
+                      background: "#161210",
+                      border: "1px solid #2a2218",
+                      borderRadius: 10,
+                      padding: "8px 12px",
+                      color: "#f0ebe3",
+                      fontFamily: "inherit",
+                      fontSize: 13,
+                      outline: "none",
+                      cursor: "pointer",
+                    }}
+                  >
+                    {getAvailableMonths().map((m) => (
+                      <option
+                        key={`${m.year}-${m.month}`}
+                        value={`${m.year}-${m.month}`}
+                      >
+                        {m.label}
+                      </option>
+                    ))}
+                  </select>
+                  {state.user?.plan === "pro" && (
+                    <div
+                      style={{
+                        fontSize: 11,
+                        color: "#6b6050",
+                        marginTop: 6,
+                        textAlign: "center",
+                      }}
+                    >
+                      Plan Pro — istoricul ultimelor 3 luni
+                    </div>
+                  )}
+                </div>
+              )}
+
               <div style={{ marginBottom: 12 }}>
                 <span
                   style={{
