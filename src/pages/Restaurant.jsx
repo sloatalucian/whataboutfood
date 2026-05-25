@@ -35,6 +35,70 @@ function formatProgram(program) {
   return `${ziProgram.start} — ${ziProgram.end}`;
 }
 
+// ─── COMPONENT SELECTOR ORA 24H ──────────────────────────────────────────────
+function TimeSelect({ value, onChange }) {
+  const [h, m] = (value || "00:00").split(":");
+  const hours = Array.from({ length: 24 }, (_, i) =>
+    String(i).padStart(2, "0"),
+  );
+  const minutes = ["00", "30"];
+  return (
+    <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
+      <select
+        value={h}
+        onChange={(e) => onChange(`${e.target.value}:${m}`)}
+        style={{
+          background: "#1e1a14",
+          border: "1px solid #2a2218",
+          borderRadius: 8,
+          padding: "6px 8px",
+          color: "#f0ebe3",
+          fontFamily: "inherit",
+          fontSize: 13,
+          outline: "none",
+          cursor: "pointer",
+          WebkitAppearance: "none",
+          appearance: "none",
+          textAlign: "center",
+          width: 52,
+        }}
+      >
+        {hours.map((hh) => (
+          <option key={hh} value={hh}>
+            {hh}
+          </option>
+        ))}
+      </select>
+      <span style={{ color: "#6b6050", fontWeight: 700 }}>:</span>
+      <select
+        value={m}
+        onChange={(e) => onChange(`${h}:${e.target.value}`)}
+        style={{
+          background: "#1e1a14",
+          border: "1px solid #2a2218",
+          borderRadius: 8,
+          padding: "6px 8px",
+          color: "#f0ebe3",
+          fontFamily: "inherit",
+          fontSize: 13,
+          outline: "none",
+          cursor: "pointer",
+          WebkitAppearance: "none",
+          appearance: "none",
+          textAlign: "center",
+          width: 52,
+        }}
+      >
+        {minutes.map((mm) => (
+          <option key={mm} value={mm}>
+            {mm}
+          </option>
+        ))}
+      </select>
+    </div>
+  );
+}
+
 // ─── MODAL PROGRAM EDITOR ─────────────────────────────────────────────────────
 function ProgramEditor({ program, onSave, onClose }) {
   const [prog, setProg] = useState(program || DEFAULT_PROGRAM);
@@ -167,42 +231,14 @@ function ProgramEditor({ program, onSave, onClose }) {
                   flex: 1,
                 }}
               >
-                <input
-                  type="time"
+                <TimeSelect
                   value={prog[zi]?.start || "10:00"}
-                  onChange={(e) => update(zi, "start", e.target.value)}
-                  lang="ro"
-                  style={{
-                    flex: 1,
-                    background: "#1e1a14",
-                    border: "1px solid #2a2218",
-                    borderRadius: 8,
-                    padding: "6px 8px",
-                    color: "#f0ebe3",
-                    fontFamily: "'Plus Jakarta Sans',sans-serif",
-                    fontSize: 12,
-                    outline: "none",
-                    WebkitAppearance: "none",
-                  }}
+                  onChange={(v) => update(zi, "start", v)}
                 />
                 <span style={{ fontSize: 12, color: "#6b6050" }}>—</span>
-                <input
-                  type="time"
+                <TimeSelect
                   value={prog[zi]?.end || "22:00"}
-                  onChange={(e) => update(zi, "end", e.target.value)}
-                  lang="ro"
-                  style={{
-                    flex: 1,
-                    background: "#1e1a14",
-                    border: "1px solid #2a2218",
-                    borderRadius: 8,
-                    padding: "6px 8px",
-                    color: "#f0ebe3",
-                    fontFamily: "'Plus Jakarta Sans',sans-serif",
-                    fontSize: 12,
-                    outline: "none",
-                    WebkitAppearance: "none",
-                  }}
+                  onChange={(v) => update(zi, "end", v)}
                 />
               </div>
             ) : (
@@ -1770,42 +1806,14 @@ export function ProgramEditorModal({
                     flex: 1,
                   }}
                 >
-                  <input
-                    type="time"
+                  <TimeSelect
                     value={prog[zi]?.start || "10:00"}
-                    onChange={(e) => update(zi, "start", e.target.value)}
-                    lang="ro"
-                    style={{
-                      flex: 1,
-                      background: "#1e1a14",
-                      border: "1px solid #2a2218",
-                      borderRadius: 8,
-                      padding: "6px 8px",
-                      color: "#f0ebe3",
-                      fontFamily: "inherit",
-                      fontSize: 12,
-                      outline: "none",
-                      WebkitAppearance: "none",
-                    }}
+                    onChange={(v) => update(zi, "start", v)}
                   />
                   <span style={{ fontSize: 12, color: "#6b6050" }}>—</span>
-                  <input
-                    type="time"
+                  <TimeSelect
                     value={prog[zi]?.end || "22:00"}
-                    onChange={(e) => update(zi, "end", e.target.value)}
-                    lang="ro"
-                    style={{
-                      flex: 1,
-                      background: "#1e1a14",
-                      border: "1px solid #2a2218",
-                      borderRadius: 8,
-                      padding: "6px 8px",
-                      color: "#f0ebe3",
-                      fontFamily: "inherit",
-                      fontSize: 12,
-                      outline: "none",
-                      WebkitAppearance: "none",
-                    }}
+                    onChange={(v) => update(zi, "end", v)}
                   />
                 </div>
               ) : (
