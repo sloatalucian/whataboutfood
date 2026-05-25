@@ -119,6 +119,9 @@ export default function StatisticiProprietar() {
   const [exportLoading, setExportLoading] = useState(false);
   const [waiterStats, setWaiterStats] = useState([]);
   const [waiterLoading, setWaiterLoading] = useState(false);
+  const [occupancyStats, setOccupancyStats] = useState([]);
+  const [totalTables, setTotalTables] = useState(0);
+  const [occupancyLoading, setOccupancyLoading] = useState(false);
   const [myRestaurants, setMyRestaurants] = useState([]);
   const [selectedRestId, setSelectedRestId] = useState(null);
 
@@ -518,6 +521,118 @@ export default function StatisticiProprietar() {
     };
 
     loadWaiterStats();
+  }, [selectedRestId, period]);
+
+  // ── Rata ocupare mese ──
+  useEffect(() => {
+    if (!selectedRestId || isLocked("stats_waiter")) return;
+
+    const loadOccupancy = async () => {
+      setOccupancyLoading(true);
+      try {
+        // 1. Ia toate mesele restaurantului prin floors
+        const { data: floors } = await supabase
+          .from("floors")
+          .select("id")
+          .eq("restaurant_id", selectedRestId);
+
+        if (!floors || floors.length === 0) {
+          setOccupancyStats([]);
+          setTotalTables(0);
+          return;
+        }
+
+        const floorIds = floors.map((f) => f.id);
+        const { data: tables } = await supabase
+          .from("tables")
+          .select("id, label")
+          .in("floor_id", floorIds);
+
+        const total = (tables || []).length;
+        setTotalTables(total);
+        if (total === 0) {
+          setOccupancyStats([]);
+          return;
+        }
+
+        // 2. Calculeaza startDate
+        const now = new Date();
+        const offsetMin = -now.getTimezoneOffset();
+        const sign = offsetMin >= 0 ? "+" : "-";
+        const tzHH = String(Math.floor(Math.abs(offsetMin) / 60)).padStart(
+          2,
+          "0",
+        );
+        const tzMM = String(Math.abs(offsetMin) % 60).padStart(2, "0");
+        const tz = `${sign}${tzHH}:${tzMM}`;
+        const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+        let startDate;
+        if (period === "zi") {
+          startDate = `${todayStr}T00:00:00${tz}`;
+        } else if (period === "saptamana") {
+          const d7 = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+          const d7Str = `${d7.getFullYear()}-${String(d7.getMonth() + 1).padStart(2, "0")}-${String(d7.getDate()).padStart(2, "0")}`;
+          startDate = `${d7Str}T00:00:00${tz}`;
+        } else {
+          const monthStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-01`;
+          startDate = `${monthStr}T00:00:00${tz}`;
+        }
+        const startDateISO = new Date(startDate).toISOString();
+
+        // 3. Ia sesiunile din perioada selectata
+        const { data: sessions } = await supabase
+          .from("table_sessions")
+          .select("table_label, started_at, closed_at, paid_at, status")
+          .eq("restaurant_id", selectedRestId)
+          .gte("started_at", startDateISO);
+
+        // 4. Calculeaza ocupare per masa
+        const byTable = {};
+        (tables || []).forEach((t) => {
+          byTable[t.label] = { label: t.label, sessions: 0, totalMinutes: 0 };
+        });
+
+        (sessions || []).forEach((s) => {
+          if (!byTable[s.table_label]) return;
+          const start = new Date(s.started_at);
+          const end = s.closed_at
+            ? new Date(s.closed_at)
+            : s.paid_at
+              ? new Date(s.paid_at)
+              : now;
+          const minutes = Math.max(0, (end - start) / 60000);
+          if (minutes < 600) {
+            // max 10 ore per sesiune
+            byTable[s.table_label].sessions += 1;
+            byTable[s.table_label].totalMinutes += minutes;
+          }
+        });
+
+        // 5. Calculeaza intervalul total in minute
+        const periodMinutes =
+          period === "zi" ? 1440 : period === "saptamana" ? 10080 : 43200;
+
+        const stats = Object.values(byTable)
+          .map((t) => ({
+            ...t,
+            occupancyPct: Math.min(
+              100,
+              Math.round((t.totalMinutes / periodMinutes) * 100),
+            ),
+            avgDuration:
+              t.sessions > 0 ? Math.round(t.totalMinutes / t.sessions) : 0,
+          }))
+          .sort((a, b) => b.occupancyPct - a.occupancyPct);
+
+        setOccupancyStats(stats);
+      } catch (e) {
+        setOccupancyStats([]);
+      } finally {
+        setOccupancyLoading(false);
+      }
+    };
+
+    loadOccupancy();
   }, [selectedRestId, period]);
 
   const totalPeriod = revenueData.reduce((s, d) => s + d.value, 0);
@@ -1403,6 +1518,193 @@ export default function StatisticiProprietar() {
                         </div>
                       </div>
                     ))}
+                  </>
+                )}
+              </div>
+            )}
+
+            {/* ── RATA OCUPARE MESE (Pro) ── */}
+            {!isLocked("stats_waiter") && (
+              <div
+                style={{
+                  background: "#111009",
+                  borderRadius: 16,
+                  padding: "16px",
+                  marginBottom: 16,
+                  border: "1px solid #1e1a14",
+                }}
+              >
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    marginBottom: 14,
+                  }}
+                >
+                  <div
+                    style={{
+                      fontFamily: "'Fraunces',serif",
+                      fontSize: 16,
+                      fontWeight: 700,
+                    }}
+                  >
+                    🪑 Ocupare mese
+                  </div>
+                  <div style={{ fontSize: 11, color: "#6b6050" }}>
+                    {totalTables} {totalTables === 1 ? "masă" : "mese"} total
+                  </div>
+                </div>
+                {occupancyLoading ? (
+                  <div
+                    style={{
+                      textAlign: "center",
+                      padding: "20px 0",
+                      color: "#6b6050",
+                      fontSize: 13,
+                    }}
+                  >
+                    Se încarcă...
+                  </div>
+                ) : occupancyStats.length === 0 ? (
+                  <div
+                    style={{
+                      textAlign: "center",
+                      padding: "20px 0",
+                      color: "#6b6050",
+                      fontSize: 13,
+                    }}
+                  >
+                    <div style={{ fontSize: 28, marginBottom: 8 }}>🪑</div>
+                    Nu există sesiuni în perioada selectată
+                  </div>
+                ) : (
+                  <>
+                    {/* Sumar general */}
+                    <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
+                      {[
+                        {
+                          label: "Ocupare medie",
+                          value: `${Math.round(occupancyStats.reduce((s, t) => s + t.occupancyPct, 0) / occupancyStats.length)}%`,
+                          color: "#c0622f",
+                        },
+                        {
+                          label: "Sesiuni totale",
+                          value: occupancyStats.reduce(
+                            (s, t) => s + t.sessions,
+                            0,
+                          ),
+                          color: "#f0ebe3",
+                        },
+                        {
+                          label: "Durată medie",
+                          value: `${Math.round(occupancyStats.filter((t) => t.avgDuration > 0).reduce((s, t) => s + t.avgDuration, 0) / Math.max(1, occupancyStats.filter((t) => t.avgDuration > 0).length))} min`,
+                          color: "#f0ebe3",
+                        },
+                      ].map((s) => (
+                        <div
+                          key={s.label}
+                          style={{
+                            flex: 1,
+                            background: "#161210",
+                            borderRadius: 10,
+                            padding: "10px 12px",
+                          }}
+                        >
+                          <div
+                            style={{
+                              fontSize: 18,
+                              fontWeight: 700,
+                              color: s.color,
+                              fontFamily: "'Fraunces',serif",
+                            }}
+                          >
+                            {s.value}
+                          </div>
+                          <div
+                            style={{
+                              fontSize: 10,
+                              color: "#6b6050",
+                              marginTop: 2,
+                            }}
+                          >
+                            {s.label}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Per masa - timeline bars */}
+                    {occupancyStats.map((t) => {
+                      const pct = t.occupancyPct;
+                      const color =
+                        pct >= 70
+                          ? "#c0622f"
+                          : pct >= 40
+                            ? "#c8a97e"
+                            : "#5b8dd9";
+                      return (
+                        <div key={t.label} style={{ marginBottom: 10 }}>
+                          <div
+                            style={{
+                              display: "flex",
+                              justifyContent: "space-between",
+                              alignItems: "center",
+                              marginBottom: 4,
+                            }}
+                          >
+                            <div
+                              style={{
+                                display: "flex",
+                                alignItems: "center",
+                                gap: 8,
+                              }}
+                            >
+                              <span
+                                style={{
+                                  fontSize: 12,
+                                  fontWeight: 600,
+                                  color: "#f0ebe3",
+                                }}
+                              >
+                                Masa {t.label}
+                              </span>
+                              <span style={{ fontSize: 10, color: "#6b6050" }}>
+                                {t.sessions}{" "}
+                                {t.sessions === 1 ? "sesiune" : "sesiuni"}
+                                {t.avgDuration > 0
+                                  ? ` • ${t.avgDuration} min avg`
+                                  : ""}
+                              </span>
+                            </div>
+                            <span
+                              style={{ fontSize: 12, fontWeight: 700, color }}
+                            >
+                              {pct}%
+                            </span>
+                          </div>
+                          <div
+                            style={{
+                              height: 6,
+                              background: "#1e1a14",
+                              borderRadius: 4,
+                              overflow: "hidden",
+                            }}
+                          >
+                            <div
+                              style={{
+                                height: "100%",
+                                width: `${pct}%`,
+                                background: `linear-gradient(90deg, ${color}, ${color}99)`,
+                                borderRadius: 4,
+                                transition:
+                                  "width 0.6s cubic-bezier(.23,1,.32,1)",
+                              }}
+                            />
+                          </div>
+                        </div>
+                      );
+                    })}
                   </>
                 )}
               </div>
