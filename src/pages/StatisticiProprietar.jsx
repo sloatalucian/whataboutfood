@@ -370,9 +370,7 @@ export default function StatisticiProprietar() {
       setHeatmapData(
         heatGrid.map((row) => row.map((v) => Math.round((v / maxHeat) * 100))),
       );
-    } catch (err) {
-      console.error("Stats error:", err);
-    }
+    } catch (err) {}
     setLoading(false);
   };
 
@@ -406,24 +404,62 @@ export default function StatisticiProprietar() {
     const loadWaiterStats = async () => {
       setWaiterLoading(true);
       try {
+        // Calculeaza startDate identic cu filtrul de perioada principal
+        const now = new Date();
+        const offsetMin = -now.getTimezoneOffset();
+        const sign = offsetMin >= 0 ? "+" : "-";
+        const tzHH = String(Math.floor(Math.abs(offsetMin) / 60)).padStart(
+          2,
+          "0",
+        );
+        const tzMM = String(Math.abs(offsetMin) % 60).padStart(2, "0");
+        const tz = `${sign}${tzHH}:${tzMM}`;
+        const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+        let startDate;
+        if (period === "zi") {
+          startDate = `${todayStr}T00:00:00${tz}`;
+        } else if (period === "saptamana") {
+          const d7 = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+          const d7Str = `${d7.getFullYear()}-${String(d7.getMonth() + 1).padStart(2, "0")}-${String(d7.getDate()).padStart(2, "0")}`;
+          startDate = `${d7Str}T00:00:00${tz}`;
+        } else {
+          const monthStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-01`;
+          startDate = `${monthStr}T00:00:00${tz}`;
+        }
+
+        // Incarca comenzile platite cu waiter_id din perioada selectata
         const { data: orders, error } = await supabase
           .from("orders")
-          .select(
-            "id, waiter_id, waiter_name, total, accepted_at, completed_at",
-          )
+          .select("id, waiter_id, total, accepted_at, completed_at")
           .eq("restaurant_id", selectedRestId)
           .eq("status", "paid")
-          .not("waiter_id", "is", null);
+          .not("waiter_id", "is", null)
+          .gte("created_at", startDate);
 
         if (error || !orders || orders.length === 0) {
           setWaiterStats([]);
           return;
         }
 
+        // Ia ID-urile unice ale ospatarilor
+        const waiterIds = [...new Set(orders.map((o) => o.waiter_id))];
+
+        // Ospătarii sunt în profiles cu role = waiter
+        const { data: waiterProfiles } = await supabase
+          .from("profiles")
+          .select("id, full_name")
+          .in("id", waiterIds)
+          .eq("role", "waiter");
+
+        const waiterNames = {};
+        (waiterProfiles || []).forEach((w) => {
+          waiterNames[w.id] = w.full_name || "Ospătar necunoscut";
+        });
+
         const byWaiter = {};
         orders.forEach((o) => {
           const id = o.waiter_id;
-          const name = o.waiter_name || "Ospătar necunoscut";
+          const name = waiterNames[id] || "Ospătar necunoscut";
           if (!byWaiter[id]) {
             byWaiter[id] = {
               id,
@@ -465,7 +501,7 @@ export default function StatisticiProprietar() {
     };
 
     loadWaiterStats();
-  }, [selectedRestId]);
+  }, [selectedRestId, period]);
 
   const totalPeriod = revenueData.reduce((s, d) => s + d.value, 0);
   const topDay =
@@ -1198,7 +1234,7 @@ export default function StatisticiProprietar() {
                     }}
                   >
                     <div style={{ fontSize: 28, marginBottom: 8 }}>👨‍🍳</div>
-                    Nu există comenzi cu ospătar asignat în această perioadă
+                    Nu există comenzi cu ospătar asignat în perioada selectată
                   </div>
                 ) : (
                   <>
