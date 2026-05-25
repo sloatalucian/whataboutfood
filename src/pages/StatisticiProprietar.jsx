@@ -430,7 +430,9 @@ export default function StatisticiProprietar() {
         // Incarca comenzile platite cu waiter_id din perioada selectata
         const { data: orders, error } = await supabase
           .from("orders")
-          .select("id, waiter_id, total, accepted_at, completed_at")
+          .select(
+            "id, waiter_id, waiter_name, total, accepted_at, completed_at",
+          )
           .eq("restaurant_id", selectedRestId)
           .eq("status", "paid")
           .not("waiter_id", "is", null)
@@ -453,13 +455,14 @@ export default function StatisticiProprietar() {
 
         const waiterNames = {};
         (waiterProfiles || []).forEach((w) => {
-          waiterNames[w.id] = w.full_name || "Ospătar necunoscut";
+          waiterNames[w.id] = w.full_name || null;
         });
 
         const byWaiter = {};
         orders.forEach((o) => {
           const id = o.waiter_id;
-          const name = waiterNames[id] || "Ospătar necunoscut";
+          // Prioritate: profiles.full_name > orders.waiter_name > "Ospătar necunoscut"
+          const name = waiterNames[id] || o.waiter_name || "Ospătar necunoscut";
           if (!byWaiter[id]) {
             byWaiter[id] = {
               id,

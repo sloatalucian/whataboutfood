@@ -306,6 +306,7 @@ export function WaiterTablet({
           cancelled_items: cancelledItems,
           cancellation_notes: cancelling.note || null,
           waiter_id: waiterId || null,
+          waiter_name: waiterName || null,
           has_new_items: false,
         })
         .eq("id", orderId);
@@ -357,6 +358,7 @@ export function WaiterTablet({
         .update({
           status: "cooking",
           waiter_id: waiterId || null,
+          waiter_name: waiterName || null,
           accepted_at: new Date().toISOString(),
           has_new_items: false,
           items: (orders.find((o) => o.id === orderId)?.items || []).map(
