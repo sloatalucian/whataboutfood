@@ -597,21 +597,15 @@ export default function StatisticiProprietar() {
         ];
         const DAY_IDX = { 0: 6, 1: 0, 2: 1, 3: 2, 4: 3, 5: 4, 6: 5 };
 
-        // Genereaza orele din program
-        const getHours = () => {
-          const allHours = new Set();
-          Object.entries(program).forEach(([zi, info]) => {
-            if (!info?.deschis) return;
-            let h = parseInt(info.start);
-            const endH = info.end === "00:00" ? 24 : parseInt(info.end);
-            while (h < endH) {
-              allHours.add(`${String(h).padStart(2, "0")}:00`);
-              h++;
-            }
-          });
-          return [...allHours].sort();
-        };
-        const hours = getHours();
+        // Genereaza orele din program - uniunea orelor deschise din toate zilele
+        const parseH = (t) => parseInt(t) || 0;
+        const parseEndH = (t) => (t === "00:00" ? 24 : parseInt(t) || 24);
+
+        // Axa Y: toate cele 24 de ore
+        const hours = Array.from(
+          { length: 24 },
+          (_, h) => `${String(h).padStart(2, "0")}:00`,
+        );
 
         // Calculeaza ocuparea per zi/ora
         const heatmap = {};
@@ -1666,6 +1660,17 @@ export default function StatisticiProprietar() {
 
                     // Verifica daca ziua e deschisa
                     const isOpen = (zi) => occupancyProgram?.[zi]?.deschis;
+                    const isHourOpen = (zi, h) => {
+                      const info = occupancyProgram?.[zi];
+                      if (!info?.deschis) return false;
+                      const startH = parseInt(info.start) || 0;
+                      // end "00:00" = miezul noptii = ora 24 = acopera si ora 23
+                      const endH =
+                        info.end === "00:00" ? 24 : parseInt(info.end) || 24;
+                      const hNum = parseInt(h);
+                      return hNum >= startH && hNum < endH;
+                    };
+                    // isOpen ramane pentru header zi
 
                     return (
                       <div style={{ overflowX: "auto" }}>
@@ -1719,14 +1724,14 @@ export default function StatisticiProprietar() {
                                 </td>
                                 {ZILE.map((zi) => {
                                   const cell = heatmap[zi]?.[h];
+                                  const hourOpen = isHourOpen(zi, h);
                                   const pct =
-                                    cell && totalTables > 0
+                                    cell && hourOpen && totalTables > 0
                                       ? Math.round(
                                           (cell.occupied / totalTables) * 100,
                                         )
                                       : 0;
                                   const { bg, color } = getCellColor(pct);
-                                  const open = isOpen(zi);
                                   return (
                                     <td
                                       key={zi}
@@ -1741,7 +1746,7 @@ export default function StatisticiProprietar() {
                                         style={{
                                           height: 22,
                                           borderRadius: 4,
-                                          background: open
+                                          background: hourOpen
                                             ? bg
                                             : "rgba(255,255,255,0.01)",
                                           color,
@@ -1752,9 +1757,9 @@ export default function StatisticiProprietar() {
                                           fontWeight: 600,
                                         }}
                                       >
-                                        {open && pct > 0
+                                        {hourOpen && pct > 0
                                           ? `${pct}%`
-                                          : open
+                                          : hourOpen
                                             ? "—"
                                             : ""}
                                       </div>
