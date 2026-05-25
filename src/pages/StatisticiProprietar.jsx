@@ -475,7 +475,7 @@ export default function StatisticiProprietar() {
           if (o.accepted_at && o.completed_at) {
             const diff =
               (new Date(o.completed_at) - new Date(o.accepted_at)) / 60000;
-            if (diff > 0 && diff < 180) {
+            if (diff >= 0 && diff < 180) {
               byWaiter[id].totalTime += diff;
               byWaiter[id].timedOrders += 1;
             }
@@ -488,6 +488,10 @@ export default function StatisticiProprietar() {
             avgTime:
               w.timedOrders > 0
                 ? Math.round(w.totalTime / w.timedOrders)
+                : null,
+            avgTimeSec:
+              w.timedOrders > 0
+                ? Math.round((w.totalTime / w.timedOrders) * 60)
                 : null,
           }))
           .sort((a, b) => b.revenue - a.revenue);
@@ -1332,8 +1336,12 @@ export default function StatisticiProprietar() {
                               marginTop: 1,
                             }}
                           >
-                            {w.orders} comenzi
-                            {w.avgTime ? ` • ${w.avgTime} min avg` : ""}
+                            {w.orders} {w.orders === 1 ? "comandă" : "comenzi"}
+                            {w.avgTimeSec !== null
+                              ? w.avgTime >= 1
+                                ? ` • ${w.avgTime} min avg`
+                                : ` • ${w.avgTimeSec}s avg`
+                              : ""}
                           </div>
                         </div>
                         <div
@@ -1344,7 +1352,7 @@ export default function StatisticiProprietar() {
                             flexShrink: 0,
                           }}
                         >
-                          {fmt(w.revenue)} lei
+                          {fmt(w.revenue)}
                         </div>
                       </div>
                     ))}
