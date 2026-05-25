@@ -140,6 +140,8 @@ export default function StatisticiProprietar() {
   const [exportLoading, setExportLoading] = useState(false);
   const [waiterStats, setWaiterStats] = useState([]);
   const [waiterLoading, setWaiterLoading] = useState(false);
+  const [ratingStats, setRatingStats] = useState(null);
+  const [ratingLoading, setRatingLoading] = useState(false);
   const [occupancyData, setOccupancyData] = useState({});
   const [occupancyTables, setOccupancyTables] = useState([]);
   const [occupancyProgram, setOccupancyProgram] = useState(null);
@@ -545,6 +547,98 @@ export default function StatisticiProprietar() {
 
     loadWaiterStats();
   }, [selectedRestId, period]);
+
+  // ── Rating clienti ──
+  useEffect(() => {
+    if (!selectedRestId || isLocked("stats_waiter")) return;
+
+    const loadRating = async () => {
+      setRatingLoading(true);
+      try {
+        // Calculeaza startDate bazat pe luna selectata
+        const startDateISO =
+          period === "luna"
+            ? new Date(selectedYear, selectedMonth, 1).toISOString()
+            : period === "zi"
+              ? new Date(new Date().setHours(0, 0, 0, 0)).toISOString()
+              : new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+
+        const endDateISO =
+          period === "luna"
+            ? new Date(
+                selectedYear,
+                selectedMonth + 1,
+                0,
+                23,
+                59,
+                59,
+              ).toISOString()
+            : new Date().toISOString();
+
+        const { data: reviews, error } = await supabase
+          .from("restaurant_reviews")
+          .select("id, rating, comment, created_at")
+          .eq("restaurant_id", selectedRestId)
+          .gte("created_at", startDateISO)
+          .lte("created_at", endDateISO)
+          .order("created_at", { ascending: false });
+
+        if (error || !reviews) {
+          setRatingStats(null);
+          return;
+        }
+
+        if (reviews.length === 0) {
+          setRatingStats({ empty: true });
+          return;
+        }
+
+        // Calculeaza distributia
+        const distribution = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
+        reviews.forEach((r) => {
+          distribution[r.rating] = (distribution[r.rating] || 0) + 1;
+        });
+
+        // Media
+        const avg = reviews.reduce((s, r) => s + r.rating, 0) / reviews.length;
+
+        // Evolutie per saptamana (pentru grafic)
+        const byWeek = {};
+        reviews.forEach((r) => {
+          const d = new Date(r.created_at);
+          const weekKey = `${d.getFullYear()}-W${String(Math.ceil(d.getDate() / 7)).padStart(2, "0")}`;
+          if (!byWeek[weekKey])
+            byWeek[weekKey] = {
+              sum: 0,
+              count: 0,
+              label: `Săpt. ${Math.ceil(d.getDate() / 7)}`,
+            };
+          byWeek[weekKey].sum += r.rating;
+          byWeek[weekKey].count += 1;
+        });
+        const evolution = Object.values(byWeek).map((w) => ({
+          label: w.label,
+          avg: Math.round((w.sum / w.count) * 10) / 10,
+          count: w.count,
+        }));
+
+        setRatingStats({
+          avg: Math.round(avg * 10) / 10,
+          total: reviews.length,
+          distribution,
+          recent: reviews.slice(0, 5),
+          evolution,
+          empty: false,
+        });
+      } catch (e) {
+        setRatingStats(null);
+      } finally {
+        setRatingLoading(false);
+      }
+    };
+
+    loadRating();
+  }, [selectedRestId, period, selectedYear, selectedMonth]);
 
   // ── Rata ocupare mese (heatmap) ──
   useEffect(() => {
@@ -1884,6 +1978,234 @@ export default function StatisticiProprietar() {
                       </div>
                     );
                   })()
+                )}
+              </div>
+            )}
+
+            {/* ── RATING CLIENTI (Pro) ── */}
+            {!isLocked("stats_waiter") && (
+              <div
+                style={{
+                  background: "#111009",
+                  borderRadius: 16,
+                  padding: "16px",
+                  marginBottom: 16,
+                  border: "1px solid #1e1a14",
+                }}
+              >
+                <div
+                  style={{
+                    fontFamily: "'Fraunces',serif",
+                    fontSize: 16,
+                    fontWeight: 700,
+                    marginBottom: 14,
+                  }}
+                >
+                  ⭐ Rating clienți
+                </div>
+
+                {ratingLoading ? (
+                  <div
+                    style={{
+                      textAlign: "center",
+                      padding: "20px 0",
+                      color: "#6b6050",
+                      fontSize: 13,
+                    }}
+                  >
+                    Se încarcă...
+                  </div>
+                ) : !ratingStats || ratingStats.empty ? (
+                  <div
+                    style={{
+                      textAlign: "center",
+                      padding: "20px 0",
+                      color: "#6b6050",
+                      fontSize: 13,
+                    }}
+                  >
+                    <div style={{ fontSize: 28, marginBottom: 8 }}>⭐</div>
+                    Nu există recenzii în perioada selectată
+                  </div>
+                ) : (
+                  <>
+                    {/* Media si total */}
+                    <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
+                      <div
+                        style={{
+                          flex: 1,
+                          background: "#161210",
+                          borderRadius: 10,
+                          padding: "14px 12px",
+                          textAlign: "center",
+                        }}
+                      >
+                        <div
+                          style={{
+                            fontFamily: "'Fraunces',serif",
+                            fontSize: 36,
+                            fontWeight: 900,
+                            color: "#c0622f",
+                            lineHeight: 1,
+                          }}
+                        >
+                          {ratingStats.avg}
+                        </div>
+                        <div style={{ fontSize: 20, marginTop: 4 }}>
+                          {"★".repeat(Math.round(ratingStats.avg))}
+                          {"☆".repeat(5 - Math.round(ratingStats.avg))}
+                        </div>
+                        <div
+                          style={{
+                            fontSize: 11,
+                            color: "#6b6050",
+                            marginTop: 4,
+                          }}
+                        >
+                          din {ratingStats.total}{" "}
+                          {ratingStats.total === 1 ? "recenzie" : "recenzii"}
+                        </div>
+                      </div>
+
+                      {/* Distributie stele */}
+                      <div
+                        style={{
+                          flex: 1,
+                          background: "#161210",
+                          borderRadius: 10,
+                          padding: "10px 12px",
+                        }}
+                      >
+                        {[5, 4, 3, 2, 1].map((star) => {
+                          const count = ratingStats.distribution[star] || 0;
+                          const pct =
+                            ratingStats.total > 0
+                              ? Math.round((count / ratingStats.total) * 100)
+                              : 0;
+                          return (
+                            <div
+                              key={star}
+                              style={{
+                                display: "flex",
+                                alignItems: "center",
+                                gap: 6,
+                                marginBottom: 4,
+                              }}
+                            >
+                              <span
+                                style={{
+                                  fontSize: 10,
+                                  color: "#8a7a6a",
+                                  width: 14,
+                                  textAlign: "right",
+                                }}
+                              >
+                                {star}★
+                              </span>
+                              <div
+                                style={{
+                                  flex: 1,
+                                  height: 5,
+                                  background: "#1e1a14",
+                                  borderRadius: 3,
+                                  overflow: "hidden",
+                                }}
+                              >
+                                <div
+                                  style={{
+                                    height: "100%",
+                                    width: `${pct}%`,
+                                    background:
+                                      star >= 4
+                                        ? "#c0622f"
+                                        : star === 3
+                                          ? "#c8a97e"
+                                          : "#5b8dd9",
+                                    borderRadius: 3,
+                                    transition:
+                                      "width 0.6s cubic-bezier(.23,1,.32,1)",
+                                  }}
+                                />
+                              </div>
+                              <span
+                                style={{
+                                  fontSize: 10,
+                                  color: "#6b6050",
+                                  width: 20,
+                                }}
+                              >
+                                {count}
+                              </span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* Recenzii recente */}
+                    {ratingStats.recent && ratingStats.recent.length > 0 && (
+                      <div>
+                        <div
+                          style={{
+                            fontSize: 11,
+                            color: "#6b6050",
+                            letterSpacing: "1px",
+                            textTransform: "uppercase",
+                            marginBottom: 10,
+                          }}
+                        >
+                          Recenzii recente
+                        </div>
+                        {ratingStats.recent.map((r) => (
+                          <div
+                            key={r.id}
+                            style={{
+                              background: "#161210",
+                              borderRadius: 10,
+                              padding: "10px 12px",
+                              marginBottom: 8,
+                            }}
+                          >
+                            <div
+                              style={{
+                                display: "flex",
+                                justifyContent: "space-between",
+                                alignItems: "center",
+                                marginBottom: r.comment ? 6 : 0,
+                              }}
+                            >
+                              <span style={{ color: "#c0622f", fontSize: 14 }}>
+                                {"★".repeat(r.rating)}
+                                {"☆".repeat(5 - r.rating)}
+                              </span>
+                              <span style={{ fontSize: 10, color: "#6b6050" }}>
+                                {new Date(r.created_at).toLocaleDateString(
+                                  "ro-RO",
+                                  {
+                                    day: "numeric",
+                                    month: "short",
+                                    year: "numeric",
+                                  },
+                                )}
+                              </span>
+                            </div>
+                            {r.comment && (
+                              <div
+                                style={{
+                                  fontSize: 12,
+                                  color: "#8a7a6a",
+                                  fontStyle: "italic",
+                                  lineHeight: 1.5,
+                                }}
+                              >
+                                "{r.comment}"
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </>
                 )}
               </div>
             )}
