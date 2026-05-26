@@ -184,61 +184,106 @@ export function WaiterReservations({
           >
             ✅ Confirmate
           </div>
-          {confirmedRes.map((r) => (
-            <div
-              key={r.id}
-              style={{
-                background: "#161210",
-                border: "1px solid #2a2218",
-                borderRadius: 14,
-                padding: "12px 14px",
-                marginBottom: 8,
-                display: "flex",
-                alignItems: "center",
-                gap: 12,
-              }}
-            >
+          {confirmedRes.map((r) => {
+            const resDateTime = new Date(`${r.date}T${r.time}:00`);
+            const diffMin = (new Date() - resDateTime) / 60000;
+            const showActions = diffMin >= 15;
+            return (
               <div
+                key={r.id}
                 style={{
-                  width: 40,
-                  height: 40,
-                  borderRadius: 12,
-                  flexShrink: 0,
-                  background: "rgba(74,110,74,.1)",
-                  border: "1px solid rgba(74,110,74,.2)",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  fontFamily: "'Fraunces',serif",
-                  fontSize: 14,
-                  fontWeight: 700,
-                  color: "#6b9e6b",
+                  background: "#161210",
+                  border: "1px solid #2a2218",
+                  borderRadius: 14,
+                  padding: "12px 14px",
+                  marginBottom: 8,
                 }}
               >
-                {r.table_label}
-              </div>
-              <div style={{ flex: 1 }}>
-                <div style={{ fontWeight: 600, fontSize: 14 }}>
-                  {r.customer_name}
+                <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                  <div
+                    style={{
+                      width: 40,
+                      height: 40,
+                      borderRadius: 12,
+                      flexShrink: 0,
+                      background: "rgba(74,110,74,.1)",
+                      border: "1px solid rgba(74,110,74,.2)",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      fontFamily: "'Fraunces',serif",
+                      fontSize: 14,
+                      fontWeight: 700,
+                      color: "#6b9e6b",
+                    }}
+                  >
+                    {r.table_label}
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontWeight: 600, fontSize: 14 }}>
+                      {r.customer_name}
+                    </div>
+                    <div
+                      style={{ fontSize: 11, color: "#6b6050", marginTop: 2 }}
+                    >
+                      📅 {r.date} • 🕐 {r.time} • 👥 {r.persons} pers.
+                    </div>
+                  </div>
+                  <div
+                    style={{
+                      fontSize: 9,
+                      fontWeight: 800,
+                      padding: "3px 8px",
+                      borderRadius: 20,
+                      background: "rgba(74,110,74,.2)",
+                      color: "#6b9e6b",
+                    }}
+                  >
+                    ✅
+                  </div>
                 </div>
-                <div style={{ fontSize: 11, color: "#6b6050", marginTop: 2 }}>
-                  📅 {r.date} • 🕐 {r.time} • 👥 {r.persons} pers.
-                </div>
+
+                {showActions && (
+                  <div style={{ marginTop: 10, display: "flex", gap: 8 }}>
+                    <button
+                      onClick={() => setNoShowModal(r)}
+                      style={{
+                        flex: 1,
+                        padding: "8px 12px",
+                        borderRadius: 10,
+                        background: "rgba(200,50,50,0.1)",
+                        border: "1px solid rgba(200,50,50,0.3)",
+                        color: "#e05050",
+                        fontSize: 12,
+                        fontWeight: 600,
+                        cursor: "pointer",
+                        fontFamily: "inherit",
+                      }}
+                    >
+                      👻 Nu s-a prezentat
+                    </button>
+                    <button
+                      onClick={() => markPresent(r)}
+                      style={{
+                        flex: 1,
+                        padding: "8px 12px",
+                        borderRadius: 10,
+                        background: "rgba(74,110,74,0.1)",
+                        border: "1px solid rgba(74,110,74,0.3)",
+                        color: "#6b9e6b",
+                        fontSize: 12,
+                        fontWeight: 600,
+                        cursor: "pointer",
+                        fontFamily: "inherit",
+                      }}
+                    >
+                      ✅ S-a prezentat
+                    </button>
+                  </div>
+                )}
               </div>
-              <div
-                style={{
-                  fontSize: 9,
-                  fontWeight: 800,
-                  padding: "3px 8px",
-                  borderRadius: 20,
-                  background: "rgba(74,110,74,.2)",
-                  color: "#6b9e6b",
-                }}
-              >
-                ✅
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
       {pendingRes.length === 0 && confirmedRes.length === 0 && (

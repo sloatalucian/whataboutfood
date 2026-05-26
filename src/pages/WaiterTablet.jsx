@@ -583,7 +583,7 @@ export function WaiterTablet({
         if (checkedNoShows.current.has(res.id)) continue;
         const resDateTime = new Date(`${res.date}T${res.time}:00`);
         const diffMin = (now - resDateTime) / 60000;
-        if (diffMin >= 30 && diffMin < 120) {
+        if (diffMin >= 15 && diffMin < 120) {
           checkedNoShows.current.add(res.id);
           setNoShowModal(res);
           break;
@@ -597,26 +597,43 @@ export function WaiterTablet({
 
   const markNoShow = async (res) => {
     try {
+      // 1. Scade ratingul clientului
       await supabase.rpc("decrement_client_rating", {
         user_id_input: res.user_id,
       });
+
+      // 2. Marcheaza rezervarea ca no_show
       await supabase
         .from("reservations")
         .update({ status: "no_show" })
         .eq("id", res.id);
-      await supabase.from("notifications").insert({
-        user_id: res.user_id,
-        restaurant_id: restaurantId,
-        type: "no_show",
-        message:
-          "Ai fost marcat absent la rezervarea ta. Scorul tau de prezenta a scazut cu 1 stea.",
-        is_read: false,
-      });
+
+      // 3. Elibereaza masa din table_sessions
+      if (res.table_label && restaurantId) {
+        await supabase
+          .from("table_sessions")
+          .update({ status: "closed", closed_at: new Date().toISOString() })
+          .eq("restaurant_id", restaurantId)
+          .eq("table_label", res.table_label)
+          .eq("status", "reserved");
+      }
+
+      // 4. Notifica clientul
+      if (res.user_id) {
+        await supabase.from("notifications").insert({
+          user_id: res.user_id,
+          restaurant_id: restaurantId,
+          type: "no_show",
+          message: `Rezervarea ta la ${res.date} ora ${res.time} nu mai este valabilă deoarece nu te-ai prezentat. Scorul tău de prezență a scăzut.`,
+          is_read: false,
+        });
+      }
+
       setDisplayReservations((prev) => prev.filter((r) => r.id !== res.id));
       setNoShowModal(null);
-      showToast("No-show marcat.");
+      showToast("No-show marcat. Masa eliberată.");
     } catch {
-      showToast("Eroare.");
+      showToast("Eroare la marcarea no-show.");
     }
   };
 
