@@ -7,6 +7,190 @@ import RestaurantCard from "../components/RestaurantCard";
 import { RestaurantLocationPicker } from "./NewRestaurant";
 import { supabase } from "../supabase";
 
+// ── QR Modal ──────────────────────────────────────────────────────────────────
+function QrModal({ restaurant, onClose }) {
+  const canvasRef = useRef(null);
+  const BASE_URL = "https://app.whatabout.ro/r";
+  const qrUrl = `${BASE_URL}/${restaurant.slug || restaurant.id}`;
+
+  useEffect(() => {
+    // Incarca qrcode lib dinamic si genereaza QR pe canvas
+    const script = document.createElement("script");
+    script.src =
+      "https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js";
+    script.onload = () => {
+      if (canvasRef.current) {
+        canvasRef.current.innerHTML = "";
+        new window.QRCode(canvasRef.current, {
+          text: qrUrl,
+          width: 220,
+          height: 220,
+          colorDark: "#0d0a07",
+          colorLight: "#f0ebe3",
+          correctLevel: window.QRCode.CorrectLevel.H,
+        });
+      }
+    };
+    document.head.appendChild(script);
+    return () => {
+      if (document.head.contains(script)) document.head.removeChild(script);
+    };
+  }, [qrUrl]);
+
+  const handleDownload = () => {
+    const canvas = canvasRef.current?.querySelector("canvas");
+    if (!canvas) return;
+    const link = document.createElement("a");
+    link.download = `qr-${restaurant.slug || restaurant.id}.png`;
+    link.href = canvas.toDataURL("image/png");
+    link.click();
+  };
+
+  return (
+    <div
+      style={{
+        position: "fixed",
+        inset: 0,
+        zIndex: 9999,
+        background: "rgba(0,0,0,0.8)",
+        display: "flex",
+        alignItems: "flex-end",
+        justifyContent: "center",
+      }}
+      onClick={onClose}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          background: "#1a1510",
+          borderRadius: "20px 20px 0 0",
+          padding: "24px 20px 36px",
+          width: "100%",
+          maxWidth: 480,
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+        }}
+      >
+        {/* Header */}
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            width: "100%",
+            marginBottom: 16,
+          }}
+        >
+          <div
+            style={{
+              fontFamily: "'Fraunces',serif",
+              fontSize: 17,
+              fontWeight: 700,
+            }}
+          >
+            📲 Cod QR — {restaurant.name}
+          </div>
+          <button
+            onClick={onClose}
+            style={{
+              background: "none",
+              border: "none",
+              color: "#8a7a6a",
+              fontSize: 18,
+              cursor: "pointer",
+            }}
+          >
+            ✕
+          </button>
+        </div>
+
+        {/* QR Code */}
+        <div
+          style={{
+            background: "#f0ebe3",
+            borderRadius: 16,
+            padding: 16,
+            marginBottom: 16,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          <div ref={canvasRef} />
+        </div>
+
+        {/* URL */}
+        <div
+          style={{
+            fontSize: 11,
+            color: "#6b6050",
+            marginBottom: 16,
+            background: "#161210",
+            borderRadius: 8,
+            padding: "6px 12px",
+            wordBreak: "break-all",
+            textAlign: "center",
+          }}
+        >
+          {qrUrl}
+        </div>
+
+        {/* Instructiuni */}
+        <div
+          style={{
+            fontSize: 12,
+            color: "#8a7a6a",
+            textAlign: "center",
+            marginBottom: 20,
+            lineHeight: 1.6,
+          }}
+        >
+          Clienții scanează codul QR și sunt duși direct la restaurantul tău în
+          aplicație.
+        </div>
+
+        {/* Butoane */}
+        <div style={{ display: "flex", gap: 10, width: "100%" }}>
+          <button
+            onClick={onClose}
+            style={{
+              flex: 1,
+              padding: "12px",
+              borderRadius: 12,
+              border: "1px solid #2a2218",
+              background: "transparent",
+              color: "#8a7a6a",
+              fontSize: 13,
+              fontWeight: 600,
+              cursor: "pointer",
+              fontFamily: "inherit",
+            }}
+          >
+            Închide
+          </button>
+          <button
+            onClick={handleDownload}
+            style={{
+              flex: 2,
+              padding: "12px",
+              borderRadius: 12,
+              border: "none",
+              background: "linear-gradient(135deg,#c0622f,#8b3a18)",
+              color: "#fff",
+              fontSize: 13,
+              fontWeight: 700,
+              cursor: "pointer",
+              fontFamily: "inherit",
+            }}
+          >
+            ⬇️ Descarcă QR
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 const ORASE = [
   "Toate orașele",
   "București",
@@ -907,8 +1091,9 @@ function HomeOwner({ onLogout }) {
   });
   const [showProgramModal, setShowProgramModal] = useState(false);
   const [programRestId, setProgramRestId] = useState(null);
+  const [showQrModal, setShowQrModal] = useState(false);
+  const [qrRestaurant, setQrRestaurant] = useState(null);
   const [currentProgram, setCurrentProgram] = useState(null);
-  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
 
   // Încarcă restaurantele proprietarului din Supabase
   const loadRestaurants = useCallback(async () => {
@@ -1491,10 +1676,28 @@ function HomeOwner({ onLogout }) {
                 color: "rgba(200,169,126,.2)",
                 border: "rgba(200,169,126,.3)",
               },
+              {
+                icon: "📲",
+                label: "Cod QR Restaurant",
+                desc: "Generează & descarcă",
+                screen: "qrCode",
+                color: "rgba(192,98,47,.2)",
+                border: "rgba(192,98,47,.3)",
+              },
             ].map((btn) => (
               <div
                 key={btn.screen}
                 onClick={() => {
+                  if (btn.screen === "qrCode") {
+                    const rest =
+                      myRestaurants.length === 1
+                        ? myRestaurants[0]
+                        : myRestaurants.find((r) => r.id === selectedRestId) ||
+                          myRestaurants[0];
+                    setQrRestaurant(rest);
+                    setShowQrModal(true);
+                    return;
+                  }
                   if (btn.screen === "programEditor") {
                     // Dacă are un singur restaurant, îl selectăm automat
                     if (myRestaurants.length === 1) {
@@ -1745,480 +1948,36 @@ function HomeOwner({ onLogout }) {
           )}
 
           {/* Adaugă restaurant */}
-          {(() => {
-            const plan = user?.plan || "free";
-            const maxAllowed = plan === "business" ? 5 : 1;
-            const atLimit = myRestaurants.length >= maxAllowed;
-            return (
-              <div
-                onClick={() => {
-                  if (atLimit) {
-                    setShowUpgradeModal(true);
-                  } else {
-                    navigate("newRestaurant");
-                  }
-                }}
-                style={{
-                  border: `1px dashed ${atLimit ? "#3a2a1a" : "#2a2218"}`,
-                  borderRadius: 16,
-                  padding: 16,
-                  cursor: "pointer",
-                  textAlign: "center",
-                  color: atLimit ? "#4a3828" : "#6b6050",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  gap: 8,
-                  position: "relative",
-                }}
-              >
-                <span style={{ fontSize: 20 }}>{atLimit ? "🔒" : "+"}</span>
-                <span style={{ fontSize: 13 }}>Adaugă restaurant nou</span>
-                {atLimit && (
-                  <span
-                    style={{
-                      position: "absolute",
-                      top: 8,
-                      right: 10,
-                      fontSize: 10,
-                      color: "#c0622f",
-                      fontWeight: 700,
-                      letterSpacing: 0.3,
-                      textTransform: "uppercase",
-                    }}
-                  >
-                    {plan === "free" ? "Free" : "Pro"}
-                  </span>
-                )}
-              </div>
-            );
-          })()}
+          <div
+            onClick={() => navigate("newRestaurant")}
+            style={{
+              border: "1px dashed #2a2218",
+              borderRadius: 16,
+              padding: 16,
+              cursor: "pointer",
+              textAlign: "center",
+              color: "#6b6050",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 8,
+            }}
+          >
+            <span style={{ fontSize: 20 }}>+</span>
+            <span style={{ fontSize: 13 }}>Adaugă restaurant nou</span>
+          </div>
         </div>
       </div>
 
-      {/* Modal Upgrade Plan */}
-      {showUpgradeModal && (
-        <div
-          onClick={() => setShowUpgradeModal(false)}
-          style={{
-            position: "fixed",
-            inset: 0,
-            background: "rgba(8,5,3,0.88)",
-            backdropFilter: "blur(8px)",
-            zIndex: 9999,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            padding: "0 24px",
+      {/* Modal QR Restaurant */}
+      {showQrModal && qrRestaurant && (
+        <QrModal
+          restaurant={qrRestaurant}
+          onClose={() => {
+            setShowQrModal(false);
+            setQrRestaurant(null);
           }}
-        >
-          <style>{`
-            @keyframes wafSlideUp {
-              from { opacity: 0; transform: translateY(32px) scale(0.96); }
-              to   { opacity: 1; transform: translateY(0) scale(1); }
-            }
-            @keyframes wafFadeUp {
-              from { opacity: 0; transform: translateY(10px); }
-              to   { opacity: 1; transform: translateY(0); }
-            }
-            @keyframes wafSpin {
-              from { transform: rotate(0deg); }
-              to   { transform: rotate(360deg); }
-            }
-            @keyframes wafPulse {
-              0%, 100% { opacity: 0.7; transform: translateX(-50%) scale(1); }
-              50%       { opacity: 1;   transform: translateX(-50%) scale(1.15); }
-            }
-            @keyframes wafShimmer {
-              0%   { left: -100%; }
-              100% { left: 160%; }
-            }
-            @keyframes wafDotPulse {
-              0%, 100% { opacity: 0.3; transform: scale(1); }
-              50%       { opacity: 1;   transform: scale(1.4); }
-            }
-            .waf-modal-box {
-              background: #120d09;
-              border: 1px solid #2a1e14;
-              border-radius: 28px;
-              max-width: 340px;
-              width: 100%;
-              overflow: hidden;
-              animation: wafSlideUp 0.45s cubic-bezier(0.16,1,0.3,1) both;
-              position: relative;
-            }
-            .waf-glow-top {
-              position: absolute;
-              top: -60px; left: 50%;
-              transform: translateX(-50%);
-              width: 200px; height: 120px;
-              background: radial-gradient(ellipse, rgba(192,98,47,0.35) 0%, transparent 70%);
-              pointer-events: none;
-              animation: wafPulse 3s ease-in-out infinite;
-            }
-            .waf-ring-svg {
-              position: absolute; inset: 0;
-              animation: wafSpin 8s linear infinite;
-            }
-            .waf-plan-card { transition: border-color 0.2s, transform 0.15s; }
-            .waf-plan-card:hover { transform: translateY(-1px); }
-            .waf-cta-btn {
-              position: relative; overflow: hidden;
-              transition: transform 0.15s;
-            }
-            .waf-cta-btn::before {
-              content: '';
-              position: absolute; top: 0; left: -100%;
-              width: 50%; height: 100%;
-              background: rgba(192,98,47,0.12);
-              transform: skewX(-20deg);
-              animation: wafShimmer 2.5s 1s infinite;
-            }
-            .waf-cta-btn:hover { transform: translateY(-1px); }
-            .waf-cta-btn:active { transform: scale(0.98); }
-          `}</style>
-
-          <div className="waf-modal-box" onClick={(e) => e.stopPropagation()}>
-            <div className="waf-glow-top" />
-
-            {/* Header */}
-            <div
-              style={{
-                padding: "36px 28px 24px",
-                textAlign: "center",
-                position: "relative",
-              }}
-            >
-              <div
-                style={{
-                  width: 72,
-                  height: 72,
-                  margin: "0 auto 20px",
-                  position: "relative",
-                }}
-              >
-                <svg className="waf-ring-svg" viewBox="0 0 72 72" fill="none">
-                  <circle
-                    cx="36"
-                    cy="36"
-                    r="34"
-                    stroke="#2a1e14"
-                    strokeWidth="1"
-                    strokeDasharray="4 6"
-                    strokeLinecap="round"
-                  />
-                  <circle cx="36" cy="2" r="3" fill="#c0622f" opacity="0.7" />
-                  <circle cx="70" cy="36" r="2" fill="#8a4a2a" opacity="0.5" />
-                  <circle
-                    cx="36"
-                    cy="70"
-                    r="2.5"
-                    fill="#c0622f"
-                    opacity="0.6"
-                  />
-                  <circle cx="2" cy="36" r="2" fill="#8a4a2a" opacity="0.4" />
-                </svg>
-                <div
-                  style={{
-                    position: "absolute",
-                    inset: 10,
-                    background: "#1e130a",
-                    borderRadius: "50%",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    fontSize: 24,
-                    border: "1px solid #2e1e10",
-                  }}
-                >
-                  🏪
-                </div>
-              </div>
-
-              <div
-                style={{
-                  fontFamily: "'Fraunces', serif",
-                  fontSize: 24,
-                  fontWeight: 900,
-                  color: "#f5ede3",
-                  lineHeight: 1.2,
-                  marginBottom: 10,
-                  animation: "wafFadeUp 0.5s 0.15s both",
-                }}
-              >
-                Vrei mai multe
-                <br />
-                restaurante?
-              </div>
-              <div
-                style={{
-                  fontSize: 14,
-                  color: "#7a6a58",
-                  lineHeight: 1.65,
-                  animation: "wafFadeUp 0.5s 0.22s both",
-                }}
-              >
-                Planul tău actual permite un singur restaurant.
-                <br />
-                Fă upgrade și extinde-ți afacerea.
-              </div>
-            </div>
-
-            {/* Divider */}
-            <div
-              style={{
-                height: 1,
-                background:
-                  "linear-gradient(90deg,transparent,#2a1e14 30%,#2a1e14 70%,transparent)",
-                margin: "0 28px",
-              }}
-            />
-
-            {/* Plan cards */}
-            <div
-              style={{
-                padding: "20px 20px 0",
-                display: "flex",
-                flexDirection: "column",
-                gap: 10,
-                animation: "wafFadeUp 0.5s 0.3s both",
-              }}
-            >
-              {/* Pro */}
-              <div
-                className="waf-plan-card"
-                style={{
-                  background: "#171109",
-                  border: "1px solid #251a10",
-                  borderRadius: 16,
-                  padding: 16,
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  gap: 10,
-                }}
-              >
-                <div>
-                  <div
-                    style={{
-                      fontFamily: "'Fraunces', serif",
-                      fontSize: 16,
-                      fontWeight: 700,
-                      color: "#c8a97e",
-                      marginBottom: 3,
-                    }}
-                  >
-                    Pro
-                  </div>
-                  <div
-                    style={{
-                      display: "flex",
-                      flexWrap: "wrap",
-                      gap: 6,
-                      marginTop: 6,
-                    }}
-                  >
-                    {["1 restaurant", "Statistici avansate", "Export CSV"].map(
-                      (f) => (
-                        <span
-                          key={f}
-                          style={{
-                            fontSize: 11,
-                            color: "#5a4a38",
-                            background: "rgba(255,255,255,0.03)",
-                            border: "1px solid #1e1510",
-                            borderRadius: 5,
-                            padding: "2px 7px",
-                          }}
-                        >
-                          {f}
-                        </span>
-                      ),
-                    )}
-                  </div>
-                </div>
-                <div
-                  style={{
-                    fontSize: 16,
-                    fontWeight: 600,
-                    color: "#e8ddd0",
-                    whiteSpace: "nowrap",
-                    textAlign: "right",
-                  }}
-                >
-                  250 lei
-                  <span
-                    style={{ fontSize: 11, color: "#4a3828", fontWeight: 400 }}
-                  >
-                    /lună
-                  </span>
-                </div>
-              </div>
-
-              {/* Business */}
-              <div
-                className="waf-plan-card"
-                style={{
-                  background: "#1a1008",
-                  border: "1px solid rgba(192,98,47,0.35)",
-                  borderRadius: 16,
-                  padding: 16,
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  gap: 10,
-                }}
-              >
-                <div>
-                  <div
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 6,
-                      marginBottom: 3,
-                    }}
-                  >
-                    <span
-                      style={{
-                        fontFamily: "'Fraunces', serif",
-                        fontSize: 16,
-                        fontWeight: 700,
-                        color: "#d97a45",
-                      }}
-                    >
-                      Business
-                    </span>
-                    <span
-                      style={{
-                        fontSize: 10,
-                        fontWeight: 700,
-                        color: "#c0622f",
-                        background: "rgba(192,98,47,0.15)",
-                        border: "1px solid rgba(192,98,47,0.3)",
-                        borderRadius: 5,
-                        padding: "1px 6px",
-                        letterSpacing: "0.8px",
-                        textTransform: "uppercase",
-                      }}
-                    >
-                      Recomandat
-                    </span>
-                  </div>
-                  <div
-                    style={{
-                      display: "flex",
-                      flexWrap: "wrap",
-                      gap: 6,
-                      marginTop: 6,
-                    }}
-                  >
-                    {[
-                      "5 restaurante",
-                      "Rapoarte comparative",
-                      "Email automat",
-                    ].map((f) => (
-                      <span
-                        key={f}
-                        style={{
-                          fontSize: 11,
-                          color: "#7a5a40",
-                          background: "rgba(255,255,255,0.03)",
-                          border: "1px solid rgba(192,98,47,0.15)",
-                          borderRadius: 5,
-                          padding: "2px 7px",
-                        }}
-                      >
-                        {f}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-                <div
-                  style={{
-                    fontSize: 16,
-                    fontWeight: 600,
-                    color: "#d97a45",
-                    whiteSpace: "nowrap",
-                    textAlign: "right",
-                  }}
-                >
-                  800 lei
-                  <span
-                    style={{ fontSize: 11, color: "#4a3828", fontWeight: 400 }}
-                  >
-                    /lună
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            {/* CTA */}
-            <div
-              style={{
-                padding: "20px 20px 12px",
-                animation: "wafFadeUp 0.5s 0.4s both",
-              }}
-            >
-              <div
-                className="waf-cta-btn"
-                onClick={() => setShowUpgradeModal(false)}
-                style={{
-                  background: "#ffffff",
-                  borderRadius: 16,
-                  padding: 17,
-                  fontSize: 15,
-                  fontWeight: 700,
-                  color: "#1a0e06",
-                  cursor: "pointer",
-                  letterSpacing: 0.4,
-                  textAlign: "center",
-                  boxSizing: "border-box",
-                }}
-              >
-                Contactează-ne pentru upgrade →
-              </div>
-            </div>
-
-            {/* Back */}
-            <div
-              onClick={() => setShowUpgradeModal(false)}
-              style={{
-                textAlign: "center",
-                fontSize: 13,
-                color: "#8a7060",
-                cursor: "pointer",
-                padding: "0 20px 22px",
-                animation: "wafFadeUp 0.5s 0.45s both",
-              }}
-            >
-              ← Înapoi
-            </div>
-
-            {/* Dots */}
-            <div
-              style={{
-                position: "absolute",
-                bottom: 12,
-                right: 16,
-                display: "flex",
-                gap: 4,
-              }}
-            >
-              {[0, 0.3, 0.6].map((d, i) => (
-                <div
-                  key={i}
-                  style={{
-                    width: 4,
-                    height: 4,
-                    borderRadius: "50%",
-                    background: "#2a1a10",
-                    animation: `wafDotPulse 2s ${d}s infinite`,
-                  }}
-                />
-              ))}
-            </div>
-          </div>
-        </div>
+        />
       )}
 
       {/* Modal Editor Program */}
