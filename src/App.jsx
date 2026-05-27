@@ -113,6 +113,7 @@ function Router() {
               plan: profile?.plan || "free",
               restName: profile?.restaurant_name || "Restaurantul meu",
               role: profile?.role || "client",
+              rating: profile?.rating ?? 4,
             },
           });
           setSplashDone(true);
@@ -147,6 +148,7 @@ function Router() {
             plan: profile?.plan || "free",
             restName: profile?.restaurant_name || "Restaurantul meu",
             role: profile?.role || "client",
+            rating: profile?.rating ?? 4,
           },
         });
       }
