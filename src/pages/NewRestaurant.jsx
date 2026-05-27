@@ -1044,6 +1044,20 @@ const EMOJIS_REST = [
   "🍷",
 ];
 
+// Genereaza slug din numele restaurantului
+function generateSlug(name) {
+  return name
+    .toLowerCase()
+    .replace(/[ăâ]/g, "a")
+    .replace(/[î]/g, "i")
+    .replace(/[șş]/g, "s")
+    .replace(/[țţ]/g, "t")
+    .replace(/[^a-z0-9\s-]/g, "")
+    .trim()
+    .replace(/\s+/g, "-")
+    .replace(/-+/g, "-");
+}
+
 export default function NewRestaurant() {
   const { navigate, showToast, state } = useApp();
   const { user } = state;
@@ -1119,6 +1133,7 @@ export default function NewRestaurant() {
           description: form.description || null,
           plan: user?.plan || "free",
           is_active: false,
+          slug: generateSlug(form.name),
           latitude: restLocation?.lat || null,
           longitude: restLocation?.lon || null,
           location_name: restLocation?.name || null,
