@@ -10,7 +10,7 @@ import { supabase } from "../supabase";
 // ── QR Modal ──────────────────────────────────────────────────────────────────
 function QrModal({ restaurant, onClose }) {
   const canvasRef = useRef(null);
-  const BASE_URL = "https://app.whatabout.ro/r";
+  const BASE_URL = "https://whataboutfood.vercel.app/r";
   const qrUrl = `${BASE_URL}/${restaurant.slug || restaurant.id}`;
 
   useEffect(() => {
@@ -52,10 +52,11 @@ function QrModal({ restaurant, onClose }) {
         position: "fixed",
         inset: 0,
         zIndex: 9999,
-        background: "rgba(0,0,0,0.8)",
+        background: "rgba(0,0,0,0.85)",
         display: "flex",
-        alignItems: "flex-end",
+        alignItems: "center",
         justifyContent: "center",
+        padding: "20px",
       }}
       onClick={onClose}
     >
@@ -63,10 +64,10 @@ function QrModal({ restaurant, onClose }) {
         onClick={(e) => e.stopPropagation()}
         style={{
           background: "#1a1510",
-          borderRadius: "20px 20px 0 0",
-          padding: "24px 20px 36px",
+          borderRadius: 20,
+          padding: "24px 20px 28px",
           width: "100%",
-          maxWidth: 480,
+          maxWidth: 360,
           display: "flex",
           flexDirection: "column",
           alignItems: "center",
