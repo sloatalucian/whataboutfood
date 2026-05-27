@@ -8,7 +8,7 @@ import { RestaurantLocationPicker } from "./NewRestaurant";
 import { supabase } from "../supabase";
 
 // ── QR Modal ──────────────────────────────────────────────────────────────────
-function QrModal({ restaurant, onClose }) {
+function QrModal({ restaurant, restaurants, onRestChange, onClose }) {
   const canvasRef = useRef(null);
   const BASE_URL = "https://whataboutfood.vercel.app/r";
   const qrUrl = `${BASE_URL}/${restaurant.slug || restaurant.id}`;
@@ -79,7 +79,7 @@ function QrModal({ restaurant, onClose }) {
             display: "flex",
             justifyContent: "space-between",
             width: "100%",
-            marginBottom: 16,
+            marginBottom: restaurants.length > 1 ? 12 : 16,
           }}
         >
           <div
@@ -89,7 +89,7 @@ function QrModal({ restaurant, onClose }) {
               fontWeight: 700,
             }}
           >
-            📲 Cod QR — {restaurant.name}
+            📲 Cod QR Restaurant
           </div>
           <button
             onClick={onClose}
@@ -104,6 +104,37 @@ function QrModal({ restaurant, onClose }) {
             ✕
           </button>
         </div>
+
+        {/* Selector restaurant - apare doar daca sunt mai multe */}
+        {restaurants.length > 1 && (
+          <div style={{ width: "100%", marginBottom: 16 }}>
+            <select
+              value={restaurant.id}
+              onChange={(e) => {
+                const rest = restaurants.find((r) => r.id === e.target.value);
+                if (rest) onRestChange(rest);
+              }}
+              style={{
+                width: "100%",
+                background: "#161210",
+                border: "1px solid #2a2218",
+                borderRadius: 10,
+                padding: "8px 12px",
+                color: "#f0ebe3",
+                fontFamily: "inherit",
+                fontSize: 13,
+                outline: "none",
+                cursor: "pointer",
+              }}
+            >
+              {restaurants.map((r) => (
+                <option key={r.id} value={r.id}>
+                  {r.name}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
 
         {/* QR Code */}
         <div
@@ -1974,6 +2005,8 @@ function HomeOwner({ onLogout }) {
       {showQrModal && qrRestaurant && (
         <QrModal
           restaurant={qrRestaurant}
+          restaurants={myRestaurants}
+          onRestChange={(rest) => setQrRestaurant(rest)}
           onClose={() => {
             setShowQrModal(false);
             setQrRestaurant(null);
