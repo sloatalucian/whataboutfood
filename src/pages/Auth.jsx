@@ -68,24 +68,20 @@ export function Auth() {
   };
 
   // Date derivate
+  const STATUSE_FINALE = [
+    "cancelled",
+    "no_show",
+    "completed",
+    "rejected",
+    "refused",
+  ];
   const rezervariViitoare = rezervari.filter((r) => {
-    if (
-      r.status === "cancelled" ||
-      r.status === "no_show" ||
-      r.status === "completed"
-    )
-      return false;
-    // Compara data SI ora rezervarii cu momentul curent
+    if (STATUSE_FINALE.includes(r.status)) return false;
     const rezDateTime = new Date(`${r.date}T${r.time || "23:59"}:00`);
     return rezDateTime > new Date();
   });
   const istoricRezervari = rezervari.filter((r) => {
-    if (
-      r.status === "cancelled" ||
-      r.status === "no_show" ||
-      r.status === "completed"
-    )
-      return true;
+    if (STATUSE_FINALE.includes(r.status)) return true;
     const rezDateTime = new Date(`${r.date}T${r.time || "23:59"}:00`);
     return rezDateTime <= new Date();
   });
