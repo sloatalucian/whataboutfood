@@ -1091,6 +1091,9 @@ export function WaiterTablet({
             markNoShow={markNoShow}
             markPresent={markPresent}
             tab={tab}
+            suggestionModal={suggestionModal}
+            setSuggestionModal={setSuggestionModal}
+            sendRefusalWithSuggestion={sendRefusalWithSuggestion}
           />
         )}
 

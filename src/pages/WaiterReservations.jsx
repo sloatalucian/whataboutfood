@@ -13,6 +13,9 @@ export function WaiterReservations({
   markNoShow,
   markPresent,
   tab,
+  suggestionModal,
+  setSuggestionModal,
+  sendRefusalWithSuggestion,
 }) {
   return (
     <div>
@@ -296,6 +299,108 @@ export function WaiterReservations({
         >
           <div style={{ fontSize: 36, marginBottom: 10 }}>📅</div>
           <div>Nicio rezervare</div>
+        </div>
+      )}
+      {/* Modal sugestie la refuz */}
+      {suggestionModal && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 9999,
+            background: "rgba(0,0,0,0.7)",
+            display: "flex",
+            alignItems: "flex-end",
+            justifyContent: "center",
+          }}
+        >
+          <div
+            style={{
+              background: "#1a1510",
+              borderRadius: "20px 20px 0 0",
+              padding: "24px 20px 32px",
+              width: "100%",
+              maxWidth: 480,
+            }}
+          >
+            <div
+              style={{
+                fontFamily: "'Fraunces',serif",
+                fontSize: 17,
+                fontWeight: 700,
+                marginBottom: 6,
+              }}
+            >
+              ❌ Refuzi rezervarea?
+            </div>
+            <div style={{ fontSize: 13, color: "#8a7a6a", marginBottom: 16 }}>
+              Poți adăuga o sugestie opțională pentru client (altă oră, altă
+              dată).
+            </div>
+            <textarea
+              value={suggestionModal.text || ""}
+              onChange={(e) =>
+                setSuggestionModal({ ...suggestionModal, text: e.target.value })
+              }
+              placeholder="Ex: Vă sugerăm ora 19:00 sau weekend-ul următor..."
+              rows={3}
+              style={{
+                width: "100%",
+                boxSizing: "border-box",
+                background: "#161210",
+                border: "1px solid #2a2218",
+                borderRadius: 10,
+                padding: "10px 12px",
+                color: "#f0ebe3",
+                fontFamily: "inherit",
+                fontSize: 13,
+                outline: "none",
+                resize: "none",
+                marginBottom: 14,
+              }}
+            />
+            <div style={{ display: "flex", gap: 8 }}>
+              <button
+                onClick={() => setSuggestionModal(null)}
+                style={{
+                  flex: 1,
+                  padding: "10px",
+                  borderRadius: 10,
+                  border: "1px solid #2a2218",
+                  background: "transparent",
+                  color: "#8a7a6a",
+                  fontSize: 13,
+                  fontWeight: 600,
+                  cursor: "pointer",
+                  fontFamily: "inherit",
+                }}
+              >
+                Anulează
+              </button>
+              <button
+                onClick={() =>
+                  sendRefusalWithSuggestion(
+                    suggestionModal.reservationId,
+                    suggestionModal.text,
+                  )
+                }
+                style={{
+                  flex: 2,
+                  padding: "10px",
+                  borderRadius: 10,
+                  border: "none",
+                  background: "rgba(192,57,43,.8)",
+                  color: "#fff",
+                  fontSize: 13,
+                  fontWeight: 700,
+                  cursor: "pointer",
+                  fontFamily: "inherit",
+                }}
+              >
+                ❌ Confirmă refuzul
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>
