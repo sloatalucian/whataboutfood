@@ -598,58 +598,80 @@ export function WaiterTablet({
   const markNoShow = async (res) => {
     try {
       // 1. Scade ratingul clientului
-      await supabase.rpc("decrement_client_rating", {
+      const { error: e1 } = await supabase.rpc("decrement_client_rating", {
         user_id_input: res.user_id,
       });
+      if (e1) {
+        console.error("decrement_client_rating:", e1);
+      }
 
       // 2. Marcheaza rezervarea ca no_show
-      await supabase
+      const { error: e2 } = await supabase
         .from("reservations")
         .update({ status: "no_show" })
         .eq("id", res.id);
+      if (e2) {
+        console.error("reservations update:", e2);
+      }
 
       // 3. Elibereaza masa din table_sessions
       if (res.table_label && restaurantId) {
-        await supabase
+        const { error: e3 } = await supabase
           .from("table_sessions")
           .update({ status: "closed", closed_at: new Date().toISOString() })
           .eq("restaurant_id", restaurantId)
           .eq("table_label", res.table_label)
           .eq("status", "reserved");
+        if (e3) {
+          console.error("table_sessions update:", e3);
+        }
       }
 
       // 4. Notifica clientul
       if (res.user_id) {
-        await supabase.from("notifications").insert({
+        const { error: e4 } = await supabase.from("notifications").insert({
           user_id: res.user_id,
           restaurant_id: restaurantId,
           type: "no_show",
           message: `Rezervarea ta la ${res.date} ora ${res.time} nu mai este valabilă deoarece nu te-ai prezentat. Scorul tău de prezență a scăzut.`,
           is_read: false,
         });
+        if (e4) {
+          console.error("notifications insert:", e4);
+        }
       }
 
       setDisplayReservations((prev) => prev.filter((r) => r.id !== res.id));
       setNoShowModal(null);
       showToast("No-show marcat. Masa eliberată.");
-    } catch {
+    } catch (err) {
+      console.error("markNoShow error:", err);
       showToast("Eroare la marcarea no-show.");
     }
   };
 
   const markPresent = async (res) => {
     try {
-      await supabase.rpc("increment_client_rating", {
+      const { error: e1 } = await supabase.rpc("increment_client_rating", {
         user_id_input: res.user_id,
       });
-      await supabase
+      if (e1) {
+        console.error("increment_client_rating:", e1);
+      }
+
+      const { error: e2 } = await supabase
         .from("reservations")
         .update({ status: "completed" })
         .eq("id", res.id);
+      if (e2) {
+        console.error("reservations update:", e2);
+      }
+
       setDisplayReservations((prev) => prev.filter((r) => r.id !== res.id));
       setNoShowModal(null);
       showToast("Prezenta confirmata!");
-    } catch {
+    } catch (err) {
+      console.error("markPresent error:", err);
       showToast("Eroare.");
     }
   };
