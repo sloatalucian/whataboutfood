@@ -1377,6 +1377,14 @@ export default function SplashScreen({ onComplete, onWaiterLogin }) {
       setLoading(false);
       return;
     }
+    if (profile?.role === "waiter") {
+      await supabase.auth.signOut();
+      setError(
+        "Contul tău este de ospătar. Folosește secțiunea de login pentru ospătari.",
+      );
+      setLoading(false);
+      return;
+    }
     dispatch({
       type: "SET_USER",
       payload: {
