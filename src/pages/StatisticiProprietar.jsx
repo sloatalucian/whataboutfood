@@ -151,6 +151,8 @@ export default function StatisticiProprietar() {
   const [occupancyProgram, setOccupancyProgram] = useState(null);
   const [occupancyLoading, setOccupancyLoading] = useState(false);
   const [occupancyWeek, setOccupancyWeek] = useState(1);
+  const [occupancyMonth, setOccupancyMonth] = useState(new Date().getMonth());
+  const [occupancyYear, setOccupancyYear] = useState(new Date().getFullYear());
   const [myRestaurants, setMyRestaurants] = useState([]);
   const [selectedRestId, setSelectedRestId] = useState(null);
 
@@ -770,10 +772,9 @@ export default function StatisticiProprietar() {
           return;
         }
 
-        // 3. Calculeaza saptamana selectata din luna curenta
-        const now = new Date();
-        const year = now.getFullYear();
-        const month = now.getMonth();
+        // 3. Calculeaza saptamana selectata din luna/anul selectat
+        const year = occupancyYear;
+        const month = occupancyMonth;
         // Saptamanile din luna curenta (bazate pe calendar)
         const firstDay = new Date(year, month, 1);
         const lastDay = new Date(year, month + 1, 0);
@@ -860,7 +861,7 @@ export default function StatisticiProprietar() {
     };
 
     loadOccupancy();
-  }, [selectedRestId, occupancyWeek]);
+  }, [selectedRestId, occupancyWeek, occupancyMonth, occupancyYear]);
 
   const totalPeriod = revenueData.reduce((s, d) => s + d.value, 0);
   const topDay =
@@ -1830,6 +1831,40 @@ export default function StatisticiProprietar() {
                   <div style={{ fontSize: 10, color: "#6b6050" }}>
                     {occupancyTables.length} mese • luna curentă
                   </div>
+                </div>
+
+                {/* Selector luna/an */}
+                <div style={{ marginBottom: 10 }}>
+                  <select
+                    value={`${occupancyYear}-${occupancyMonth}`}
+                    onChange={(e) => {
+                      const [y, m] = e.target.value.split("-");
+                      setOccupancyYear(Number(y));
+                      setOccupancyMonth(Number(m));
+                      setOccupancyWeek(1);
+                    }}
+                    style={{
+                      width: "100%",
+                      background: "#161210",
+                      border: "1px solid #2a2218",
+                      borderRadius: 10,
+                      padding: "8px 12px",
+                      color: "#f0ebe3",
+                      fontFamily: "inherit",
+                      fontSize: 13,
+                      outline: "none",
+                      cursor: "pointer",
+                    }}
+                  >
+                    {getAvailableMonths().map((m) => (
+                      <option
+                        key={`${m.year}-${m.month}`}
+                        value={`${m.year}-${m.month}`}
+                      >
+                        {m.label}
+                      </option>
+                    ))}
+                  </select>
                 </div>
 
                 {/* Selector saptamana */}
