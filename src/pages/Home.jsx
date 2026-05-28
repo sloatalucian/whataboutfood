@@ -1533,9 +1533,9 @@ function HomeOwner({ onLogout }) {
                 src="/logo.png"
                 alt="WhataboutFood"
                 style={{
-                  width: 38,
-                  height: 38,
-                  borderRadius: 11,
+                  width: 44,
+                  height: 44,
+                  borderRadius: 12,
                   objectFit: "cover",
                 }}
               />
