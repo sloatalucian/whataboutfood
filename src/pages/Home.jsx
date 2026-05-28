@@ -1529,20 +1529,16 @@ function HomeOwner({ onLogout }) {
             }}
           >
             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-              <div
+              <img
+                src="/logo.png"
+                alt="WhataboutFood"
                 style={{
                   width: 38,
                   height: 38,
-                  background: "linear-gradient(135deg,var(--terra),#8b3a18)",
                   borderRadius: 11,
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  fontSize: 20,
+                  objectFit: "cover",
                 }}
-              >
-                🍽️
-              </div>
+              />
               <div
                 style={{
                   fontFamily: "'Fraunces',serif",
