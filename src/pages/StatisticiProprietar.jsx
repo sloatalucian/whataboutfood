@@ -167,6 +167,9 @@ export default function StatisticiProprietar() {
   const [topProducts, setTopProducts] = useState([]);
   const [topCategories, setTopCategories] = useState([]);
   const [heatmapData, setHeatmapData] = useState([]);
+  const [heatmapMonth, setHeatmapMonth] = useState(new Date().getMonth());
+  const [heatmapYear, setHeatmapYear] = useState(new Date().getFullYear());
+  const [heatmapWeek, setHeatmapWeek] = useState(0); // 0 = toata luna
   const [restaurantName, setRestaurantName] = useState("");
 
   // Încarcă lista restaurante
@@ -188,7 +191,15 @@ export default function StatisticiProprietar() {
   useEffect(() => {
     if (!selectedRestId) return;
     loadStats();
-  }, [selectedRestId, period, selectedYear, selectedMonth]);
+  }, [
+    selectedRestId,
+    period,
+    selectedYear,
+    selectedMonth,
+    heatmapMonth,
+    heatmapYear,
+    heatmapWeek,
+  ]);
 
   const loadStats = async () => {
     setLoading(true);
@@ -373,13 +384,41 @@ export default function StatisticiProprietar() {
         );
       }
 
-      // ── Heatmap ore aglomerate (luna curentă) ──
+      // ── Heatmap ore aglomerate ──
+      // Calculeaza intervalul bazat pe heatmapMonth/Year/Week
+      const hmYear = heatmapYear;
+      const hmMonth = heatmapMonth;
+      const hmLastDay = new Date(hmYear, hmMonth + 1, 0).getDate();
+      const weekStarts = [1, 8, 15, 22];
+      const weekEnds = [7, 14, 21, hmLastDay];
+      let hmStart, hmEnd;
+      if (heatmapWeek === 0) {
+        // Toata luna
+        hmStart = new Date(hmYear, hmMonth, 1).toISOString();
+        hmEnd = new Date(hmYear, hmMonth + 1, 0, 23, 59, 59).toISOString();
+      } else {
+        hmStart = new Date(
+          hmYear,
+          hmMonth,
+          weekStarts[heatmapWeek - 1],
+        ).toISOString();
+        hmEnd = new Date(
+          hmYear,
+          hmMonth,
+          weekEnds[heatmapWeek - 1],
+          23,
+          59,
+          59,
+        ).toISOString();
+      }
+
       const { data: allMonthOrders } = await supabase
         .from("orders")
         .select("created_at")
         .eq("restaurant_id", restId)
         .in("status", ["paid", "completed"])
-        .gte("created_at", monthStart);
+        .gte("created_at", hmStart)
+        .lte("created_at", hmEnd);
 
       const heatGrid = ORE.map(() => ZILE.map(() => 0));
       (allMonthOrders || []).forEach((o) => {
@@ -1355,10 +1394,121 @@ export default function StatisticiProprietar() {
                 >
                   🔥 Ore aglomerate
                 </div>
+
+                {/* Selector luna + an */}
+                {(() => {
+                  const available = getAvailableMonths();
+                  const availableYears = [
+                    ...new Set(available.map((m) => m.year)),
+                  ].sort((a, b) => b - a);
+                  const availableMonths = available.filter(
+                    (m) => m.year === heatmapYear,
+                  );
+                  const LUNI = [
+                    "Ianuarie",
+                    "Februarie",
+                    "Martie",
+                    "Aprilie",
+                    "Mai",
+                    "Iunie",
+                    "Iulie",
+                    "August",
+                    "Septembrie",
+                    "Octombrie",
+                    "Noiembrie",
+                    "Decembrie",
+                  ];
+                  return (
+                    <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
+                      <select
+                        value={heatmapMonth}
+                        onChange={(e) => {
+                          setHeatmapMonth(Number(e.target.value));
+                          setHeatmapWeek(0);
+                        }}
+                        style={{
+                          flex: 2,
+                          background: "#1e1a14",
+                          border: "1px solid #2a2218",
+                          borderRadius: 8,
+                          padding: "6px 10px",
+                          color: "#f0ebe3",
+                          fontFamily: "inherit",
+                          fontSize: 12,
+                          outline: "none",
+                          cursor: "pointer",
+                        }}
+                      >
+                        {availableMonths.map((m) => (
+                          <option key={m.month} value={m.month}>
+                            {LUNI[m.month]}
+                          </option>
+                        ))}
+                      </select>
+                      <select
+                        value={heatmapYear}
+                        onChange={(e) => {
+                          setHeatmapYear(Number(e.target.value));
+                          setHeatmapWeek(0);
+                        }}
+                        style={{
+                          flex: 1,
+                          background: "#1e1a14",
+                          border: "1px solid #2a2218",
+                          borderRadius: 8,
+                          padding: "6px 10px",
+                          color: "#f0ebe3",
+                          fontFamily: "inherit",
+                          fontSize: 12,
+                          outline: "none",
+                          cursor: "pointer",
+                        }}
+                      >
+                        {availableYears.map((y) => (
+                          <option key={y} value={y}>
+                            {y}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  );
+                })()}
+
+                {/* Selector saptamana */}
+                <div style={{ display: "flex", gap: 4, marginBottom: 12 }}>
+                  {[
+                    { label: "Toată luna", value: 0 },
+                    { label: "Săpt. 1", value: 1 },
+                    { label: "Săpt. 2", value: 2 },
+                    { label: "Săpt. 3", value: 3 },
+                    { label: "Săpt. 4", value: 4 },
+                  ].map((w) => (
+                    <button
+                      key={w.value}
+                      onClick={() => setHeatmapWeek(w.value)}
+                      style={{
+                        flex: 1,
+                        padding: "4px 0",
+                        borderRadius: 20,
+                        border: "none",
+                        background:
+                          heatmapWeek === w.value ? "#c0622f" : "#161210",
+                        color: heatmapWeek === w.value ? "#fff" : "#6b6050",
+                        fontSize: 10,
+                        fontWeight: heatmapWeek === w.value ? 700 : 400,
+                        cursor: "pointer",
+                        fontFamily: "inherit",
+                      }}
+                    >
+                      {w.label}
+                    </button>
+                  ))}
+                </div>
+
                 <div
                   style={{ fontSize: 11, color: "#6b6050", marginBottom: 14 }}
                 >
-                  Activitate per zi și oră (luna curentă)
+                  Activitate per zi și oră
                 </div>
                 <div
                   style={{
