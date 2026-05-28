@@ -472,29 +472,35 @@ export function Auth() {
             {(user.name || user.email || "?")[0].toUpperCase()}
           </div>
           {/* Scor cont */}
-          {user.rating !== undefined && user.rating !== null && (
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 6,
-                background: "rgba(192,98,47,0.1)",
-                border: "1px solid rgba(192,98,47,0.25)",
-                borderRadius: 20,
-                padding: "4px 12px",
-                marginBottom: 6,
-              }}
-            >
-              <span style={{ fontSize: 14 }}>
-                {"★".repeat(Math.round(Number(user.rating || 0)))}
-                {"☆".repeat(5 - Math.round(Number(user.rating || 0)))}
-              </span>
-              <span style={{ fontSize: 13, fontWeight: 700, color: "#c0622f" }}>
-                {Number(user.rating || 0).toFixed(1)}
-              </span>
-              <span style={{ fontSize: 11, color: "#8a7a6a" }}>scor cont</span>
-            </div>
-          )}
+          {user.role === "client" &&
+            user.rating !== undefined &&
+            user.rating !== null && (
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 6,
+                  background: "rgba(192,98,47,0.1)",
+                  border: "1px solid rgba(192,98,47,0.25)",
+                  borderRadius: 20,
+                  padding: "4px 12px",
+                  marginBottom: 6,
+                }}
+              >
+                <span style={{ fontSize: 14 }}>
+                  {"★".repeat(Math.round(Number(user.rating || 0)))}
+                  {"☆".repeat(5 - Math.round(Number(user.rating || 0)))}
+                </span>
+                <span
+                  style={{ fontSize: 13, fontWeight: 700, color: "#c0622f" }}
+                >
+                  {Number(user.rating || 0).toFixed(1)}
+                </span>
+                <span style={{ fontSize: 11, color: "#8a7a6a" }}>
+                  scor cont
+                </span>
+              </div>
+            )}
           <div
             style={{
               fontFamily: "'Fraunces',serif",
