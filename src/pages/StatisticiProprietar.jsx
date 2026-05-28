@@ -155,6 +155,11 @@ export default function StatisticiProprietar() {
   const [occupancyYear, setOccupancyYear] = useState(new Date().getFullYear());
   const [myRestaurants, setMyRestaurants] = useState([]);
   const [selectedRestId, setSelectedRestId] = useState(null);
+  const [todayStats, setTodayStats] = useState({
+    orders: "—",
+    reservations: "—",
+    revenue: "—",
+  });
 
   // Date reale
   const [monthStats, setMonthStats] = useState({
@@ -187,6 +192,42 @@ export default function StatisticiProprietar() {
         }
       });
   }, [user?.id]);
+
+  // Statistici azi - se reincarca la schimbarea restaurantului
+  useEffect(() => {
+    if (!selectedRestId) return;
+    const loadToday = async () => {
+      const startOfDay = new Date();
+      startOfDay.setHours(0, 0, 0, 0);
+      const todayStr = startOfDay.toISOString().split("T")[0];
+
+      const [{ data: orders }, { count: resCount }] = await Promise.all([
+        supabase
+          .from("orders")
+          .select("total")
+          .eq("restaurant_id", selectedRestId)
+          .in("status", ["paid", "completed"])
+          .gte("created_at", startOfDay.toISOString()),
+        supabase
+          .from("reservations")
+          .select("id", { count: "exact", head: true })
+          .eq("restaurant_id", selectedRestId)
+          .eq("date", todayStr)
+          .eq("status", "confirmed"),
+      ]);
+
+      const revenue = (orders || []).reduce(
+        (s, o) => s + Number(o.total || 0),
+        0,
+      );
+      setTodayStats({
+        orders: (orders || []).length,
+        reservations: resCount || 0,
+        revenue: `${revenue.toFixed(0)} lei`,
+      });
+    };
+    loadToday();
+  }, [selectedRestId]);
 
   useEffect(() => {
     if (!selectedRestId) return;
@@ -1048,6 +1089,74 @@ export default function StatisticiProprietar() {
           </div>
         ) : (
           <>
+            {/* Sumar azi */}
+            <div
+              style={{
+                fontSize: 10,
+                letterSpacing: 2,
+                textTransform: "uppercase",
+                color: "#6b6050",
+                marginBottom: 10,
+              }}
+            >
+              Astăzi
+            </div>
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(3,1fr)",
+                gap: 8,
+                marginBottom: 20,
+              }}
+            >
+              {[
+                {
+                  icon: "🍽️",
+                  label: "Comenzi",
+                  value: todayStats.orders,
+                  color: "#c0622f",
+                },
+                {
+                  icon: "📅",
+                  label: "Rezervări",
+                  value: todayStats.reservations,
+                  color: "#c8a97e",
+                },
+                {
+                  icon: "💰",
+                  label: "Venituri",
+                  value: todayStats.revenue,
+                  color: "#6b9e6b",
+                },
+              ].map((s) => (
+                <div
+                  key={s.label}
+                  style={{
+                    background: "#161210",
+                    border: "1px solid #2a2218",
+                    borderRadius: 12,
+                    padding: "12px 8px",
+                    textAlign: "center",
+                  }}
+                >
+                  <div style={{ fontSize: 18, marginBottom: 4 }}>{s.icon}</div>
+                  <div
+                    style={{
+                      fontFamily: "'Fraunces',serif",
+                      fontSize: 18,
+                      fontWeight: 900,
+                      color: s.color,
+                    }}
+                  >
+                    {s.value}
+                  </div>
+                  <div style={{ fontSize: 9, color: "#6b6050", marginTop: 2 }}>
+                    {s.label}
+                  </div>
+                </div>
+              ))}
+            </div>
+
             {/* Sumar */}
             <div
               style={{

@@ -1189,22 +1189,27 @@ function HomeOwner({ onLogout }) {
   useEffect(() => {
     if (!user?.id) return;
     const loadToday = async () => {
+      // Ia restaurantul selectat sau primul disponibil
       const { data: rests } = await supabase
         .from("restaurants")
         .select("id")
         .eq("owner_id", user.id)
-        .limit(1);
+        .eq("is_active", true);
       if (!rests || rests.length === 0) return;
-      const restId = rests[0].id;
+      const restId = selectedRestId || rests[0].id;
+
       const startOfDay = new Date();
       startOfDay.setHours(0, 0, 0, 0);
 
+      // Comenzi platite azi
       const { data: orders } = await supabase
         .from("orders")
         .select("total, status")
         .eq("restaurant_id", restId)
+        .in("status", ["paid", "completed"])
         .gte("created_at", startOfDay.toISOString());
 
+      // Rezervari confirmate azi
       const todayStr = new Date().toISOString().split("T")[0];
       const { count: resCount } = await supabase
         .from("reservations")
@@ -1213,9 +1218,10 @@ function HomeOwner({ onLogout }) {
         .eq("date", todayStr)
         .eq("status", "confirmed");
 
-      const revenue = (orders || [])
-        .filter((o) => o.status === "paid" || o.status === "completed")
-        .reduce((s, o) => s + Number(o.total || 0), 0);
+      const revenue = (orders || []).reduce(
+        (s, o) => s + Number(o.total || 0),
+        0,
+      );
 
       setTodayStats({
         orders: (orders || []).length,
@@ -1224,7 +1230,7 @@ function HomeOwner({ onLogout }) {
       });
     };
     loadToday();
-  }, [user?.id]);
+  }, [user?.id, selectedRestId]);
 
   // Șterge restaurant din Supabase
   // ── Upload poza restaurant ──
@@ -1582,63 +1588,6 @@ function HomeOwner({ onLogout }) {
         </div>
 
         <div className="inner" style={{ paddingTop: 20 }}>
-          {/* Quick stats */}
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(3,1fr)",
-              gap: 10,
-              marginBottom: 24,
-            }}
-          >
-            {[
-              {
-                icon: "🍽️",
-                label: "Comenzi azi",
-                value: "—",
-                color: "#c0622f",
-              },
-              {
-                icon: "📅",
-                label: "Rezervări azi",
-                value: "—",
-                color: "#c8a97e",
-              },
-              {
-                icon: "💰",
-                label: "Venituri azi",
-                value: "—",
-                color: "#6b9e6b",
-              },
-            ].map((s) => (
-              <div
-                key={s.label}
-                style={{
-                  background: "#161210",
-                  border: "1px solid #2a2218",
-                  borderRadius: 14,
-                  padding: "14px 10px",
-                  textAlign: "center",
-                }}
-              >
-                <div style={{ fontSize: 20, marginBottom: 4 }}>{s.icon}</div>
-                <div
-                  style={{
-                    fontFamily: "'Fraunces',serif",
-                    fontSize: 20,
-                    fontWeight: 900,
-                    color: s.color,
-                  }}
-                >
-                  {s.value}
-                </div>
-                <div style={{ fontSize: 9, color: "#6b6050", marginTop: 2 }}>
-                  {s.label}
-                </div>
-              </div>
-            ))}
-          </div>
-
           {/* Acțiuni rapide */}
           <div
             style={{
