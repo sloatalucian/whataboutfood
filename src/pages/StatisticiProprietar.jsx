@@ -1833,39 +1833,94 @@ export default function StatisticiProprietar() {
                   </div>
                 </div>
 
-                {/* Selector luna/an */}
-                <div style={{ marginBottom: 10 }}>
-                  <select
-                    value={`${occupancyYear}-${occupancyMonth}`}
-                    onChange={(e) => {
-                      const [y, m] = e.target.value.split("-");
-                      setOccupancyYear(Number(y));
-                      setOccupancyMonth(Number(m));
-                      setOccupancyWeek(1);
-                    }}
-                    style={{
-                      width: "100%",
-                      background: "#161210",
-                      border: "1px solid #2a2218",
-                      borderRadius: 10,
-                      padding: "8px 12px",
-                      color: "#f0ebe3",
-                      fontFamily: "inherit",
-                      fontSize: 13,
-                      outline: "none",
-                      cursor: "pointer",
-                    }}
-                  >
-                    {getAvailableMonths().map((m) => (
-                      <option
-                        key={`${m.year}-${m.month}`}
-                        value={`${m.year}-${m.month}`}
+                {/* Selector luna + an - doua dropdown-uri separate */}
+                {(() => {
+                  const available = getAvailableMonths();
+                  const availableYears = [
+                    ...new Set(available.map((m) => m.year)),
+                  ].sort((a, b) => b - a);
+                  const availableMonths = available.filter(
+                    (m) => m.year === occupancyYear,
+                  );
+                  const LUNI = [
+                    "Ianuarie",
+                    "Februarie",
+                    "Martie",
+                    "Aprilie",
+                    "Mai",
+                    "Iunie",
+                    "Iulie",
+                    "August",
+                    "Septembrie",
+                    "Octombrie",
+                    "Noiembrie",
+                    "Decembrie",
+                  ];
+                  return (
+                    <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
+                      <select
+                        value={occupancyMonth}
+                        onChange={(e) => {
+                          setOccupancyMonth(Number(e.target.value));
+                          setOccupancyWeek(1);
+                        }}
+                        style={{
+                          flex: 2,
+                          background: "#161210",
+                          border: "1px solid #2a2218",
+                          borderRadius: 10,
+                          padding: "8px 12px",
+                          color: "#f0ebe3",
+                          fontFamily: "inherit",
+                          fontSize: 13,
+                          outline: "none",
+                          cursor: "pointer",
+                        }}
                       >
-                        {m.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+                        {availableMonths.map((m) => (
+                          <option key={m.month} value={m.month}>
+                            {LUNI[m.month]}
+                          </option>
+                        ))}
+                      </select>
+                      <select
+                        value={occupancyYear}
+                        onChange={(e) => {
+                          const newYear = Number(e.target.value);
+                          setOccupancyYear(newYear);
+                          // Verifica daca luna curenta e disponibila in noul an
+                          const monthsInYear = available
+                            .filter((m) => m.year === newYear)
+                            .map((m) => m.month);
+                          if (!monthsInYear.includes(occupancyMonth)) {
+                            setOccupancyMonth(
+                              monthsInYear[0] ?? new Date().getMonth(),
+                            );
+                          }
+                          setOccupancyWeek(1);
+                        }}
+                        style={{
+                          flex: 1,
+                          background: "#161210",
+                          border: "1px solid #2a2218",
+                          borderRadius: 10,
+                          padding: "8px 12px",
+                          color: "#f0ebe3",
+                          fontFamily: "inherit",
+                          fontSize: 13,
+                          outline: "none",
+                          cursor: "pointer",
+                        }}
+                      >
+                        {availableYears.map((y) => (
+                          <option key={y} value={y}>
+                            {y}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  );
+                })()}
 
                 {/* Selector saptamana */}
                 <div style={{ display: "flex", gap: 4, marginBottom: 14 }}>
