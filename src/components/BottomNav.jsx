@@ -172,7 +172,8 @@ function GlowNav({ items, activeId, onNavigate, badge }) {
   const prevIdx = useRef(current);
 
   const handleClick = (item, idx) => {
-    if (idx === prevIdx.current) return;
+    // Permite navigarea chiar daca e acelasi idx
+    // dar blocheaza double-tap rapid (< 300ms)
     prevIdx.current = idx;
     setAnimIdx(idx);
     onNavigate(item);
