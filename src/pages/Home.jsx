@@ -1196,7 +1196,7 @@ function HomeOwner({ onLogout }) {
         .eq("owner_id", user.id)
         .eq("is_active", true);
       if (!rests || rests.length === 0) return;
-      const restId = selectedRestId || rests[0].id;
+      const restId = rests[0].id;
 
       const startOfDay = new Date();
       startOfDay.setHours(0, 0, 0, 0);
@@ -1230,7 +1230,7 @@ function HomeOwner({ onLogout }) {
       });
     };
     loadToday();
-  }, [user?.id, selectedRestId]);
+  }, [user?.id]);
 
   // Șterge restaurant din Supabase
   // ── Upload poza restaurant ──
@@ -1670,11 +1670,7 @@ function HomeOwner({ onLogout }) {
                 key={btn.screen}
                 onClick={() => {
                   if (btn.screen === "qrCode") {
-                    const rest =
-                      myRestaurants.length === 1
-                        ? myRestaurants[0]
-                        : myRestaurants.find((r) => r.id === selectedRestId) ||
-                          myRestaurants[0];
+                    const rest = myRestaurants[0];
                     setQrRestaurant(rest);
                     setShowQrModal(true);
                     return;
