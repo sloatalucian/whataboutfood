@@ -1569,21 +1569,78 @@ function HomeOwner({ onLogout }) {
               Ieși
             </button>
           </div>
-          <div style={{ fontSize: 13, color: "var(--muted)", marginBottom: 4 }}>
-            Bun venit înapoi, 👑
-          </div>
+          {/* Profile card */}
           <div
             style={{
-              fontFamily: "'Fraunces',serif",
-              fontSize: 26,
-              fontWeight: 900,
-              marginBottom: 4,
+              background: "#161210",
+              border: "1px solid #2a2218",
+              borderRadius: 16,
+              padding: "14px 16px",
+              marginTop: 16,
+              display: "flex",
+              alignItems: "center",
+              gap: 12,
             }}
           >
-            {user?.name}
-          </div>
-          <div style={{ fontSize: 13, color: "var(--muted)" }}>
-            Plan {user?.plan?.toUpperCase() || "FREE"}
+            <div
+              style={{
+                width: 46,
+                height: 46,
+                borderRadius: "50%",
+                background: "#c0622f",
+                flexShrink: 0,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                fontFamily: "'Fraunces',serif",
+                fontSize: 20,
+                fontWeight: 700,
+                color: "#fff",
+              }}
+            >
+              {(user?.name || "?")[0].toUpperCase()}
+            </div>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: 11, color: "#6b6050", marginBottom: 2 }}>
+                Bun venit înapoi, 👑
+              </div>
+              <div
+                style={{
+                  fontFamily: "'Fraunces',serif",
+                  fontSize: 17,
+                  fontWeight: 900,
+                  color: "#f0ebe3",
+                  marginBottom: 4,
+                }}
+              >
+                {user?.name}
+              </div>
+              <div
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 4,
+                  background: "rgba(192,98,47,0.12)",
+                  border: "1px solid rgba(192,98,47,0.25)",
+                  borderRadius: 20,
+                  padding: "2px 10px",
+                  fontSize: 11,
+                  fontWeight: 600,
+                  color: "#c0622f",
+                }}
+              >
+                {user?.plan === "business"
+                  ? "👑"
+                  : user?.plan === "pro"
+                    ? "⭐"
+                    : "🆓"}{" "}
+                {user?.plan === "business"
+                  ? "Business"
+                  : user?.plan === "pro"
+                    ? "Pro"
+                    : "Free"}
+              </div>
+            </div>
           </div>
         </div>
 
@@ -1656,14 +1713,6 @@ function HomeOwner({ onLogout }) {
                 screen: "admin",
                 color: "rgba(200,169,126,.2)",
                 border: "rgba(200,169,126,.3)",
-              },
-              {
-                icon: "📲",
-                label: "Cod QR Restaurant",
-                desc: "Generează & descarcă",
-                screen: "qrCode",
-                color: "rgba(192,98,47,.2)",
-                border: "rgba(192,98,47,.3)",
               },
             ].map((btn) => (
               <div
@@ -1740,6 +1789,37 @@ function HomeOwner({ onLogout }) {
               </div>
             </div>
           )}
+          {/* QR Card - full width */}
+          <div
+            onClick={() => {
+              const rest = myRestaurants[0];
+              setQrRestaurant(rest);
+              setShowQrModal(true);
+            }}
+            style={{
+              background: "rgba(192,98,47,0.06)",
+              border: "1px solid rgba(192,98,47,0.25)",
+              borderRadius: 14,
+              padding: "14px 16px",
+              marginBottom: 16,
+              display: "flex",
+              alignItems: "center",
+              gap: 12,
+              cursor: "pointer",
+            }}
+          >
+            <div style={{ fontSize: 24 }}>📲</div>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: 13, fontWeight: 600, color: "#f0ebe3" }}>
+                Cod QR Restaurant
+              </div>
+              <div style={{ fontSize: 11, color: "#8a7a6a", marginTop: 2 }}>
+                Generează & descarcă codul pentru clienți
+              </div>
+            </div>
+            <div style={{ color: "#c0622f", fontSize: 16 }}>›</div>
+          </div>
+
           {/* Restaurantele mele */}
           <div
             style={{
@@ -1828,28 +1908,41 @@ function HomeOwner({ onLogout }) {
                     <div
                       style={{ fontSize: 11, color: "#6b6050", marginTop: 2 }}
                     >
-                      {r.city} • Plan {r.plan?.toUpperCase() || "FREE"} •{" "}
+                      {r.city}
                       <span
                         style={{
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: 3,
+                          marginLeft: 6,
                           color: r.is_active ? "#6b9e6b" : "#e07a47",
                           fontWeight: 600,
                         }}
                       >
-                        {r.is_active ? "✅ Activ" : "⏳ În așteptare"}
+                        <span
+                          style={{
+                            width: 6,
+                            height: 6,
+                            borderRadius: "50%",
+                            background: r.is_active ? "#6b9e6b" : "#e07a47",
+                            display: "inline-block",
+                          }}
+                        />
+                        {r.is_active ? "Activ" : "În așteptare"}
                       </span>
                     </div>
                   </div>
-                  <div style={{ display: "flex", gap: 6 }}>
+                  <div style={{ display: "flex", gap: 8 }}>
                     <button
                       onClick={() => navigate("adminFloor")}
                       style={{
-                        width: 32,
-                        height: 32,
-                        borderRadius: 8,
+                        width: 36,
+                        height: 36,
+                        borderRadius: 10,
                         background: "rgba(192,98,47,.15)",
                         border: "1px solid rgba(192,98,47,.3)",
                         color: "#e07a47",
-                        fontSize: 14,
+                        fontSize: 16,
                         cursor: "pointer",
                         display: "flex",
                         alignItems: "center",
