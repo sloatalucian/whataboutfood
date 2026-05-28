@@ -59,6 +59,34 @@ function Router() {
   const [checkingSession, setCheckingSession] = useState(true);
   const [isOffline, setIsOffline] = useState(!navigator.onLine);
 
+  // ── QR Deep Link Handler ──
+  // Detecteaza /r/:slug in URL si navigheaza la restaurantul respectiv
+  useEffect(() => {
+    const path = window.location.pathname;
+    const match = path.match(/^\/r\/(.+)$/);
+    if (!match) return;
+    const slug = match[1];
+
+    const loadRestaurantBySlug = async () => {
+      const { data: rest } = await supabase
+        .from("restaurants")
+        .select("*")
+        .eq("slug", slug)
+        .eq("is_active", true)
+        .single();
+
+      if (rest) {
+        dispatch({ type: "SET_REST", payload: rest });
+        // Curata URL-ul fara reload
+        window.history.replaceState({}, "", "/");
+      }
+    };
+
+    // Asteapta sa fie gata sesiunea
+    const timer = setTimeout(loadRestaurantBySlug, 800);
+    return () => clearTimeout(timer);
+  }, []);
+
   useEffect(() => {
     const goOffline = () => setIsOffline(true);
     const goOnline = () => setIsOffline(false);
@@ -210,9 +238,10 @@ function Router() {
     navigate("waiter");
     showToast(`👋 Bun venit, ${waiter.name}!`);
   };
-  const handleWaiterLogout = () => {
+  const handleWaiterLogout = async () => {
+    await supabase.auth.signOut();
     setWaiterUser(null);
-    navigate("home");
+    dispatch({ type: "SET_USER", payload: null });
     showToast("👋 Ai ieșit din tabletă.");
   };
   const [reviewRating, setReviewRating] = useState(0);
