@@ -1125,6 +1125,18 @@ function HomeOwner({ onLogout }) {
   const [programRestId, setProgramRestId] = useState(null);
   const [showQrModal, setShowQrModal] = useState(false);
   const [qrRestaurant, setQrRestaurant] = useState(null);
+  const [calendarMonth, setCalendarMonth] = useState(new Date().getMonth());
+  const [calendarYear, setCalendarYear] = useState(new Date().getFullYear());
+  const [localEvents, setLocalEvents] = useState([]);
+  const [publicHolidays, setPublicHolidays] = useState([]);
+  const [showAddEvent, setShowAddEvent] = useState(false);
+  const [newEvent, setNewEvent] = useState({
+    title: "",
+    date: "",
+    type: "festival",
+    description: "",
+  });
+  const [calendarRestId, setCalendarRestId] = useState(null);
   const [currentProgram, setCurrentProgram] = useState(null);
 
   // Încarcă restaurantele proprietarului din Supabase
@@ -1231,6 +1243,76 @@ function HomeOwner({ onLogout }) {
     };
     loadToday();
   }, [user?.id]);
+
+  // ── Calendar events ──
+  useEffect(() => {
+    if (user?.plan !== "business") return;
+    if (!selectedRestId && myRestaurants.length === 0) return;
+    const restId = selectedRestId || myRestaurants[0]?.id;
+    if (!restId) return;
+    setCalendarRestId(restId);
+
+    // 1. Incarca evenimentele locale din Supabase
+    const loadEvents = async () => {
+      const { data } = await supabase
+        .from("events")
+        .select("*")
+        .eq("restaurant_id", restId)
+        .order("date", { ascending: true });
+      setLocalEvents(data || []);
+    };
+    loadEvents();
+
+    // 2. Incarca sarbatorile legale din API
+    const loadHolidays = async () => {
+      try {
+        const year = new Date().getFullYear();
+        const res = await fetch(
+          `https://date.nager.at/api/v3/PublicHolidays/${year}/RO`,
+        );
+        const data = await res.json();
+        setPublicHolidays(data || []);
+      } catch {
+        setPublicHolidays([]);
+      }
+    };
+    loadHolidays();
+  }, [user?.plan, selectedRestId, myRestaurants]);
+
+  const handleAddEvent = async () => {
+    if (!newEvent.title || !newEvent.date) {
+      showToast("⚠️ Completează titlul și data!");
+      return;
+    }
+    const restId = calendarRestId || myRestaurants[0]?.id;
+    if (!restId) return;
+    const { data, error } = await supabase
+      .from("events")
+      .insert({
+        restaurant_id: restId,
+        title: newEvent.title,
+        date: newEvent.date,
+        type: newEvent.type,
+        description: newEvent.description,
+        created_by: "owner",
+      })
+      .select()
+      .single();
+    if (!error && data) {
+      setLocalEvents((prev) =>
+        [...prev, data].sort((a, b) => a.date.localeCompare(b.date)),
+      );
+      setNewEvent({ title: "", date: "", type: "festival", description: "" });
+      setShowAddEvent(false);
+      showToast("✅ Eveniment adăugat!");
+    }
+  };
+
+  const handleDeleteEvent = async (id) => {
+    await supabase.from("events").delete().eq("id", id);
+    setLocalEvents((prev) => prev.filter((e) => e.id !== id));
+    showToast("🗑️ Eveniment șters.");
+  };
 
   // Șterge restaurant din Supabase
   // ── Upload poza restaurant ──
@@ -2038,6 +2120,581 @@ function HomeOwner({ onLogout }) {
           </div>
         </div>
       </div>
+
+      {/* ── CALENDAR EVENIMENTE (Business) ── */}
+      {user?.plan === "business" && (
+        <div style={{ marginTop: 24, padding: "0 16px" }}>
+          <div
+            style={{
+              fontSize: 10,
+              letterSpacing: "1.5px",
+              textTransform: "uppercase",
+              color: "#6b6050",
+              marginBottom: 12,
+            }}
+          >
+            📅 Evenimente & Sărbători
+          </div>
+          <div
+            style={{
+              background: "#111009",
+              border: "1px solid #1e1a14",
+              borderRadius: 16,
+              padding: 16,
+            }}
+          >
+            {/* Header calendar */}
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                marginBottom: 14,
+              }}
+            >
+              <div
+                style={{
+                  fontFamily: "'Fraunces',serif",
+                  fontSize: 15,
+                  fontWeight: 700,
+                }}
+              >
+                {
+                  [
+                    "Ianuarie",
+                    "Februarie",
+                    "Martie",
+                    "Aprilie",
+                    "Mai",
+                    "Iunie",
+                    "Iulie",
+                    "August",
+                    "Septembrie",
+                    "Octombrie",
+                    "Noiembrie",
+                    "Decembrie",
+                  ][calendarMonth]
+                }{" "}
+                {calendarYear}
+              </div>
+              <div style={{ display: "flex", gap: 6 }}>
+                <button
+                  onClick={() => {
+                    if (calendarMonth === 0) {
+                      setCalendarMonth(11);
+                      setCalendarYear((y) => y - 1);
+                    } else setCalendarMonth((m) => m - 1);
+                  }}
+                  style={{
+                    background: "#161210",
+                    border: "1px solid #2a2218",
+                    color: "#8a7a6a",
+                    borderRadius: 8,
+                    width: 28,
+                    height: 28,
+                    cursor: "pointer",
+                    fontSize: 14,
+                  }}
+                >
+                  ‹
+                </button>
+                <button
+                  onClick={() => {
+                    if (calendarMonth === 11) {
+                      setCalendarMonth(0);
+                      setCalendarYear((y) => y + 1);
+                    } else setCalendarMonth((m) => m + 1);
+                  }}
+                  style={{
+                    background: "#161210",
+                    border: "1px solid #2a2218",
+                    color: "#8a7a6a",
+                    borderRadius: 8,
+                    width: 28,
+                    height: 28,
+                    cursor: "pointer",
+                    fontSize: 14,
+                  }}
+                >
+                  ›
+                </button>
+              </div>
+            </div>
+
+            {/* Zile saptamana */}
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(7,1fr)",
+                gap: 2,
+                marginBottom: 6,
+              }}
+            >
+              {["Lun", "Mar", "Mie", "Joi", "Vin", "Sâm", "Dum"].map((d) => (
+                <div
+                  key={d}
+                  style={{
+                    textAlign: "center",
+                    fontSize: 9,
+                    color: "#6b6050",
+                    padding: "3px 0",
+                  }}
+                >
+                  {d}
+                </div>
+              ))}
+            </div>
+
+            {/* Grid zile */}
+            {(() => {
+              const firstDay = new Date(calendarYear, calendarMonth, 1);
+              const lastDay = new Date(calendarYear, calendarMonth + 1, 0);
+              const startOffset = (firstDay.getDay() + 6) % 7;
+              const daysInMonth = lastDay.getDate();
+              const today = new Date();
+              const cells = [];
+              for (let i = 0; i < startOffset; i++) cells.push(null);
+              for (let d = 1; d <= daysInMonth; d++) cells.push(d);
+              const getDateStr = (d) =>
+                `${calendarYear}-${String(calendarMonth + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+              const hasHoliday = (d) =>
+                publicHolidays.some((h) => h.date === getDateStr(d));
+              const hasEvent = (d) =>
+                localEvents.some((e) => e.date === getDateStr(d));
+              const isToday = (d) =>
+                today.getDate() === d &&
+                today.getMonth() === calendarMonth &&
+                today.getFullYear() === calendarYear;
+              return (
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "repeat(7,1fr)",
+                    gap: 3,
+                    marginBottom: 14,
+                  }}
+                >
+                  {cells.map((d, i) => {
+                    if (!d) return <div key={i} />;
+                    const h = hasHoliday(d),
+                      e = hasEvent(d),
+                      t = isToday(d);
+                    let bg = "#161210",
+                      border = "transparent",
+                      color = "#6b6050";
+                    if (t) {
+                      bg = "#c0622f";
+                      color = "#fff";
+                    } else if (h && e) {
+                      bg = "rgba(91,141,217,0.15)";
+                      border = "rgba(91,141,217,0.3)";
+                      color = "#f0ebe3";
+                    } else if (h) {
+                      bg = "rgba(224,80,80,0.12)";
+                      border = "rgba(224,80,80,0.3)";
+                      color = "#f0ebe3";
+                    } else if (e) {
+                      bg = "rgba(192,98,47,0.12)";
+                      border = "rgba(192,98,47,0.3)";
+                      color = "#f0ebe3";
+                    }
+                    return (
+                      <div
+                        key={i}
+                        style={{
+                          aspectRatio: "1",
+                          borderRadius: 7,
+                          display: "flex",
+                          flexDirection: "column",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          fontSize: 11,
+                          background: bg,
+                          border: `1px solid ${border}`,
+                          color,
+                          position: "relative",
+                          fontWeight: t ? 700 : 400,
+                        }}
+                      >
+                        {d}
+                        {(h || e) && !t && (
+                          <div
+                            style={{
+                              position: "absolute",
+                              bottom: 2,
+                              display: "flex",
+                              gap: 2,
+                            }}
+                          >
+                            {h && (
+                              <div
+                                style={{
+                                  width: 3,
+                                  height: 3,
+                                  borderRadius: "50%",
+                                  background: "#e05050",
+                                }}
+                              />
+                            )}
+                            {e && (
+                              <div
+                                style={{
+                                  width: 3,
+                                  height: 3,
+                                  borderRadius: "50%",
+                                  background: "#c0622f",
+                                }}
+                              />
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              );
+            })()}
+
+            {/* Legenda */}
+            <div
+              style={{
+                display: "flex",
+                gap: 12,
+                marginBottom: 14,
+                flexWrap: "wrap",
+              }}
+            >
+              {[
+                {
+                  bg: "rgba(224,80,80,0.3)",
+                  border: "#e05050",
+                  label: "Sărbătoare legală",
+                },
+                {
+                  bg: "rgba(192,98,47,0.3)",
+                  border: "#c0622f",
+                  label: "Eveniment local",
+                },
+                {
+                  bg: "rgba(91,141,217,0.3)",
+                  border: "#5b8dd9",
+                  label: "Ambele",
+                },
+              ].map((l) => (
+                <div
+                  key={l.label}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 5,
+                    fontSize: 10,
+                    color: "#6b6050",
+                  }}
+                >
+                  <div
+                    style={{
+                      width: 8,
+                      height: 8,
+                      borderRadius: 2,
+                      background: l.bg,
+                      border: `1px solid ${l.border}`,
+                    }}
+                  />
+                  {l.label}
+                </div>
+              ))}
+            </div>
+
+            {/* Lista evenimente */}
+            {(() => {
+              const monthStr = `${calendarYear}-${String(calendarMonth + 1).padStart(2, "0")}`;
+              const monthHolidays = publicHolidays.filter((h) =>
+                h.date?.startsWith(monthStr),
+              );
+              const monthLocalEvents = localEvents.filter((e) =>
+                e.date?.startsWith(monthStr),
+              );
+              const all = [
+                ...monthHolidays.map((h) => ({
+                  date: h.date,
+                  title: h.localName,
+                  isHoliday: true,
+                })),
+                ...monthLocalEvents.map((e) => ({ ...e, isHoliday: false })),
+              ].sort((a, b) => a.date.localeCompare(b.date));
+              const LUNI_SHORT = [
+                "Ian",
+                "Feb",
+                "Mar",
+                "Apr",
+                "Mai",
+                "Iun",
+                "Iul",
+                "Aug",
+                "Sep",
+                "Oct",
+                "Nov",
+                "Dec",
+              ];
+              return all.length > 0 ? (
+                <div style={{ marginBottom: 12 }}>
+                  <div
+                    style={{
+                      fontSize: 10,
+                      letterSpacing: "1px",
+                      textTransform: "uppercase",
+                      color: "#6b6050",
+                      marginBottom: 8,
+                    }}
+                  >
+                    Evenimente luna aceasta
+                  </div>
+                  {all.map((ev, i) => (
+                    <div
+                      key={i}
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 10,
+                        background: "#161210",
+                        borderRadius: 10,
+                        padding: "9px 12px",
+                        marginBottom: 6,
+                        borderLeft: `3px solid ${ev.isHoliday ? "#e05050" : "#c0622f"}`,
+                      }}
+                    >
+                      <div
+                        style={{ fontSize: 10, color: "#6b6050", minWidth: 40 }}
+                      >
+                        {ev.date?.split("-")[2]} {LUNI_SHORT[calendarMonth]}
+                      </div>
+                      <div style={{ flex: 1 }}>
+                        <div
+                          style={{
+                            fontSize: 12,
+                            color: "#f0ebe3",
+                            fontWeight: 500,
+                          }}
+                        >
+                          {ev.title}
+                        </div>
+                        <div
+                          style={{
+                            fontSize: 10,
+                            color: "#8a7a6a",
+                            marginTop: 1,
+                          }}
+                        >
+                          {ev.isHoliday
+                            ? "🔴 Sărbătoare legală"
+                            : `🟠 ${ev.type}`}
+                        </div>
+                      </div>
+                      {!ev.isHoliday && (
+                        <button
+                          onClick={() => handleDeleteEvent(ev.id)}
+                          style={{
+                            background: "none",
+                            border: "none",
+                            color: "#e05050",
+                            cursor: "pointer",
+                            fontSize: 14,
+                            padding: 4,
+                          }}
+                        >
+                          🗑️
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div
+                  style={{
+                    textAlign: "center",
+                    color: "#6b6050",
+                    fontSize: 12,
+                    padding: "10px 0",
+                    marginBottom: 12,
+                  }}
+                >
+                  Niciun eveniment în această lună
+                </div>
+              );
+            })()}
+
+            {/* Buton adauga */}
+            <button
+              onClick={() => setShowAddEvent(true)}
+              style={{
+                width: "100%",
+                padding: 10,
+                background: "rgba(192,98,47,0.08)",
+                border: "1px dashed rgba(192,98,47,0.3)",
+                borderRadius: 10,
+                color: "#c0622f",
+                fontSize: 12,
+                fontWeight: 600,
+                cursor: "pointer",
+                fontFamily: "inherit",
+              }}
+            >
+              + Adaugă eveniment
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Modal adauga eveniment */}
+      {showAddEvent && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 9999,
+            background: "rgba(0,0,0,0.8)",
+            display: "flex",
+            alignItems: "flex-end",
+            justifyContent: "center",
+          }}
+          onClick={() => setShowAddEvent(false)}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              background: "#1a1510",
+              borderRadius: "20px 20px 0 0",
+              padding: "24px 20px 36px",
+              width: "100%",
+              maxWidth: 480,
+            }}
+          >
+            <div
+              style={{
+                fontFamily: "'Fraunces',serif",
+                fontSize: 17,
+                fontWeight: 700,
+                marginBottom: 16,
+              }}
+            >
+              📅 Adaugă eveniment
+            </div>
+            <div style={{ marginBottom: 12 }}>
+              <div style={{ fontSize: 11, color: "#6b6050", marginBottom: 6 }}>
+                Titlu *
+              </div>
+              <input
+                value={newEvent.title}
+                onChange={(e) =>
+                  setNewEvent((p) => ({ ...p, title: e.target.value }))
+                }
+                placeholder="Ex: Festival Iași 2026"
+                style={{
+                  width: "100%",
+                  background: "#161210",
+                  border: "1px solid #2a2218",
+                  borderRadius: 10,
+                  padding: "9px 12px",
+                  color: "#f0ebe3",
+                  fontFamily: "inherit",
+                  fontSize: 13,
+                  outline: "none",
+                  boxSizing: "border-box",
+                }}
+              />
+            </div>
+            <div style={{ marginBottom: 12 }}>
+              <div style={{ fontSize: 11, color: "#6b6050", marginBottom: 6 }}>
+                Dată *
+              </div>
+              <input
+                type="date"
+                value={newEvent.date}
+                onChange={(e) =>
+                  setNewEvent((p) => ({ ...p, date: e.target.value }))
+                }
+                style={{
+                  width: "100%",
+                  background: "#161210",
+                  border: "1px solid #2a2218",
+                  borderRadius: 10,
+                  padding: "9px 12px",
+                  color: "#f0ebe3",
+                  fontFamily: "inherit",
+                  fontSize: 13,
+                  outline: "none",
+                  boxSizing: "border-box",
+                }}
+              />
+            </div>
+            <div style={{ marginBottom: 16 }}>
+              <div style={{ fontSize: 11, color: "#6b6050", marginBottom: 6 }}>
+                Tip eveniment
+              </div>
+              <select
+                value={newEvent.type}
+                onChange={(e) =>
+                  setNewEvent((p) => ({ ...p, type: e.target.value }))
+                }
+                style={{
+                  width: "100%",
+                  background: "#161210",
+                  border: "1px solid #2a2218",
+                  borderRadius: 10,
+                  padding: "9px 12px",
+                  color: "#f0ebe3",
+                  fontFamily: "inherit",
+                  fontSize: 13,
+                  outline: "none",
+                  boxSizing: "border-box",
+                }}
+              >
+                <option value="festival">🎪 Festival</option>
+                <option value="concert">🎵 Concert</option>
+                <option value="meci">⚽ Meci sportiv</option>
+                <option value="targ">🛍️ Târg</option>
+                <option value="altele">📌 Altele</option>
+              </select>
+            </div>
+            <div style={{ display: "flex", gap: 10 }}>
+              <button
+                onClick={() => setShowAddEvent(false)}
+                style={{
+                  flex: 1,
+                  padding: 12,
+                  borderRadius: 12,
+                  border: "1px solid #2a2218",
+                  background: "transparent",
+                  color: "#8a7a6a",
+                  fontSize: 13,
+                  fontWeight: 600,
+                  cursor: "pointer",
+                  fontFamily: "inherit",
+                }}
+              >
+                Anulează
+              </button>
+              <button
+                onClick={handleAddEvent}
+                style={{
+                  flex: 2,
+                  padding: 12,
+                  borderRadius: 12,
+                  border: "none",
+                  background: "linear-gradient(135deg,#c0622f,#8b3a18)",
+                  color: "#fff",
+                  fontSize: 13,
+                  fontWeight: 700,
+                  cursor: "pointer",
+                  fontFamily: "inherit",
+                }}
+              >
+                ✅ Salvează
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Modal QR Restaurant */}
       {showQrModal && qrRestaurant && (
