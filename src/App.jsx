@@ -18,7 +18,7 @@ import MenuEditor from "./pages/MenuEditor";
 import NewRestaurant from "./pages/NewRestaurant";
 import Notifications from "./pages/Notifications";
 import FloorEditor from "./pages/FloorEditor";
-import SuperAdmin from "./pages/SuperAdmin";
+import SuperAdmin from "./pages/superadmin/SuperAdmin";
 import { supabase } from "./supabase";
 import "./styles/global.css";
 
