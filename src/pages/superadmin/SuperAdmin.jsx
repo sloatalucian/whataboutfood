@@ -658,32 +658,26 @@ export default function SuperAdmin() {
 
   return (
     <div className="page fade-in" style={{ paddingBottom: 100 }}>
-      {/* Header */}
-      <div
-        style={{
-          padding: "44px 20px 16px",
-          background: "linear-gradient(135deg,#100a05,#0d0a07)",
-          borderBottom: "1px solid #2a2218",
-        }}
-      >
+      {/* ── HEADER ── */}
+      <div style={{ padding: "44px 16px 0" }}>
         <div
           style={{
             display: "flex",
             alignItems: "center",
-            gap: 12,
-            marginBottom: 12,
+            justifyContent: "space-between",
+            marginBottom: 16,
           }}
         >
           <button
             onClick={() => navigate("home")}
             style={{
-              width: 38,
-              height: 38,
-              borderRadius: 12,
+              width: 36,
+              height: 36,
+              borderRadius: 10,
               background: "rgba(255,255,255,.05)",
               border: "1px solid #2a2218",
               color: "#f0ebe3",
-              fontSize: 17,
+              fontSize: 16,
               cursor: "pointer",
               display: "flex",
               alignItems: "center",
@@ -692,83 +686,171 @@ export default function SuperAdmin() {
           >
             ←
           </button>
-          <div>
-            <div
-              style={{
-                fontFamily: "'Fraunces',serif",
-                fontSize: 22,
-                fontWeight: 900,
-              }}
-            >
-              ⚙️ Super Admin
-            </div>
-            <div style={{ fontSize: 12, color: "#6b6050" }}>
-              WhataboutFood Platform
-            </div>
-          </div>
-        </div>
-
-        {statistici && (
           <div
             style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(3,1fr)",
-              gap: 8,
+              fontFamily: "'Fraunces',serif",
+              fontSize: 18,
+              fontWeight: 900,
             }}
           >
-            {[
-              {
-                label: "Proprietari",
-                value: statistici.totalProp,
-                color: "#c0622f",
-              },
-              {
-                label: "Restaurante",
-                value: statistici.totalRest,
-                color: "#c8a97e",
-              },
-              {
-                label: "Cereri noi",
-                value: statistici.cereriPending,
-                color: statistici.cereriPending > 0 ? "#e05050" : "#c0622f",
-              },
-            ].map((s) => (
-              <div
-                key={s.label}
-                style={{
-                  background: "#161210",
-                  border: "1px solid #2a2218",
-                  borderRadius: 12,
-                  padding: "12px 10px",
-                  textAlign: "center",
-                }}
-              >
-                <div
-                  style={{
-                    fontFamily: "'Fraunces',serif",
-                    fontSize: 22,
-                    fontWeight: 900,
-                    color: s.color,
-                  }}
-                >
-                  {s.value}
-                </div>
-                <div style={{ fontSize: 10, color: "#6b6050", marginTop: 2 }}>
-                  {s.label}
-                </div>
-              </div>
-            ))}
+            Whatabout<span style={{ color: "#c0622f" }}>Food</span>
           </div>
-        )}
+          <div style={{ width: 36 }} />
+        </div>
       </div>
 
-      {/* Tabs */}
+      {/* ── HERO CARD ── */}
       <div
         style={{
-          display: "flex",
-          overflowX: "auto",
-          borderBottom: "1px solid #2a2218",
-          padding: "0 12px",
+          margin: "0 16px 16px",
+          background: "linear-gradient(135deg,#1a0f08,#120c06)",
+          border: "1px solid #2a1a0e",
+          borderRadius: 18,
+          padding: "18px 20px",
+          position: "relative",
+          overflow: "hidden",
+        }}
+      >
+        <div
+          style={{
+            position: "absolute",
+            top: -30,
+            right: -30,
+            width: 120,
+            height: 120,
+            background:
+              "radial-gradient(circle, rgba(192,98,47,0.12) 0%, transparent 70%)",
+          }}
+        ></div>
+        <div
+          style={{
+            position: "absolute",
+            top: 16,
+            right: 16,
+            background: "rgba(192,98,47,0.12)",
+            border: "1px solid rgba(192,98,47,0.25)",
+            borderRadius: 20,
+            padding: "3px 12px",
+            fontSize: 11,
+            color: "#c0622f",
+            fontWeight: 600,
+          }}
+        >
+          ⚙️ Super Admin
+        </div>
+        <div
+          style={{
+            fontSize: 10,
+            letterSpacing: 2,
+            textTransform: "uppercase",
+            color: "#4a3a2a",
+            marginBottom: 4,
+          }}
+        >
+          Panou de control
+        </div>
+        <div
+          style={{
+            fontFamily: "'Fraunces',serif",
+            fontSize: 22,
+            fontWeight: 900,
+            marginBottom: 2,
+          }}
+        >
+          WhataboutFood
+        </div>
+        <div style={{ fontSize: 12, color: "#6b6050" }}>
+          Platform Management Dashboard
+        </div>
+      </div>
+
+      {/* ── STATS ── */}
+      {statistici && (
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(3,1fr)",
+            gap: 8,
+            margin: "0 16px 20px",
+          }}
+        >
+          {[
+            {
+              label: "Proprietari",
+              value: statistici.totalProp,
+              color: "#c0622f",
+            },
+            {
+              label: "Restaurante",
+              value: statistici.totalRest,
+              color: "#c8a97e",
+            },
+            {
+              label: "Cereri noi",
+              value: statistici.cereriPending,
+              color: statistici.cereriPending > 0 ? "#e05050" : "#c0622f",
+            },
+          ].map((s) => (
+            <div
+              key={s.label}
+              style={{
+                background: "#161210",
+                border: "1px solid #2a2218",
+                borderRadius: 14,
+                padding: "14px 10px",
+                textAlign: "center",
+                position: "relative",
+                overflow: "hidden",
+              }}
+            >
+              <div
+                style={{
+                  position: "absolute",
+                  bottom: 0,
+                  left: 0,
+                  right: 0,
+                  height: 2,
+                  background: `linear-gradient(90deg, transparent, ${s.color}, transparent)`,
+                  opacity: 0.35,
+                }}
+              ></div>
+              <div
+                style={{
+                  fontFamily: "'Fraunces',serif",
+                  fontSize: 26,
+                  fontWeight: 900,
+                  color: s.color,
+                  lineHeight: 1,
+                }}
+              >
+                {s.value}
+              </div>
+              <div style={{ fontSize: 10, color: "#6b6050", marginTop: 4 }}>
+                {s.label}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* ── TABS GRID 2x4 ── */}
+      <div
+        style={{
+          fontSize: 10,
+          letterSpacing: 2,
+          textTransform: "uppercase",
+          color: "#3a2a18",
+          margin: "0 16px 10px",
+        }}
+      >
+        Navigare
+      </div>
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "1fr 1fr",
+          gap: 8,
+          margin: "0 16px 16px",
         }}
       >
         {TABS.map((t) => (
@@ -776,32 +858,78 @@ export default function SuperAdmin() {
             key={t.id}
             onClick={() => setActiveTab(t.id)}
             style={{
-              padding: "12px 16px",
-              cursor: "pointer",
-              whiteSpace: "nowrap",
-              borderBottom: `2px solid ${activeTab === t.id ? "#c0622f" : "transparent"}`,
-              fontSize: 12,
-              color: activeTab === t.id ? "#c0622f" : "#6b6050",
-              fontWeight: activeTab === t.id ? 700 : 400,
+              background:
+                activeTab === t.id ? "rgba(192,98,47,0.06)" : "#111009",
+              border: `1px solid ${activeTab === t.id ? "rgba(192,98,47,0.3)" : "#1e1a14"}`,
+              borderRadius: 14,
+              padding: "13px",
               display: "flex",
               alignItems: "center",
-              gap: 5,
+              gap: 10,
+              cursor: "pointer",
+              position: "relative",
+              overflow: "hidden",
             }}
           >
-            {t.icon} {t.label}
-            {t.id === "cereri" && cereri.length > 0 && (
-              <span
+            {activeTab === t.id && (
+              <div
                 style={{
+                  position: "absolute",
+                  left: 0,
+                  top: 0,
+                  bottom: 0,
+                  width: 3,
                   background: "#c0622f",
-                  color: "#fff",
+                  borderRadius: "14px 0 0 14px",
+                }}
+              ></div>
+            )}
+            <div
+              style={{
+                width: 36,
+                height: 36,
+                borderRadius: 10,
+                background:
+                  activeTab === t.id ? "rgba(192,98,47,0.12)" : "#1a1612",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                fontSize: 17,
+                flexShrink: 0,
+              }}
+            >
+              {t.icon}
+            </div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div
+                style={{
+                  fontSize: 13,
+                  fontWeight: 600,
+                  color: activeTab === t.id ? "#f0ebe3" : "#c8b8a0",
+                }}
+              >
+                {t.label}
+              </div>
+              <div style={{ fontSize: 10, color: "#4a3a2a", marginTop: 1 }}>
+                {t.desc || ""}
+              </div>
+            </div>
+            {t.id === "cereri" && cereri.length > 0 && (
+              <div
+                style={{
+                  position: "absolute",
+                  top: 8,
+                  right: 8,
+                  background: "#e05050",
                   borderRadius: 20,
-                  padding: "1px 6px",
-                  fontSize: 10,
+                  padding: "2px 7px",
+                  fontSize: 9,
                   fontWeight: 700,
+                  color: "#fff",
                 }}
               >
                 {cereri.length}
-              </span>
+              </div>
             )}
           </div>
         ))}
