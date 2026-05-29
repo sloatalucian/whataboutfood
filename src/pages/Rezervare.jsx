@@ -277,6 +277,48 @@ export function Rezervare() {
   const set = (patch) => dispatch({ type: "RES_FORM", payload: patch });
 
   const handleReserve = async () => {
+    // ── Validare rezervări duble ──
+    if (user?.id && resForm.date && resForm.time) {
+      const { data: existing } = await supabase
+        .from("reservations")
+        .select("id, restaurant_id, date, time, status")
+        .eq("user_id", user.id)
+        .in("status", ["pending", "confirmed"])
+        .eq("date", resForm.date);
+
+      if (existing && existing.length > 0) {
+        // Scenariul 1: același restaurant, aceeași dată
+        const sameRest = existing.find(
+          (r) => r.restaurant_id === selectedRest.id,
+        );
+        if (sameRest) {
+          showToast(
+            "❌ Ai deja o rezervare la acest restaurant în această zi.",
+          );
+          return;
+        }
+
+        // Scenariul 2: alt restaurant, interval < 2 ore
+        const newTime = parseInt(resForm.time.replace(":", ""), 10);
+        const conflict = existing.find((r) => {
+          if (!r.time) return false;
+          const existTime = parseInt(r.time.replace(":", ""), 10);
+          const diffMin = Math.abs(
+            Math.floor(newTime / 100) * 60 +
+              (newTime % 100) -
+              (Math.floor(existTime / 100) * 60 + (existTime % 100)),
+          );
+          return diffMin < 120;
+        });
+        if (conflict) {
+          showToast(
+            `❌ Ai o rezervare la ${conflict.time} în aceeași perioadă. Rezervările trebuie să fie la minim 2 ore distanță.`,
+          );
+          return;
+        }
+      }
+    }
+
     // Găsim label-ul mesei din ID
     const selectedTable = (floor?.tables || []).find(
       (t) => t.id === resForm.tableId,
