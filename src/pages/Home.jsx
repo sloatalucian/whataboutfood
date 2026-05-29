@@ -2220,25 +2220,49 @@ function HomeOwner({ onLogout }) {
             </div>
           )}
 
-          {/* Adaugă restaurant */}
-          <div
-            onClick={() => navigate("newRestaurant")}
-            style={{
-              border: "1px dashed #2a2218",
-              borderRadius: 16,
-              padding: 16,
-              cursor: "pointer",
-              textAlign: "center",
-              color: "#6b6050",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              gap: 8,
-            }}
-          >
-            <span style={{ fontSize: 20 }}>+</span>
-            <span style={{ fontSize: 13 }}>Adaugă restaurant nou</span>
-          </div>
+          {/* Adaugă restaurant - cu limita per plan */}
+          {(() => {
+            const maxRests = user?.plan === "business" ? 5 : 1;
+            const atLimit = myRestaurants.length >= maxRests;
+            return (
+              <div
+                onClick={() => {
+                  if (atLimit) {
+                    showToast(
+                      user?.plan === "business"
+                        ? "❌ Ai atins limita de 5 restaurante pentru planul Business."
+                        : "❌ Planul tău permite un singur restaurant. Upgradează la Business pentru mai multe.",
+                    );
+                    return;
+                  }
+                  navigate("newRestaurant");
+                }}
+                style={{
+                  border: `1px dashed ${atLimit ? "#3a2218" : "#2a2218"}`,
+                  borderRadius: 16,
+                  padding: 16,
+                  cursor: atLimit ? "not-allowed" : "pointer",
+                  textAlign: "center",
+                  color: atLimit ? "#3a2a20" : "#6b6050",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: 8,
+                  opacity: atLimit ? 0.5 : 1,
+                }}
+              >
+                <span style={{ fontSize: 20 }}>{atLimit ? "🔒" : "+"}</span>
+                <div>
+                  <div style={{ fontSize: 13 }}>
+                    {atLimit ? "Limită atinsă" : "Adaugă restaurant nou"}
+                  </div>
+                  <div style={{ fontSize: 10, marginTop: 2 }}>
+                    {myRestaurants.length}/{maxRests} restaurante
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
         </div>
       </div>
 
