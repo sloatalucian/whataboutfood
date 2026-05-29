@@ -18,9 +18,9 @@ export default function HartaTab({
           marginBottom: 14,
         }}
       >
-        Cereri adăugare pe hartă ({mapPinRequests.length})
+        Cereri adăugare pe hartă ({locationRequests.length})
       </div>
-      {mapPinRequests.length === 0 ? (
+      {locationRequests.length === 0 ? (
         <div
           style={{
             textAlign: "center",
@@ -32,7 +32,7 @@ export default function HartaTab({
           <div>Nicio cerere de adăugare pe hartă</div>
         </div>
       ) : (
-        mapPinRequests.map((pin) => (
+        locationRequests.map((pin) => (
           <div
             key={pin.id}
             style={{
