@@ -1247,8 +1247,8 @@ function HomeOwner({ onLogout }) {
   // ── Calendar events ──
   useEffect(() => {
     if (user?.plan !== "business") return;
-    if (!selectedRestId && myRestaurants.length === 0) return;
-    const restId = selectedRestId || myRestaurants[0]?.id;
+    if (myRestaurants.length === 0) return;
+    const restId = myRestaurants[0]?.id;
     if (!restId) return;
     setCalendarRestId(restId);
 
@@ -1277,7 +1277,7 @@ function HomeOwner({ onLogout }) {
       }
     };
     loadHolidays();
-  }, [user?.plan, selectedRestId, myRestaurants]);
+  }, [user?.plan, myRestaurants]);
 
   const handleAddEvent = async () => {
     if (!newEvent.title || !newEvent.date) {
