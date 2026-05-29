@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
-import { useApp } from "../context/AppContext";
-import { supabase } from "../supabase";
+import { useApp } from "../../context/AppContext";
+import { supabase } from "../../supabase";
 import CereriTab from "./CereriTab";
 import HartaTab from "./HartaTab";
 import ProprietariTab from "./ProprietariTab";
