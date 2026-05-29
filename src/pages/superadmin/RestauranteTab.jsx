@@ -1,6 +1,13 @@
 import { useState } from "react";
 import { supabase } from "../../supabase";
 
+const PLAN_COLOR = { free: "#6b6050", pro: "#c8a97e", business: "#4a6e4a" };
+const PLAN_BG = {
+  free: "rgba(107,96,80,.2)",
+  pro: "rgba(200,169,126,.2)",
+  business: "rgba(74,110,74,.2)",
+};
+
 export default function RestauranteTab({
   restaurante,
   approveRestaurant,

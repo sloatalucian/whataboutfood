@@ -1,6 +1,25 @@
 import { useState } from "react";
 import { supabase } from "../../supabase";
 
+const PLAN_COLOR = { free: "#6b6050", pro: "#c8a97e", business: "#4a6e4a" };
+const PLAN_BG = {
+  free: "rgba(107,96,80,.2)",
+  pro: "rgba(200,169,126,.2)",
+  business: "rgba(74,110,74,.2)",
+};
+const STATUS_COLOR = {
+  approved: "#6b9e6b",
+  pending: "#e07a47",
+  rejected: "#e05050",
+  suspended: "#5b8dd9",
+};
+const STATUS_BG = {
+  approved: "rgba(74,110,74,.2)",
+  pending: "rgba(224,122,71,.2)",
+  rejected: "rgba(192,57,43,.2)",
+  suspended: "rgba(91,141,217,.2)",
+};
+
 export default function ProprietariTab({
   proprietari,
   restaurante,
