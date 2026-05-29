@@ -43,6 +43,7 @@ const TABS = [
   { id: "statistici", icon: "📊", label: "Statistici" },
   { id: "abonamente", icon: "💰", label: "Abonamente" },
   { id: "sterse", icon: "🗑️", label: "Șterse" },
+  { id: "evenimente", icon: "📅", label: "Evenimente" },
 ];
 
 const PLAN_COLOR = { free: "#6b6050", pro: "#c8a97e", business: "#4a6e4a" };
