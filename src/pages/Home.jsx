@@ -1116,11 +1116,7 @@ function HomeOwner({ onLogout }) {
   const [photoLoading, setPhotoLoading] = useState(false);
   const photoInputRef = useRef(null);
   const [locationEditRest, setLocationEditRest] = useState(null);
-  const [todayStats, setTodayStats] = useState({
-    orders: "—",
-    reservations: "—",
-    revenue: "—",
-  });
+
   const [showProgramModal, setShowProgramModal] = useState(false);
   const [programRestId, setProgramRestId] = useState(null);
   const [showQrModal, setShowQrModal] = useState(false);
@@ -1196,53 +1192,6 @@ function HomeOwner({ onLogout }) {
       clearInterval(interval);
     };
   }, [user?.id, loadRestaurants]);
-
-  // Încarcă statisticile de azi
-  useEffect(() => {
-    if (!user?.id) return;
-    const loadToday = async () => {
-      // Ia restaurantul selectat sau primul disponibil
-      const { data: rests } = await supabase
-        .from("restaurants")
-        .select("id")
-        .eq("owner_id", user.id)
-        .eq("is_active", true);
-      if (!rests || rests.length === 0) return;
-      const restId = rests[0].id;
-
-      const startOfDay = new Date();
-      startOfDay.setHours(0, 0, 0, 0);
-
-      // Comenzi platite azi
-      const { data: orders } = await supabase
-        .from("orders")
-        .select("total, status")
-        .eq("restaurant_id", restId)
-        .in("status", ["paid", "completed"])
-        .gte("created_at", startOfDay.toISOString());
-
-      // Rezervari confirmate azi
-      const todayStr = new Date().toISOString().split("T")[0];
-      const { count: resCount } = await supabase
-        .from("reservations")
-        .select("id", { count: "exact", head: true })
-        .eq("restaurant_id", restId)
-        .eq("date", todayStr)
-        .eq("status", "confirmed");
-
-      const revenue = (orders || []).reduce(
-        (s, o) => s + Number(o.total || 0),
-        0,
-      );
-
-      setTodayStats({
-        orders: (orders || []).length,
-        reservations: resCount || 0,
-        revenue: revenue.toFixed(0),
-      });
-    };
-    loadToday();
-  }, [user?.id]);
 
   // ── Calendar events ──
   useEffect(() => {
@@ -2123,14 +2072,14 @@ function HomeOwner({ onLogout }) {
 
       {/* ── CALENDAR EVENIMENTE (Business) ── */}
       {user?.plan === "business" && (
-        <div style={{ marginTop: 24, padding: "0 16px" }}>
+        <div style={{ marginTop: 0, padding: "0 16px 100px" }}>
           <div
             style={{
               fontSize: 10,
               letterSpacing: "1.5px",
               textTransform: "uppercase",
               color: "#6b6050",
-              marginBottom: 12,
+              marginBottom: 10,
             }}
           >
             📅 Evenimente & Sărbători
