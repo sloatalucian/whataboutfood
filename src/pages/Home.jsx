@@ -2405,7 +2405,15 @@ function HomeOwner({ onLogout }) {
               const hasHoliday = (d) =>
                 publicHolidays.some((h) => h.date === getDateStr(d));
               const hasEvent = (d) =>
-                localEvents.some((e) => e.date === getDateStr(d));
+                localEvents.some(
+                  (e) =>
+                    e.date === getDateStr(d) && e.created_by !== "superadmin",
+                );
+              const hasAppEvent = (d) =>
+                localEvents.some(
+                  (e) =>
+                    e.date === getDateStr(d) && e.created_by === "superadmin",
+                );
               const isToday = (d) =>
                 today.getDate() === d &&
                 today.getMonth() === calendarMonth &&
@@ -2423,6 +2431,7 @@ function HomeOwner({ onLogout }) {
                     if (!d) return <div key={i} />;
                     const h = hasHoliday(d),
                       e = hasEvent(d),
+                      a = hasAppEvent(d),
                       t = isToday(d);
                     let bg = "#161210",
                       border = "transparent",
@@ -2430,13 +2439,17 @@ function HomeOwner({ onLogout }) {
                     if (t) {
                       bg = "#c0622f";
                       color = "#fff";
-                    } else if (h && e) {
+                    } else if (h && (e || a)) {
                       bg = "rgba(91,141,217,0.15)";
                       border = "rgba(91,141,217,0.3)";
                       color = "#f0ebe3";
                     } else if (h) {
                       bg = "rgba(224,80,80,0.12)";
                       border = "rgba(224,80,80,0.3)";
+                      color = "#f0ebe3";
+                    } else if (a) {
+                      bg = "rgba(107,158,107,0.12)";
+                      border = "rgba(107,158,107,0.3)";
                       color = "#f0ebe3";
                     } else if (e) {
                       bg = "rgba(192,98,47,0.12)";
@@ -2462,7 +2475,7 @@ function HomeOwner({ onLogout }) {
                         }}
                       >
                         {d}
-                        {(h || e) && !t && (
+                        {(h || e || a) && !t && (
                           <div
                             style={{
                               position: "absolute",
@@ -2488,6 +2501,16 @@ function HomeOwner({ onLogout }) {
                                   height: 3,
                                   borderRadius: "50%",
                                   background: "#c0622f",
+                                }}
+                              />
+                            )}
+                            {a && (
+                              <div
+                                style={{
+                                  width: 3,
+                                  height: 3,
+                                  borderRadius: "50%",
+                                  background: "#6b9e6b",
                                 }}
                               />
                             )}
@@ -2519,6 +2542,11 @@ function HomeOwner({ onLogout }) {
                   bg: "rgba(192,98,47,0.3)",
                   border: "#c0622f",
                   label: "Eveniment local",
+                },
+                {
+                  bg: "rgba(107,158,107,0.3)",
+                  border: "#6b9e6b",
+                  label: "Eveniment din App",
                 },
                 {
                   bg: "rgba(91,141,217,0.3)",
@@ -2632,7 +2660,9 @@ function HomeOwner({ onLogout }) {
                         >
                           {ev.isHoliday
                             ? "🔴 Sărbătoare legală"
-                            : `🟠 ${ev.type}`}
+                            : ev.created_by === "superadmin"
+                              ? `🟢 ${ev.type} • Eveniment din App`
+                              : `🟠 ${ev.type}`}
                         </div>
                       </div>
                       {!ev.isHoliday && (
