@@ -2495,16 +2495,54 @@ function HomeOwner({ onLogout }) {
       )}
 
       {/* Modal adauga eveniment */}
+
+      {/* Modal QR Restaurant */}
+      {showQrModal && qrRestaurant && (
+        <QrModal
+          restaurant={qrRestaurant}
+          restaurants={myRestaurants}
+          onRestChange={(rest) => setQrRestaurant(rest)}
+          onClose={() => {
+            setShowQrModal(false);
+            setQrRestaurant(null);
+          }}
+        />
+      )}
+
+      {/* Modal Editor Program */}
+      {showProgramModal && (
+        <ProgramEditorModal
+          restaurants={myRestaurants}
+          initialRestId={programRestId}
+          initialProgram={currentProgram}
+          onClose={() => setShowProgramModal(false)}
+          onSave={async (restId, newProgram) => {
+            const { error } = await supabase
+              .from("restaurants")
+              .update({ program: newProgram })
+              .eq("id", restId);
+            if (!error) {
+              showToast("✅ Programul a fost salvat!");
+              setShowProgramModal(false);
+            } else {
+              showToast("❌ Eroare la salvare.");
+            }
+          }}
+        />
+      )}
+
+      {/* Modal Adaugă Eveniment */}
       {showAddEvent && (
         <div
           style={{
             position: "fixed",
             inset: 0,
-            zIndex: 9999,
-            background: "rgba(0,0,0,0.8)",
+            zIndex: 99999,
+            background: "rgba(0,0,0,0.85)",
             display: "flex",
-            alignItems: "flex-end",
+            alignItems: "center",
             justifyContent: "center",
+            padding: "20px 16px",
           }}
           onClick={() => setShowAddEvent(false)}
         >
@@ -2512,8 +2550,8 @@ function HomeOwner({ onLogout }) {
             onClick={(e) => e.stopPropagation()}
             style={{
               background: "#1a1510",
-              borderRadius: "20px 20px 0 0",
-              padding: "24px 20px 36px",
+              borderRadius: 20,
+              padding: "24px 20px 28px",
               width: "100%",
               maxWidth: 480,
             }}
@@ -2576,7 +2614,7 @@ function HomeOwner({ onLogout }) {
                 }}
               />
             </div>
-            <div style={{ marginBottom: 16 }}>
+            <div style={{ marginBottom: 20 }}>
               <div style={{ fontSize: 11, color: "#6b6050", marginBottom: 6 }}>
                 Tip eveniment
               </div>
@@ -2643,41 +2681,6 @@ function HomeOwner({ onLogout }) {
             </div>
           </div>
         </div>
-      )}
-
-      {/* Modal QR Restaurant */}
-      {showQrModal && qrRestaurant && (
-        <QrModal
-          restaurant={qrRestaurant}
-          restaurants={myRestaurants}
-          onRestChange={(rest) => setQrRestaurant(rest)}
-          onClose={() => {
-            setShowQrModal(false);
-            setQrRestaurant(null);
-          }}
-        />
-      )}
-
-      {/* Modal Editor Program */}
-      {showProgramModal && (
-        <ProgramEditorModal
-          restaurants={myRestaurants}
-          initialRestId={programRestId}
-          initialProgram={currentProgram}
-          onClose={() => setShowProgramModal(false)}
-          onSave={async (restId, newProgram) => {
-            const { error } = await supabase
-              .from("restaurants")
-              .update({ program: newProgram })
-              .eq("id", restId);
-            if (!error) {
-              showToast("✅ Programul a fost salvat!");
-              setShowProgramModal(false);
-            } else {
-              showToast("❌ Eroare la salvare.");
-            }
-          }}
-        />
       )}
     </>
   );
