@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { AppProvider, useApp } from "./context/AppContext";
 import { TableProvider } from "./context/TableContext";
 import BottomNav from "./components/BottomNav";
-import Home from "./pages/Home";
+import Home from "./pages/home/Home";
 import Restaurant from "./pages/Restaurant";
 import { Rezervare } from "./pages/Rezervare";
 import { Meniu } from "./pages/Meniu";
