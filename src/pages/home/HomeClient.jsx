@@ -1,8 +1,8 @@
 import { useState, useEffect } from "react";
-import { useApp } from "../context/AppContext";
-import { supabase } from "../supabase";
-import ActiveOrderCard from "../components/ActiveOrderCard";
-import RestaurantCard from "../components/RestaurantCard";
+import { useApp } from "../../context/AppContext";
+import { supabase } from "../../supabase";
+import ActiveOrderCard from "../../components/ActiveOrderCard";
+import RestaurantCard from "../../components/RestaurantCard";
 import SearchBar from "./SearchBar";
 
 function HomeClient() {

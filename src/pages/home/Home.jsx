@@ -1,4 +1,4 @@
-import { useApp } from "../context/AppContext";
+import { useApp } from "../../context/AppContext";
 import HomeOwner from "./HomeOwner";
 import HomeClient from "./HomeClient";
 

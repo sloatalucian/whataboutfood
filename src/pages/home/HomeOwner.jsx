@@ -1,9 +1,9 @@
 import { useState, useRef, useEffect, useCallback } from "react";
-import { useApp } from "../context/AppContext";
-import { supabase } from "../supabase";
+import { useApp } from "../../context/AppContext";
+import { supabase } from "../../supabase";
 import imageCompression from "browser-image-compression";
-import { ProgramEditorModal } from "../Restaurant";
-import { RestaurantLocationPicker } from "../NewRestaurant";
+import { ProgramEditorModal } from "../../Restaurant";
+import { RestaurantLocationPicker } from "../../NewRestaurant";
 import MiniDatePicker from "./MiniDatePicker";
 import QrModal from "./QrModal";
 
