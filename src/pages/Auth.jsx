@@ -6,6 +6,9 @@ export function Auth() {
   const { state, dispatch, navigate, showToast } = useApp();
   const { user } = state;
   const [tab, setTab] = useState("main"); // main | rezervari_viitoare | note | istoric_rez | favorite
+  const [deleteModal, setDeleteModal] = useState(false); // false | "confirm" | "password"
+  const [deletePassword, setDeletePassword] = useState("");
+  const [deleteLoading, setDeleteLoading] = useState(false);
   const [rezervari, setRezervari] = useState([]);
   const [comenzi, setComenzi] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -65,6 +68,76 @@ export function Auth() {
     await supabase.auth.signOut();
     dispatch({ type: "LOGOUT" });
     navigate("auth");
+  };
+
+  // Stergere cont
+  const handleDeleteAccount = async () => {
+    setDeleteLoading(true);
+    try {
+      // 1. Verificam parola
+      const { error: authError } = await supabase.auth.signInWithPassword({
+        email: user.email,
+        password: deletePassword,
+      });
+      if (authError) {
+        showToast("❌ Parolă incorectă.");
+        setDeleteLoading(false);
+        return;
+      }
+
+      const uid = user.id;
+
+      if (user.role === "owner") {
+        // Proprietar: verificam daca are restaurante active
+        const { data: activeRests } = await supabase
+          .from("restaurants")
+          .select("id")
+          .eq("owner_id", uid)
+          .eq("is_active", true);
+
+        if (activeRests && activeRests.length > 0) {
+          showToast(
+            "⚠️ Ai restaurante active. Închide-le mai întâi din dashboard.",
+          );
+          setDeleteLoading(false);
+          setDeleteModal(false);
+          return;
+        }
+
+        // Dezactivam restaurantele inactive si anonimizam
+        await supabase
+          .from("restaurants")
+          .update({ owner_id: null })
+          .eq("owner_id", uid);
+      } else {
+        // Client: anonimizam rezervarile
+        await supabase
+          .from("reservations")
+          .update({ customer_name: "Client șters", customer_phone: null })
+          .eq("user_id", uid);
+
+        // Anonimizam recenziile
+        await supabase
+          .from("restaurant_reviews")
+          .update({ user_id: null })
+          .eq("user_id", uid);
+      }
+
+      // Stergem notificarile
+      await supabase.from("notifications").delete().eq("user_id", uid);
+
+      // Stergem profilul
+      await supabase.from("profiles").delete().eq("id", uid);
+
+      // Logout
+      await supabase.auth.signOut();
+      dispatch({ type: "SET_USER", payload: null });
+      showToast("✅ Contul a fost șters.");
+    } catch (e) {
+      showToast("❌ A apărut o eroare. Încearcă din nou.");
+    }
+    setDeleteLoading(false);
+    setDeleteModal(false);
   };
 
   // Date derivate
@@ -613,6 +686,13 @@ export function Auth() {
             title="Schimbă parola"
             sub="Securitate cont"
             onClick={() => setTab("parola")}
+          />
+          <MenuItem
+            icon="🗑️"
+            iconBg="rgba(224,80,80,0.1)"
+            title="Șterge cont"
+            sub="Acțiune ireversibilă"
+            onClick={() => setDeleteModal("confirm")}
             last
           />
         </MenuList>
@@ -917,6 +997,195 @@ function NotaCard({ n }) {
       {(n.items || []).length > 3 && (
         <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 4 }}>
           +{n.items.length - 3} produse
+        </div>
+      )}
+      {/* Modal Șterge Cont */}
+      {deleteModal && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 99999,
+            background: "rgba(0,0,0,0.85)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: "20px 16px",
+          }}
+          onClick={() => {
+            setDeleteModal(false);
+            setDeletePassword("");
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              background: "#1a1510",
+              borderRadius: 20,
+              padding: "24px 20px 28px",
+              width: "100%",
+              maxWidth: 360,
+            }}
+          >
+            {deleteModal === "confirm" && (
+              <>
+                <div
+                  style={{
+                    fontSize: 32,
+                    textAlign: "center",
+                    marginBottom: 12,
+                  }}
+                >
+                  ⚠️
+                </div>
+                <div
+                  style={{
+                    fontFamily: "'Fraunces',serif",
+                    fontSize: 18,
+                    fontWeight: 700,
+                    textAlign: "center",
+                    marginBottom: 8,
+                  }}
+                >
+                  Ștergi contul?
+                </div>
+                <div
+                  style={{
+                    fontSize: 13,
+                    color: "#8a7a6a",
+                    textAlign: "center",
+                    marginBottom: 24,
+                    lineHeight: 1.5,
+                  }}
+                >
+                  {user?.role === "owner"
+                    ? "Această acțiune este ireversibilă. Dacă ai restaurante active, ți se va cere să le închizi mai întâi."
+                    : "Această acțiune este ireversibilă. Toate datele tale vor fi anonimizate."}
+                </div>
+                <div style={{ display: "flex", gap: 10 }}>
+                  <button
+                    onClick={() => setDeleteModal(false)}
+                    style={{
+                      flex: 1,
+                      padding: 12,
+                      borderRadius: 12,
+                      border: "1px solid #2a2218",
+                      background: "transparent",
+                      color: "#8a7a6a",
+                      fontSize: 13,
+                      fontWeight: 600,
+                      cursor: "pointer",
+                      fontFamily: "inherit",
+                    }}
+                  >
+                    Anulează
+                  </button>
+                  <button
+                    onClick={() => setDeleteModal("password")}
+                    style={{
+                      flex: 1,
+                      padding: 12,
+                      borderRadius: 12,
+                      border: "none",
+                      background: "rgba(224,80,80,0.15)",
+                      color: "#e05050",
+                      fontSize: 13,
+                      fontWeight: 700,
+                      cursor: "pointer",
+                      fontFamily: "inherit",
+                    }}
+                  >
+                    Continuă
+                  </button>
+                </div>
+              </>
+            )}
+            {deleteModal === "password" && (
+              <>
+                <div
+                  style={{
+                    fontFamily: "'Fraunces',serif",
+                    fontSize: 17,
+                    fontWeight: 700,
+                    marginBottom: 8,
+                  }}
+                >
+                  🔒 Confirmă cu parola
+                </div>
+                <div
+                  style={{
+                    fontSize: 13,
+                    color: "#8a7a6a",
+                    marginBottom: 16,
+                    lineHeight: 1.5,
+                  }}
+                >
+                  Introdu parola contului pentru a confirma ștergerea.
+                </div>
+                <input
+                  type="password"
+                  value={deletePassword}
+                  onChange={(e) => setDeletePassword(e.target.value)}
+                  placeholder="Parola ta"
+                  style={{
+                    width: "100%",
+                    boxSizing: "border-box",
+                    background: "#161210",
+                    border: "1px solid #2a2218",
+                    borderRadius: 10,
+                    padding: "10px 12px",
+                    color: "#f0ebe3",
+                    fontFamily: "inherit",
+                    fontSize: 13,
+                    outline: "none",
+                    marginBottom: 16,
+                  }}
+                />
+                <div style={{ display: "flex", gap: 10 }}>
+                  <button
+                    onClick={() => {
+                      setDeleteModal("confirm");
+                      setDeletePassword("");
+                    }}
+                    style={{
+                      flex: 1,
+                      padding: 12,
+                      borderRadius: 12,
+                      border: "1px solid #2a2218",
+                      background: "transparent",
+                      color: "#8a7a6a",
+                      fontSize: 13,
+                      fontWeight: 600,
+                      cursor: "pointer",
+                      fontFamily: "inherit",
+                    }}
+                  >
+                    Înapoi
+                  </button>
+                  <button
+                    onClick={handleDeleteAccount}
+                    disabled={deleteLoading || !deletePassword}
+                    style={{
+                      flex: 1,
+                      padding: 12,
+                      borderRadius: 12,
+                      border: "none",
+                      background: deletePassword
+                        ? "rgba(224,80,80,0.8)"
+                        : "#2a2218",
+                      color: deletePassword ? "#fff" : "#6b6050",
+                      fontSize: 13,
+                      fontWeight: 700,
+                      cursor: deletePassword ? "pointer" : "not-allowed",
+                      fontFamily: "inherit",
+                    }}
+                  >
+                    {deleteLoading ? "Se șterge..." : "🗑️ Șterge"}
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
         </div>
       )}
     </div>
