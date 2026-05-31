@@ -11,6 +11,7 @@ export default function OcupareSection({
   setOccupancyWeek,
   setOccupancyMonth,
   setOccupancyYear,
+  getAvailableMonths,
 }) {
   return (
     <div
