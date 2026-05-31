@@ -1788,6 +1788,7 @@ export default function StatisticiProprietar() {
                 setOccupancyWeek={setOccupancyWeek}
                 setOccupancyMonth={setOccupancyMonth}
                 setOccupancyYear={setOccupancyYear}
+                getAvailableMonths={getAvailableMonths}
               />
             )}
 
