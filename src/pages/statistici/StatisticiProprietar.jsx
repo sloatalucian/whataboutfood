@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
-import { useApp } from "../context/AppContext";
-import { supabase } from "../supabase";
+import { useApp } from "../../context/AppContext";
+import { supabase } from "../../supabase";
 import { fmt, ZILE, ORE } from "./utils";
 import BarChart from "./components/BarChart";
 import StatCard from "./components/StatCard";
