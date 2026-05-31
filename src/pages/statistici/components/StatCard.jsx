@@ -35,12 +35,4 @@ function StatCard({ icon, label, value, sub, color = "#c8a97e" }) {
   );
 }
 
-const heatColor = (pct) => {
-  if (pct >= 90) return { bg: "rgba(192,98,47,.9)", color: "#fff" };
-  if (pct >= 70) return { bg: "rgba(192,98,47,.6)", color: "#fff" };
-  if (pct >= 50) return { bg: "rgba(192,98,47,.35)", color: "#f0ebe3" };
-  if (pct >= 30) return { bg: "rgba(192,98,47,.18)", color: "#c8a97e" };
-  return { bg: "rgba(255,255,255,.04)", color: "#6b6050" };
-};
-
 export default StatCard;
