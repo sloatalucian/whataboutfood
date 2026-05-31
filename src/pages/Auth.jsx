@@ -999,6 +999,7 @@ function NotaCard({ n }) {
           +{n.items.length - 3} produse
         </div>
       )}
+
       {/* Modal Șterge Cont */}
       {deleteModal && (
         <div
