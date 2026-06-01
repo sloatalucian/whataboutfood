@@ -174,52 +174,48 @@ function GlowNav({ items, activeId, onNavigate, badge }) {
   const lastScrollY = useRef(0);
   const scrollTimeout = useRef(null);
 
-  // Detectam scroll direct pe elementul .page
-  // Re-ataseaza la fiecare schimbare de tab (activeId)
+  // Detectam scroll pe .page cu MutationObserver
   useEffect(() => {
-    // Mic delay ca noul .page sa fie randat in DOM
-    const timer = setTimeout(() => {
-      const pageEl = document.querySelector(".page");
-      if (!pageEl) return;
+    let pageEl = null;
+    let cleanup = null;
 
-      // Reset scroll position la navigare
-      lastScrollY.current = pageEl.scrollTop;
+    const attach = (el) => {
+      if (cleanup) cleanup();
+      pageEl = el;
+      lastScrollY.current = el.scrollTop;
       setCollapsed(false);
 
       const handleScroll = () => {
         const currentY = pageEl.scrollTop;
         const delta = currentY - lastScrollY.current;
-        console.log(
-          "[WAF NAV] scrollTop:",
-          currentY,
-          "delta:",
-          delta,
-          "collapsed:",
-          delta > 8,
-        );
-
-        if (delta > 8) {
-          setCollapsed(true);
-        } else if (delta < -8) {
-          setCollapsed(false);
-        }
+        if (delta > 8) setCollapsed(true);
+        else if (delta < -8) setCollapsed(false);
         lastScrollY.current = currentY;
       };
 
-      pageEl.addEventListener("scroll", handleScroll, { passive: true });
-      // Stocam cleanup in ref
-      scrollTimeout.current = () =>
-        pageEl.removeEventListener("scroll", handleScroll);
-    }, 50);
+      el.addEventListener("scroll", handleScroll, { passive: true });
+      cleanup = () => el.removeEventListener("scroll", handleScroll);
+    };
+
+    // Incercam imediat
+    const tryAttach = () => {
+      const el = document.querySelector(".page");
+      if (el) attach(el);
+    };
+    tryAttach();
+
+    // MutationObserver pentru cand .page apare/se schimba in DOM
+    const observer = new MutationObserver(() => {
+      const el = document.querySelector(".page");
+      if (el && el !== pageEl) attach(el);
+    });
+    observer.observe(document.body, { childList: true, subtree: true });
 
     return () => {
-      clearTimeout(timer);
-      if (typeof scrollTimeout.current === "function") {
-        scrollTimeout.current();
-        scrollTimeout.current = null;
-      }
+      observer.disconnect();
+      if (cleanup) cleanup();
     };
-  }, [activeId]);
+  }, []);
 
   const handleClick = (item, idx) => {
     if (collapsed && idx === 0) {
