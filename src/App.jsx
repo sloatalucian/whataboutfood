@@ -857,7 +857,7 @@ function Router() {
         <div
           key={screen}
           className="page-transition"
-          onScroll={(e) => {
+          onScrollCapture={(e) => {
             const cy = e.currentTarget.scrollTop;
             const delta = cy - navLastScrollY.current;
             if (delta > 8) setNavScrollDir("down");
