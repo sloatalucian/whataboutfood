@@ -189,6 +189,14 @@ function GlowNav({ items, activeId, onNavigate, badge }) {
       const handleScroll = () => {
         const currentY = pageEl.scrollTop;
         const delta = currentY - lastScrollY.current;
+        console.log(
+          "[WAF NAV] scrollTop:",
+          currentY,
+          "delta:",
+          delta,
+          "collapsed:",
+          delta > 8,
+        );
 
         if (delta > 8) {
           setCollapsed(true);
