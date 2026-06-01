@@ -174,39 +174,44 @@ function GlowNav({ items, activeId, onNavigate, badge }) {
   const lastScrollY = useRef(0);
   const scrollTimeout = useRef(null);
 
-  // Detectam scroll pe .page (elementul care scrolleaza in app)
+  // Detectam scroll direct pe elementul .page
+  // Re-ataseaza la fiecare schimbare de tab (activeId)
   useEffect(() => {
-    const handleScroll = (e) => {
-      const el = e.target;
-      // Ignoram scroll din elemente mici (modals, dropdowns)
-      // Acceptam doar de pe .page sau body/html
-      const isPageScroll =
-        el.classList?.contains("page") ||
-        el === document.documentElement ||
-        el === document.body;
-      if (!isPageScroll) return;
+    // Mic delay ca noul .page sa fie randat in DOM
+    const timer = setTimeout(() => {
+      const pageEl = document.querySelector(".page");
+      if (!pageEl) return;
 
-      const currentY = el.scrollTop || window.scrollY || 0;
-      const delta = currentY - lastScrollY.current;
+      // Reset scroll position la navigare
+      lastScrollY.current = pageEl.scrollTop;
+      setCollapsed(false);
 
-      if (delta > 8) {
-        setCollapsed(true);
-      } else if (delta < -8) {
-        setCollapsed(false);
-      }
-      lastScrollY.current = currentY;
-    };
+      const handleScroll = () => {
+        const currentY = pageEl.scrollTop;
+        const delta = currentY - lastScrollY.current;
 
-    // Ascultam pe document in capture phase - prinde scroll din orice div intern
-    document.addEventListener("scroll", handleScroll, {
-      passive: true,
-      capture: true,
-    });
+        if (delta > 8) {
+          setCollapsed(true);
+        } else if (delta < -8) {
+          setCollapsed(false);
+        }
+        lastScrollY.current = currentY;
+      };
+
+      pageEl.addEventListener("scroll", handleScroll, { passive: true });
+      // Stocam cleanup in ref
+      scrollTimeout.current = () =>
+        pageEl.removeEventListener("scroll", handleScroll);
+    }, 50);
+
     return () => {
-      document.removeEventListener("scroll", handleScroll, { capture: true });
-      if (scrollTimeout.current) clearTimeout(scrollTimeout.current);
+      clearTimeout(timer);
+      if (typeof scrollTimeout.current === "function") {
+        scrollTimeout.current();
+        scrollTimeout.current = null;
+      }
     };
-  }, []);
+  }, [activeId]);
 
   const handleClick = (item, idx) => {
     if (collapsed && idx === 0) {
