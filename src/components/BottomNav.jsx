@@ -169,11 +169,51 @@ function GlowNav({ items, activeId, onNavigate, badge }) {
   const activeIdx = items.findIndex((i) => i.id === activeId);
   const current = activeIdx >= 0 ? activeIdx : 0;
   const [animIdx, setAnimIdx] = useState(current);
+  const [collapsed, setCollapsed] = useState(false);
   const prevIdx = useRef(current);
+  const lastScrollY = useRef(0);
+  const scrollTimeout = useRef(null);
+
+  // Detectam scroll pe .page (elementul care scrolleaza in app)
+  useEffect(() => {
+    const handleScroll = (e) => {
+      const el = e.target;
+      // Ignoram scroll din elemente mici (modals, dropdowns)
+      // Acceptam doar de pe .page sau body/html
+      const isPageScroll =
+        el.classList?.contains("page") ||
+        el === document.documentElement ||
+        el === document.body;
+      if (!isPageScroll) return;
+
+      const currentY = el.scrollTop || window.scrollY || 0;
+      const delta = currentY - lastScrollY.current;
+
+      if (delta > 8) {
+        setCollapsed(true);
+      } else if (delta < -8) {
+        setCollapsed(false);
+      }
+      lastScrollY.current = currentY;
+    };
+
+    // Ascultam pe document in capture phase - prinde scroll din orice div intern
+    document.addEventListener("scroll", handleScroll, {
+      passive: true,
+      capture: true,
+    });
+    return () => {
+      document.removeEventListener("scroll", handleScroll, { capture: true });
+      if (scrollTimeout.current) clearTimeout(scrollTimeout.current);
+    };
+  }, []);
 
   const handleClick = (item, idx) => {
-    // Permite navigarea chiar daca e acelasi idx
-    // dar blocheaza double-tap rapid (< 300ms)
+    if (collapsed && idx === 0) {
+      // Tap pe Home cand e collapsed -> expand
+      setCollapsed(false);
+      return;
+    }
     prevIdx.current = idx;
     setAnimIdx(idx);
     onNavigate(item);
@@ -188,10 +228,15 @@ function GlowNav({ items, activeId, onNavigate, badge }) {
         left: 0,
         right: 0,
         zIndex: 80,
-        background: "#0d0a07",
-        borderTop: "1px solid #1e1a14",
+        paddingBottom: "env(safe-area-inset-bottom, 8px)",
+        paddingLeft: 12,
+        paddingRight: 12,
+        paddingTop: 8,
         display: "flex",
-        paddingBottom: "env(safe-area-inset-bottom, 0px)",
+        justifyContent: collapsed ? "flex-start" : "center",
+        background: "transparent",
+        transition: "justify-content 0s",
+        pointerEvents: "none",
       }}
     >
       <style>{`
@@ -231,108 +276,136 @@ function GlowNav({ items, activeId, onNavigate, badge }) {
         .waf-label-active {
           animation: wafLabelIn 0.3s ease forwards;
         }
+        .waf-pill {
+          display: flex;
+          align-items: center;
+          background: rgba(13,10,7,0.6);
+          backdrop-filter: blur(16px);
+          -webkit-backdrop-filter: blur(16px);
+          border: 1px solid rgba(192,98,47,0.2);
+          border-radius: 28px;
+          padding: 6px;
+          pointer-events: all;
+          transition: all 0.4s cubic-bezier(0.34,1.56,0.64,1);
+          overflow: hidden;
+          margin-bottom: 8px;
+        }
+        .waf-nav-item {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          border: none;
+          background: transparent;
+          cursor: pointer;
+          border-radius: 22px;
+          padding: 8px 14px;
+          transition: all 0.35s cubic-bezier(0.34,1.2,0.64,1);
+          max-width: 100px;
+          overflow: hidden;
+          white-space: nowrap;
+          WebkitTapHighlightColor: transparent;
+          gap: 0;
+        }
+        .waf-nav-item.waf-hidden {
+          max-width: 0;
+          padding: 8px 0;
+          opacity: 0;
+          pointer-events: none;
+        }
       `}</style>
 
-      {items.map((item, idx) => {
-        const isActive = idx === current;
-        const wasJustActivated = idx === animIdx && isActive;
+      <div className="waf-pill">
+        {items.map((item, idx) => {
+          const isActive = idx === current;
+          const wasJustActivated = idx === animIdx && isActive;
+          const isHidden = collapsed && idx !== 0;
 
-        return (
-          <button
-            key={item.id}
-            onClick={() => {
-              if (!isActive) {
-                // ripple
-                const wrap = document.getElementById(`waf-wrap-${idx}`);
-                if (wrap) {
-                  const r = document.createElement("div");
-                  r.className = "waf-ripple";
-                  wrap.appendChild(r);
-                  setTimeout(() => r.remove(), 600);
+          return (
+            <button
+              key={item.id}
+              className={`waf-nav-item${isHidden ? " waf-hidden" : ""}`}
+              onClick={() => {
+                if (!isActive && !isHidden) {
+                  const wrap = document.getElementById(`waf-wrap-${idx}`);
+                  if (wrap) {
+                    const r = document.createElement("div");
+                    r.className = "waf-ripple";
+                    wrap.appendChild(r);
+                    setTimeout(() => r.remove(), 600);
+                  }
                 }
-              }
-              handleClick(item, idx);
-            }}
-            style={{
-              flex: 1,
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "center",
-              justifyContent: "center",
-              padding: "10px 4px 8px",
-              border: "none",
-              background: "transparent",
-              cursor: "pointer",
-              WebkitTapHighlightColor: "transparent",
-              gap: 0,
-            }}
-          >
-            {/* Icon wrapper */}
-            <div
-              id={`waf-wrap-${idx}`}
-              className={wasJustActivated ? "waf-wrap-active" : ""}
-              style={{
-                width: 42,
-                height: 42,
-                borderRadius: 14,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                position: "relative",
-                color: isActive ? ACTIVE_COLOR : INACTIVE_COLOR,
-                boxShadow: isActive
-                  ? "0 0 12px 3px rgba(192,98,47,0.28)"
-                  : "none",
-                transition: "color 0.25s ease, box-shadow 0.25s ease",
+                handleClick(item, idx);
               }}
+              style={{ WebkitTapHighlightColor: "transparent" }}
             >
-              <div className={wasJustActivated ? "waf-icon-active" : ""}>
-                {Icons[item.id]}
+              {/* Icon wrapper */}
+              <div
+                id={`waf-wrap-${idx}`}
+                className={wasJustActivated ? "waf-wrap-active" : ""}
+                style={{
+                  width: 42,
+                  height: 42,
+                  borderRadius: 14,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  position: "relative",
+                  color: isActive ? ACTIVE_COLOR : INACTIVE_COLOR,
+                  boxShadow: isActive
+                    ? "0 0 12px 3px rgba(192,98,47,0.28)"
+                    : "none",
+                  transition: "color 0.25s ease, box-shadow 0.25s ease",
+                }}
+              >
+                <div className={wasJustActivated ? "waf-icon-active" : ""}>
+                  {Icons[item.id]}
+                </div>
+
+                {/* Badge notificări */}
+                {item.id === "notifications" && badge > 0 && (
+                  <span
+                    style={{
+                      position: "absolute",
+                      top: 4,
+                      right: 4,
+                      minWidth: 16,
+                      height: 16,
+                      background: "#c0622f",
+                      borderRadius: 999,
+                      fontSize: 9,
+                      fontWeight: 800,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      color: "#fff",
+                      padding: "0 3px",
+                      border: "1.5px solid #0d0a07",
+                    }}
+                  >
+                    {badge > 9 ? "9+" : badge}
+                  </span>
+                )}
               </div>
 
-              {/* Badge notificări */}
-              {item.id === "notifications" && badge > 0 && (
-                <span
-                  style={{
-                    position: "absolute",
-                    top: 4,
-                    right: 4,
-                    minWidth: 16,
-                    height: 16,
-                    background: "#c0622f",
-                    borderRadius: 999,
-                    fontSize: 9,
-                    fontWeight: 800,
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    color: "#fff",
-                    padding: "0 3px",
-                    border: "1.5px solid #0d0a07",
-                  }}
-                >
-                  {badge > 9 ? "9+" : badge}
-                </span>
-              )}
-            </div>
-
-            {/* Label */}
-            <span
-              className={wasJustActivated ? "waf-label-active" : ""}
-              style={{
-                fontSize: 10,
-                marginTop: 4,
-                letterSpacing: 0.2,
-                fontWeight: isActive ? 600 : 400,
-                color: isActive ? ACTIVE_COLOR : INACTIVE_COLOR,
-                transition: "color 0.25s ease",
-              }}
-            >
-              {item.label}
-            </span>
-          </button>
-        );
-      })}
+              {/* Label */}
+              <span
+                className={wasJustActivated ? "waf-label-active" : ""}
+                style={{
+                  fontSize: 10,
+                  marginTop: 4,
+                  letterSpacing: 0.2,
+                  fontWeight: isActive ? 600 : 400,
+                  color: isActive ? ACTIVE_COLOR : INACTIVE_COLOR,
+                  transition: "color 0.25s ease",
+                }}
+              >
+                {item.label}
+              </span>
+            </button>
+          );
+        })}
+      </div>
     </nav>
   );
 }
