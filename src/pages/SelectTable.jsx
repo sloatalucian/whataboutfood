@@ -86,11 +86,17 @@ export function SelectTable({ restaurant, onSelected, onBack }) {
           return diffMin >= -30 && diffMin <= 120;
         });
         if (active) {
-          // Aducem si tableId din DB dupa table_label
+          // Aducem tableId corect - filtram dupa floor_id al restaurantului
+          const { data: floorsData } = await supabase
+            .from("floors")
+            .select("id")
+            .eq("restaurant_id", restaurant.id);
+          const floorIds = (floorsData || []).map((f) => f.id);
           const { data: tableData } = await supabase
             .from("tables")
             .select("id")
             .eq("label", active.table_label)
+            .in("floor_id", floorIds)
             .limit(1)
             .single();
           setMyReservation({ ...active, tableId: tableData?.id || null });
