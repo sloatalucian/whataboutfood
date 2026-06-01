@@ -13,7 +13,7 @@ import DashboardLive from "./pages/DashboardLive";
 import { WaiterLogin, WaiterManagement } from "./pages/WaiterManagement";
 import HartaPage from "./pages/HartaPage";
 import StatisticiProprietar from "./pages/statistici/StatisticiProprietar";
-import SplashScreen from "./pages/SplashScreen";
+import SplashScreen from "./pages/splash/SplashScreen";
 import MenuEditor from "./pages/MenuEditor";
 import NewRestaurant from "./pages/NewRestaurant";
 import Notifications from "./pages/Notifications";
