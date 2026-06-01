@@ -174,48 +174,42 @@ function GlowNav({ items, activeId, onNavigate, badge }) {
   const lastScrollY = useRef(0);
   const scrollTimeout = useRef(null);
 
-  // Detectam scroll pe .page cu MutationObserver
+  // Detectam scroll pe .page
   useEffect(() => {
     let pageEl = null;
-    let cleanup = null;
+    let removeListener = null;
+    let retryInterval = null;
+
+    const handleScroll = () => {
+      if (!pageEl) return;
+      const currentY = pageEl.scrollTop;
+      const delta = currentY - lastScrollY.current;
+      if (delta > 8) setCollapsed(true);
+      else if (delta < -8) setCollapsed(false);
+      lastScrollY.current = currentY;
+    };
 
     const attach = (el) => {
-      if (cleanup) cleanup();
+      if (removeListener) removeListener();
       pageEl = el;
       lastScrollY.current = el.scrollTop;
-      setCollapsed(false);
-
-      const handleScroll = () => {
-        const currentY = pageEl.scrollTop;
-        const delta = currentY - lastScrollY.current;
-        if (delta > 8) setCollapsed(true);
-        else if (delta < -8) setCollapsed(false);
-        lastScrollY.current = currentY;
-      };
-
       el.addEventListener("scroll", handleScroll, { passive: true });
-      cleanup = () => el.removeEventListener("scroll", handleScroll);
+      removeListener = () => el.removeEventListener("scroll", handleScroll);
     };
 
-    // Incercam imediat
-    const tryAttach = () => {
+    // Retry la fiecare 300ms pana gasim .page (fade-in, etc.)
+    retryInterval = setInterval(() => {
       const el = document.querySelector(".page");
-      if (el) attach(el);
-    };
-    tryAttach();
-
-    // MutationObserver pentru cand .page apare/se schimba in DOM
-    const observer = new MutationObserver(() => {
-      const el = document.querySelector(".page");
-      if (el && el !== pageEl) attach(el);
-    });
-    observer.observe(document.body, { childList: true, subtree: true });
+      if (el && el !== pageEl) {
+        attach(el);
+      }
+    }, 300);
 
     return () => {
-      observer.disconnect();
-      if (cleanup) cleanup();
+      clearInterval(retryInterval);
+      if (removeListener) removeListener();
     };
-  }, []);
+  }, [activeId]);
 
   const handleClick = (item, idx) => {
     if (collapsed && idx === 0) {
