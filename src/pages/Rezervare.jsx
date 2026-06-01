@@ -231,7 +231,7 @@ export function Rezervare() {
         .eq("restaurant_id", selectedRest.id)
         .eq("date", resForm.date)
         .eq("time", resForm.time)
-        .eq("status", "confirmed");
+        .in("status", ["pending", "confirmed"]);
       if (data)
         setReservedTables(data.map((r) => r.table_label).filter(Boolean));
     };
