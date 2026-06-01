@@ -1,9 +1,12 @@
 import { useState, useEffect, useRef } from "react";
 import { supabase } from "../supabase";
 import { useTable, TABLE_STATUS } from "../context/TableContext";
+import { useApp } from "../context/AppContext";
 
 export function SelectTable({ restaurant, onSelected, onBack }) {
   const { getStatus, occupyTable } = useTable();
+  const { state } = useApp();
+  const { user } = state;
   const [selectedFloor, setSelectedFloor] = useState(0);
   const [confirming, setConfirming] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -11,6 +14,7 @@ export function SelectTable({ restaurant, onSelected, onBack }) {
   const containerRef = useRef(null);
   const [dbFloors, setDbFloors] = useState([]);
   const [floorsLoading, setFloorsLoading] = useState(true);
+  const [myReservation, setMyReservation] = useState(null); // rezervare activa a clientului
 
   const ZOOM_MIN = 40;
   const ZOOM_MAX = 150;
@@ -57,6 +61,45 @@ export function SelectTable({ restaurant, onSelected, onBack }) {
     load();
   }, [restaurant?.id]);
 
+  // Verifica daca clientul are rezervare activa pentru azi la ora curenta
+  useEffect(() => {
+    if (!restaurant?.id || !user?.id) return;
+    const checkReservation = async () => {
+      const now = new Date();
+      const todayStr = now.toISOString().split("T")[0];
+      const { data } = await supabase
+        .from("reservations")
+        .select("id, table_label, time")
+        .eq("restaurant_id", restaurant.id)
+        .eq("user_id", user.id)
+        .eq("date", todayStr)
+        .in("status", ["pending", "confirmed"])
+        .not("table_label", "is", null);
+
+      if (data && data.length > 0) {
+        // Filtreaza rezervarile in intervalul orar curent (+/- 120 min)
+        const ch = now.getHours();
+        const cm = now.getMinutes();
+        const active = data.find((r) => {
+          const [rh, rm] = r.time.split(":").map(Number);
+          const diffMin = rh * 60 + rm - (ch * 60 + cm);
+          return diffMin >= -30 && diffMin <= 120;
+        });
+        if (active) {
+          // Aducem si tableId din DB dupa table_label
+          const { data: tableData } = await supabase
+            .from("tables")
+            .select("id")
+            .eq("label", active.table_label)
+            .limit(1)
+            .single();
+          setMyReservation({ ...active, tableId: tableData?.id || null });
+        }
+      }
+    };
+    checkReservation();
+  }, [restaurant?.id, user?.id]);
+
   useEffect(() => {
     const calcAutoZoom = () => {
       if (!containerRef.current) return;
@@ -86,6 +129,284 @@ export function SelectTable({ restaurant, onSelected, onBack }) {
     }
     setLoading(false);
   };
+
+  // Popup rezervare activa
+  if (myReservation) {
+    const styleTag = `
+      @keyframes waf-fadeIn { from{opacity:0;transform:translateY(24px)} to{opacity:1;transform:translateY(0)} }
+      @keyframes waf-popIn { 0%{transform:scale(0.5);opacity:0} 60%{transform:scale(1.15)} 100%{transform:scale(1);opacity:1} }
+      @keyframes waf-float { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-6px)} }
+      @keyframes waf-confetti1 { 0%{transform:translateY(0) rotate(0deg);opacity:1} 100%{transform:translateY(80px) rotate(360deg);opacity:0} }
+      @keyframes waf-confetti2 { 0%{transform:translateY(0) rotate(0deg);opacity:1} 100%{transform:translateY(90px) rotate(-270deg);opacity:0} }
+      @keyframes waf-tablePop { 0%{transform:scale(0.8);opacity:0} 70%{transform:scale(1.08)} 100%{transform:scale(1);opacity:1} }
+      @keyframes waf-pulse { 0%,100%{box-shadow:0 0 0 0 rgba(192,98,47,0.4)} 50%{box-shadow:0 0 0 12px rgba(192,98,47,0)} }
+      .waf-card { animation: waf-fadeIn 0.5s ease both; }
+      .waf-emoji { animation: waf-popIn 0.6s cubic-bezier(.36,.07,.19,.97) 0.2s both, waf-float 3s ease-in-out 1s infinite; display:inline-block; }
+      .waf-badge { animation: waf-tablePop 0.5s cubic-bezier(.36,.07,.19,.97) 0.5s both; }
+      .waf-btn-main { animation: waf-pulse 2s ease-in-out 1s infinite; }
+      .waf-dot1 { position:absolute; animation: waf-confetti1 1.2s ease-out 0.3s both; }
+      .waf-dot2 { position:absolute; animation: waf-confetti2 1.4s ease-out 0.4s both; }
+      .waf-dot3 { position:absolute; animation: waf-confetti1 1.0s ease-out 0.5s both; }
+      .waf-dot4 { position:absolute; animation: waf-confetti2 1.3s ease-out 0.6s both; }
+      .waf-dot5 { position:absolute; animation: waf-confetti1 1.1s ease-out 0.35s both; }
+      .waf-welcome { animation: waf-fadeIn 0.4s ease 0.4s both; }
+      .waf-sub { animation: waf-fadeIn 0.4s ease 0.6s both; }
+      .waf-tagline { animation: waf-fadeIn 0.4s ease 0.8s both; }
+      .waf-btns { animation: waf-fadeIn 0.4s ease 1s both; }
+    `;
+    const now = new Date();
+    const dateStr = now.toLocaleDateString("ro-RO", {
+      day: "2-digit",
+      month: "long",
+    });
+    return (
+      <>
+        <style>{styleTag}</style>
+        <div
+          style={{
+            minHeight: "100vh",
+            background: "#0d0a07",
+            fontFamily: "'Plus Jakarta Sans',sans-serif",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: "32px 24px",
+            position: "relative",
+            overflow: "hidden",
+          }}
+        >
+          {/* Confetti */}
+          <div
+            style={{
+              position: "absolute",
+              top: 40,
+              left: "50%",
+              transform: "translateX(-50%)",
+              width: 280,
+              height: 100,
+              pointerEvents: "none",
+            }}
+          >
+            <div
+              className="waf-dot1"
+              style={{
+                left: 40,
+                top: 0,
+                width: 10,
+                height: 10,
+                borderRadius: "50%",
+                background: "#c0622f",
+              }}
+            />
+            <div
+              className="waf-dot2"
+              style={{
+                left: 90,
+                top: 10,
+                width: 8,
+                height: 8,
+                borderRadius: 2,
+                background: "#c8a97e",
+              }}
+            />
+            <div
+              className="waf-dot3"
+              style={{
+                left: 160,
+                top: 5,
+                width: 10,
+                height: 10,
+                borderRadius: "50%",
+                background: "#6b9e6b",
+              }}
+            />
+            <div
+              className="waf-dot4"
+              style={{
+                left: 210,
+                top: 0,
+                width: 8,
+                height: 8,
+                borderRadius: 2,
+                background: "#c0622f",
+              }}
+            />
+            <div
+              className="waf-dot5"
+              style={{
+                left: 130,
+                top: 0,
+                width: 6,
+                height: 6,
+                borderRadius: "50%",
+                background: "#c8a97e",
+              }}
+            />
+          </div>
+
+          <div
+            className="waf-card"
+            style={{
+              background: "#1a1510",
+              border: "1px solid rgba(200,169,126,.3)",
+              borderRadius: 24,
+              padding: "36px 28px",
+              maxWidth: 340,
+              width: "100%",
+              textAlign: "center",
+              position: "relative",
+            }}
+          >
+            {/* Linie gradient top */}
+            <div
+              style={{
+                position: "absolute",
+                top: 0,
+                left: 0,
+                right: 0,
+                height: 3,
+                borderRadius: "24px 24px 0 0",
+                background: "linear-gradient(90deg,#c0622f,#c8a97e,#c0622f)",
+              }}
+            />
+
+            <div
+              className="waf-emoji"
+              style={{ fontSize: 52, marginBottom: 16 }}
+            >
+              🎉
+            </div>
+
+            <div
+              className="waf-welcome"
+              style={{
+                fontFamily: "'Fraunces',serif",
+                fontSize: 24,
+                fontWeight: 700,
+                color: "#f0ebe3",
+                marginBottom: 12,
+              }}
+            >
+              Bun venit!
+            </div>
+
+            <div
+              className="waf-sub"
+              style={{ fontSize: 14, color: "#6b6050", marginBottom: 12 }}
+            >
+              Masa rezervată pentru tine
+            </div>
+
+            {/* Badge masa */}
+            <div
+              className="waf-badge"
+              style={{
+                background: "rgba(192,98,47,.15)",
+                border: "1px solid rgba(192,98,47,.4)",
+                borderRadius: 16,
+                padding: "12px 24px",
+                marginBottom: 16,
+                display: "inline-block",
+              }}
+            >
+              <div
+                style={{
+                  fontSize: 11,
+                  color: "#c0622f",
+                  textTransform: "uppercase",
+                  letterSpacing: 1.5,
+                  marginBottom: 4,
+                  fontWeight: 600,
+                }}
+              >
+                Masa ta
+              </div>
+              <div
+                style={{
+                  fontFamily: "'Fraunces',serif",
+                  fontSize: 32,
+                  fontWeight: 700,
+                  color: "#f0ebe3",
+                }}
+              >
+                {myReservation.table_label}
+              </div>
+            </div>
+
+            <div
+              className="waf-tagline"
+              style={{
+                fontSize: 13,
+                color: "#6b6050",
+                marginBottom: 28,
+                lineHeight: 1.6,
+              }}
+            >
+              Ne bucurăm că ai ajuns! 🍽️
+              <br />
+              <span style={{ color: "#c8a97e", fontSize: 12 }}>
+                {restaurant?.name} · {dateStr}, {myReservation.time}
+              </span>
+            </div>
+
+            <div className="waf-btns">
+              <button
+                className="waf-btn-main"
+                onClick={async () => {
+                  let sessionId = null;
+                  if (myReservation.tableId) {
+                    sessionId = await occupyTable(
+                      myReservation.tableId,
+                      myReservation.table_label,
+                    );
+                  }
+                  if (onSelected)
+                    onSelected({
+                      table: {
+                        label: myReservation.table_label,
+                        id: myReservation.tableId,
+                      },
+                      sessionId,
+                    });
+                }}
+                style={{
+                  width: "100%",
+                  padding: 15,
+                  background: "linear-gradient(135deg,#c0622f,#8b3a18)",
+                  border: "none",
+                  borderRadius: 16,
+                  color: "#fff",
+                  fontFamily: "'Fraunces',serif",
+                  fontSize: 17,
+                  fontWeight: 700,
+                  cursor: "pointer",
+                  marginBottom: 12,
+                  letterSpacing: 0.3,
+                }}
+              >
+                🍽️ Vezi Meniu
+              </button>
+              <button
+                onClick={onBack}
+                style={{
+                  width: "100%",
+                  padding: 11,
+                  background: "none",
+                  border: "1px solid #2a2218",
+                  borderRadius: 12,
+                  color: "#6b6050",
+                  fontSize: 13,
+                  cursor: "pointer",
+                }}
+              >
+                Înapoi
+              </button>
+            </div>
+          </div>
+        </div>
+      </>
+    );
+  }
 
   return (
     <div
