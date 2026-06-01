@@ -165,56 +165,23 @@ const ACTIVE_COLOR = "#c0622f";
 const INACTIVE_COLOR = "#8a7a6a";
 
 // ── NavBar ────────────────────────────────────────────────────────────────────
-function GlowNav({ items, activeId, onNavigate, badge }) {
+function GlowNav({ items, activeId, onNavigate, badge, scrollDir, onExpand }) {
   const activeIdx = items.findIndex((i) => i.id === activeId);
   const current = activeIdx >= 0 ? activeIdx : 0;
   const [animIdx, setAnimIdx] = useState(current);
   const [collapsed, setCollapsed] = useState(false);
   const prevIdx = useRef(current);
-  const lastScrollY = useRef(0);
-  const scrollTimeout = useRef(null);
 
-  // Detectam scroll pe .page
+  // Collapsed bazat pe scrollDir prop din App.jsx
   useEffect(() => {
-    let pageEl = null;
-    let removeListener = null;
-    let retryInterval = null;
-
-    const handleScroll = () => {
-      if (!pageEl) return;
-      const currentY = pageEl.scrollTop;
-      const delta = currentY - lastScrollY.current;
-      if (delta > 8) setCollapsed(true);
-      else if (delta < -8) setCollapsed(false);
-      lastScrollY.current = currentY;
-    };
-
-    const attach = (el) => {
-      if (removeListener) removeListener();
-      pageEl = el;
-      lastScrollY.current = el.scrollTop;
-      el.addEventListener("scroll", handleScroll, { passive: true });
-      removeListener = () => el.removeEventListener("scroll", handleScroll);
-    };
-
-    // Retry la fiecare 300ms pana gasim .page (fade-in, etc.)
-    retryInterval = setInterval(() => {
-      const el = document.querySelector(".page");
-      if (el && el !== pageEl) {
-        attach(el);
-      }
-    }, 300);
-
-    return () => {
-      clearInterval(retryInterval);
-      if (removeListener) removeListener();
-    };
-  }, [activeId]);
+    if (scrollDir === "down") setCollapsed(true);
+    else if (scrollDir === "up") setCollapsed(false);
+  }, [scrollDir]);
 
   const handleClick = (item, idx) => {
     if (collapsed && idx === 0) {
-      // Tap pe Home cand e collapsed -> expand
       setCollapsed(false);
+      if (onExpand) onExpand();
       return;
     }
     prevIdx.current = idx;
@@ -418,6 +385,8 @@ export default function BottomNav({
   onWaiterClick,
   waiterLoggedIn,
   unreadCount: unreadProp,
+  scrollDir,
+  onExpand,
 }) {
   const { state, navigate } = useApp();
   const { screen, selectedRest, user } = state;
@@ -534,6 +503,8 @@ export default function BottomNav({
           activeId={screen}
           onNavigate={(item) => navigate(item.id)}
           badge={0}
+          scrollDir={scrollDir}
+          onExpand={onExpand}
         />
       </>
     );
@@ -546,6 +517,8 @@ export default function BottomNav({
       <GlowNav
         items={CLIENT_ITEMS}
         activeId={screen}
+        scrollDir={scrollDir}
+        onExpand={onExpand}
         onNavigate={(item) => {
           if (item.needsRest && !selectedRest) {
             navigate("home");

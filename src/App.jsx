@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { AppProvider, useApp } from "./context/AppContext";
 import { TableProvider } from "./context/TableContext";
 import BottomNav from "./components/BottomNav";
@@ -247,6 +247,8 @@ function Router() {
   const [reviewRating, setReviewRating] = useState(0);
   const [reviewComment, setReviewComment] = useState("");
   const [reviewSent, setReviewSent] = useState(false);
+  const [navScrollDir, setNavScrollDir] = useState("up");
+  const navLastScrollY = useRef(0);
 
   const handleSendReview = async () => {
     if (!reviewRating || !user?.id) return;
@@ -852,13 +854,28 @@ function Router() {
             </div>
           </div>
         )}
-        <div key={screen} className="page-transition">
+        <div
+          key={screen}
+          className="page-transition"
+          onScroll={(e) => {
+            const cy = e.currentTarget.scrollTop;
+            const delta = cy - navLastScrollY.current;
+            if (delta > 8) setNavScrollDir("down");
+            else if (delta < -8) setNavScrollDir("up");
+            navLastScrollY.current = cy;
+          }}
+        >
           {pages[screen] || <Home />}
         </div>
         {screen !== "waiter" && !noNav.includes(screen) && (
           <BottomNav
             waiterLoggedIn={!!waiterUser}
             unreadCount={state.unreadCount}
+            scrollDir={navScrollDir}
+            onExpand={() => {
+              setNavScrollDir("up");
+              navLastScrollY.current = 0;
+            }}
           />
         )}
 
