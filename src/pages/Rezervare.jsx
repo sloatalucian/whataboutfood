@@ -225,13 +225,11 @@ export function Rezervare() {
       return;
     }
     const loadReserved = async () => {
-      const { data } = await supabase
-        .from("reservations")
-        .select("table_label")
-        .eq("restaurant_id", selectedRest.id)
-        .eq("date", resForm.date)
-        .eq("time", resForm.time)
-        .in("status", ["pending", "confirmed"]);
+      const { data } = await supabase.rpc("get_reserved_tables", {
+        p_restaurant_id: selectedRest.id,
+        p_date: resForm.date,
+        p_time: resForm.time,
+      });
       if (data)
         setReservedTables(data.map((r) => r.table_label).filter(Boolean));
     };
