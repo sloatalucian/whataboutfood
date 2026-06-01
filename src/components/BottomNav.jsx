@@ -172,11 +172,21 @@ function GlowNav({ items, activeId, onNavigate, badge, scrollDir, onExpand }) {
   const [collapsed, setCollapsed] = useState(false);
   const prevIdx = useRef(current);
 
-  // Collapsed bazat pe scrollDir prop din App.jsx
+  // Detectam scroll pe window
   useEffect(() => {
-    if (scrollDir === "down") setCollapsed(true);
-    else if (scrollDir === "up") setCollapsed(false);
-  }, [scrollDir]);
+    let lastY = window.scrollY;
+
+    const handleScroll = () => {
+      const currentY = window.scrollY;
+      const delta = currentY - lastY;
+      if (delta > 8) setCollapsed(true);
+      else if (delta < -8) setCollapsed(false);
+      lastY = currentY;
+    };
+
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, [activeId]);
 
   const handleClick = (item, idx) => {
     if (collapsed && idx === 0) {
