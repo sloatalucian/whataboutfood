@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { useApp } from "../context/AppContext";
-import { supabase } from "../supabase";
+import { supabase, SUPABASE_ANON_KEY } from "../supabase";
 
 // ═══════════════════════════════════════════════════════════════════════════
 // LOGIN OSPĂTAR
@@ -331,9 +331,7 @@ export function WaiterManagement({ onBack, onLogout }) {
           // Setam restaurantul doar daca nu e deja selectat
           setSelectedRestId((prev) => prev || data[0].id);
         }
-      } catch (err) {
-        console.log(err);
-      }
+      } catch (err) {}
       setLoadingRests(false);
     };
     loadRests();
@@ -360,7 +358,6 @@ export function WaiterManagement({ onBack, onLogout }) {
         })),
       );
     } catch (err) {
-      console.log("Load waiters error:", err);
       showToast("❌ Eroare la încărcarea ospătarilor.");
     }
     setLoading(false);
@@ -410,8 +407,7 @@ export function WaiterManagement({ onBack, onLogout }) {
           headers: {
             "Content-Type": "application/json",
             Authorization: `Bearer ${session.access_token}`,
-            apikey:
-              "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRzcWtxcWFvand4b3VpbWNhY2d5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY2MTM0NzcsImV4cCI6MjA5MjE4OTQ3N30.Sb-6N8L1fft_fZOP37Q3O00ihQn8kN6NdE584MwdR5Y",
+            apikey: SUPABASE_ANON_KEY,
           },
           body: JSON.stringify({
             name: newWaiter.name,
@@ -439,7 +435,6 @@ export function WaiterManagement({ onBack, onLogout }) {
       setShowAdd(false);
       showToast("✅ Ospătar adăugat! Se poate loga cu datele setate.");
     } catch (err) {
-      console.log("Add waiter error:", err);
       showToast(`❌ ${err.message || "Eroare la adăugare. Verifică datele."}`);
     }
     setSaving(false);

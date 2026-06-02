@@ -1164,7 +1164,6 @@ export default function NewRestaurant() {
 
       navigate("adminFloor");
     } catch (err) {
-      console.log("Create restaurant error:", err);
       showToast("❌ Eroare la creare. Încearcă din nou.");
     }
     setLoading(false);

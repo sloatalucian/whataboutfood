@@ -100,9 +100,7 @@ export default function FloorEditor() {
           setRestaurants(data);
           setSelectedRestId(data[0].id);
         }
-      } catch (err) {
-        console.log("Load restaurants error:", err);
-      }
+      } catch (err) {}
       setLoadingRests(false);
     };
     loadRestaurants();
@@ -163,7 +161,6 @@ export default function FloorEditor() {
       setFloorIdx(0);
       setSelectedNode(null);
     } catch (err) {
-      console.log("Load floors error:", err);
       showToast("❌ Eroare la încărcarea planșeului.");
     }
     setLoading(false);
@@ -243,7 +240,6 @@ export default function FloorEditor() {
       // Reîncarcă pentru a avea ID-urile reale din Supabase
       await loadFloors(selectedRestId);
     } catch (err) {
-      console.log("Save floors error:", err);
       showToast("❌ Eroare la salvare. Încearcă din nou.");
     }
     setSaving(false);
@@ -411,9 +407,7 @@ export default function FloorEditor() {
     if (!String(floor.id).startsWith("local_")) {
       try {
         await supabase.from("floors").delete().eq("id", floor.id);
-      } catch (err) {
-        console.log("Delete floor error:", err);
-      }
+      } catch (err) {}
     }
 
     const newFloors = floors.filter((_, i) => i !== idx);

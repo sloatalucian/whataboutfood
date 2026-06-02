@@ -243,9 +243,7 @@ export default function SuperAdmin() {
         planCounts,
         cereriPending: (cereriData || []).length,
       });
-    } catch (err) {
-      console.log("Admin load error:", err);
-    }
+    } catch (err) {}
     setLoading(false);
   }, []);
 
@@ -315,14 +313,11 @@ export default function SuperAdmin() {
 
   const approvePin = async (pin) => {
     try {
-      console.log("approvePin called with:", JSON.stringify(pin, null, 2));
-
       // Actualizam statusul cererii
       const { error: reqError } = await supabase
         .from("location_requests")
         .update({ status: "approved" })
         .eq("id", pin.id);
-      console.log("location_requests update error:", reqError);
 
       // Salvam coordonatele in restaurants si activam
       if (pin.restaurant_id) {
@@ -335,7 +330,6 @@ export default function SuperAdmin() {
             is_active: true,
           })
           .eq("id", pin.restaurant_id);
-        console.log("restaurants update error:", restError);
       } else {
         console.warn(
           "pin.restaurant_id is null — restaurants table NOT updated!",
