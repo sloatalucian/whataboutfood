@@ -329,7 +329,11 @@ function GlowNav({ items, activeId, onNavigate, badge, scrollDir, onExpand }) {
               }}
               style={{
                 WebkitTapHighlightColor: "transparent",
-                padding: collapsed && idx === 0 ? "8px 12px" : undefined,
+                padding: collapsed && idx === 0 ? "8px" : undefined,
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                justifyContent: "center",
               }}
             >
               {/* Icon wrapper */}
@@ -342,7 +346,7 @@ function GlowNav({ items, activeId, onNavigate, badge, scrollDir, onExpand }) {
                   borderRadius: 14,
                   display: "flex",
                   alignItems: "center",
-                  justifyContent: collapsed ? "flex-start" : "center",
+                  justifyContent: "center",
                   position: "relative",
                   color: isActive ? ACTIVE_COLOR : INACTIVE_COLOR,
                   boxShadow: isActive
@@ -370,7 +374,7 @@ function GlowNav({ items, activeId, onNavigate, badge, scrollDir, onExpand }) {
                       fontWeight: 800,
                       display: "flex",
                       alignItems: "center",
-                      justifyContent: collapsed ? "flex-start" : "center",
+                      justifyContent: "center",
                       color: "#fff",
                       padding: "0 3px",
                       border: "1.5px solid #0d0a07",
