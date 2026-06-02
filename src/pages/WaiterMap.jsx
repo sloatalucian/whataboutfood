@@ -287,7 +287,11 @@ export function WaiterMap({
               ))}
               {/* Mese */}
               {(dbFloors[activeMapFloor]?.tables || []).map((table) => {
-                const rtStatus = tableStates[table.label] || "free";
+                const today = new Date().toISOString().split("T")[0];
+                const isToday = mapDate === today;
+                const rtStatus = isToday
+                  ? tableStates[table.label] || "free"
+                  : "free";
                 const isMapReserved = mapReservedTables.includes(table.label);
                 const status =
                   rtStatus !== "free"
