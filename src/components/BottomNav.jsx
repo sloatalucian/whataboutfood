@@ -213,7 +213,7 @@ function GlowNav({ items, activeId, onNavigate, badge, scrollDir, onExpand }) {
         paddingRight: 12,
         paddingTop: 8,
         display: "flex",
-        justifyContent: "flex-start",
+        justifyContent: collapsed ? "flex-start" : "center",
         background: "transparent",
         transition: "justify-content 0s",
         pointerEvents: "none",
@@ -339,7 +339,7 @@ function GlowNav({ items, activeId, onNavigate, badge, scrollDir, onExpand }) {
                   borderRadius: 14,
                   display: "flex",
                   alignItems: "center",
-                  justifyContent: "center",
+                  justifyContent: collapsed ? "flex-start" : "center",
                   position: "relative",
                   color: isActive ? ACTIVE_COLOR : INACTIVE_COLOR,
                   boxShadow: isActive
@@ -367,7 +367,7 @@ function GlowNav({ items, activeId, onNavigate, badge, scrollDir, onExpand }) {
                       fontWeight: 800,
                       display: "flex",
                       alignItems: "center",
-                      justifyContent: "center",
+                      justifyContent: collapsed ? "flex-start" : "center",
                       color: "#fff",
                       padding: "0 3px",
                       border: "1.5px solid #0d0a07",
@@ -483,7 +483,7 @@ export default function BottomNav({
           background: "rgba(192,98,47,.15)",
           display: "flex",
           alignItems: "center",
-          justifyContent: "center",
+          justifyContent: collapsed ? "flex-start" : "center",
           color: "#c0622f",
         }}
       >
