@@ -327,7 +327,10 @@ function GlowNav({ items, activeId, onNavigate, badge, scrollDir, onExpand }) {
                 }
                 handleClick(item, idx);
               }}
-              style={{ WebkitTapHighlightColor: "transparent" }}
+              style={{
+                WebkitTapHighlightColor: "transparent",
+                padding: collapsed && idx === 0 ? "8px 12px" : undefined,
+              }}
             >
               {/* Icon wrapper */}
               <div
@@ -387,7 +390,11 @@ function GlowNav({ items, activeId, onNavigate, badge, scrollDir, onExpand }) {
                   letterSpacing: 0.2,
                   fontWeight: isActive ? 600 : 400,
                   color: isActive ? ACTIVE_COLOR : INACTIVE_COLOR,
-                  transition: "color 0.25s ease",
+                  transition:
+                    "color 0.25s ease, opacity 0.3s ease, max-height 0.3s ease",
+                  opacity: collapsed ? 0 : 1,
+                  maxHeight: collapsed ? 0 : 20,
+                  overflow: "hidden",
                 }}
               >
                 {item.label}
