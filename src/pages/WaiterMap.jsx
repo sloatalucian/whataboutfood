@@ -14,6 +14,7 @@ export function WaiterMap({
   mapZoom,
   setMapZoom,
   restProgram,
+  mapHistorySessions,
   tab,
 }) {
   const getAvailableHours = () => {
@@ -293,12 +294,21 @@ export function WaiterMap({
                   ? tableStates[table.label] || "free"
                   : "free";
                 const isMapReserved = mapReservedTables.includes(table.label);
+                // Sesiune istorica pentru aceasta masa
+                const histSession = (mapHistorySessions || []).find(
+                  (s) => s.table_label === table.label,
+                );
+                const histStatus = histSession
+                  ? histSession.status === "closed" || histSession.paid_at
+                    ? "paid"
+                    : "occupied"
+                  : null;
                 const status =
                   rtStatus !== "free"
                     ? rtStatus
                     : isMapReserved
                       ? "reserved"
-                      : "free";
+                      : histStatus || "free";
                 const colors = {
                   free: "#4a6e4a",
                   reserved: "#c8a97e",
