@@ -37,6 +37,7 @@ export function WaiterTablet({
   );
   const [mapTime, setMapTime] = useState("");
   const [mapReservedTables, setMapReservedTables] = useState([]);
+  const [mapHistorySessions, setMapHistorySessions] = useState([]); // { table_label, status }
   const [restProgram, setRestProgram] = useState({});
 
   // ── Încarcă floors + program din Supabase pentru harta mese ──
@@ -78,15 +79,14 @@ export function WaiterTablet({
   const [istoricOrders, setIstoricOrders] = useState([]);
   const [istoricLoading, setIstoricLoading] = useState(false);
 
-  // ── Încarcă rezervările pentru harta mese ──
+  // ── Încarcă rezervările + sesiunile istorice pentru harta mese ──
   useEffect(() => {
     if (!restaurantId || !mapDate) return;
-    const loadMapReservations = async () => {
+    const loadMapData = async () => {
       // Daca nu e selectata o ora, gasim cel mai apropiat slot
       const now = new Date();
       const ch = now.getHours();
       const cm = now.getMinutes();
-      // Rotunjim la cel mai apropiat slot (ora fixa sau :30)
       let filterHour, filterMin;
       if (cm < 30) {
         filterHour = ch;
@@ -98,17 +98,27 @@ export function WaiterTablet({
       const currentSlot = `${String(filterHour).padStart(2, "0")}:${String(filterMin).padStart(2, "0")}`;
       const filterTime = mapTime || currentSlot;
 
-      const { data } = await supabase
+      // Query 1: Rezervari
+      const { data: rezData } = await supabase
         .from("reservations")
         .select("table_label")
         .eq("restaurant_id", restaurantId)
         .eq("date", mapDate)
         .eq("time", filterTime)
         .in("status", ["pending", "confirmed"]);
-      if (data)
-        setMapReservedTables(data.map((r) => r.table_label).filter(Boolean));
+      if (rezData)
+        setMapReservedTables(rezData.map((r) => r.table_label).filter(Boolean));
+
+      // Query 2: Sesiuni istorice via RPC - timezone Romania gestionat in Postgres
+      const { data: sessData } = await supabase.rpc("get_sessions_at_time", {
+        p_restaurant_id: restaurantId,
+        p_date: mapDate,
+        p_time: filterTime,
+      });
+      if (sessData)
+        setMapHistorySessions(sessData.filter((s) => s.table_label));
     };
-    loadMapReservations();
+    loadMapData();
   }, [restaurantId, mapDate, mapTime]);
 
   // ── Încarcă comenzile din Supabase ──
@@ -1169,6 +1179,7 @@ export function WaiterTablet({
             mapZoom={mapZoom}
             setMapZoom={setMapZoom}
             restProgram={restProgram}
+            mapHistorySessions={mapHistorySessions}
             tab={tab}
           />
         )}
