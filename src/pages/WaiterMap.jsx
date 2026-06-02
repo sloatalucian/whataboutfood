@@ -303,6 +303,13 @@ export function WaiterMap({
                     ? "paid"
                     : "occupied"
                   : null;
+                if (table.label === "TP4")
+                  console.log("TP4 debug:", {
+                    rtStatus,
+                    histStatus,
+                    isMapReserved,
+                    mapHistorySessions,
+                  });
                 const status =
                   rtStatus !== "free"
                     ? rtStatus
