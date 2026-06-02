@@ -37,10 +37,17 @@ export function WaiterTablet({
   );
   const [mapTime, setMapTime] = useState("");
   const [mapReservedTables, setMapReservedTables] = useState([]);
+  const [restProgram, setRestProgram] = useState({});
 
-  // ── Încarcă floors din Supabase pentru harta mese ──
+  // ── Încarcă floors + program din Supabase pentru harta mese ──
   useEffect(() => {
     if (!restaurantId) return;
+    supabase
+      .from("restaurants")
+      .select("program")
+      .eq("id", restaurantId)
+      .single()
+      .then(({ data }) => setRestProgram(data?.program || {}));
     const loadFloors = async () => {
       const { data: floorsData } = await supabase
         .from("floors")
@@ -75,14 +82,29 @@ export function WaiterTablet({
   useEffect(() => {
     if (!restaurantId || !mapDate) return;
     const loadMapReservations = async () => {
-      let query = supabase
+      // Daca nu e selectata o ora, gasim cel mai apropiat slot
+      const now = new Date();
+      const ch = now.getHours();
+      const cm = now.getMinutes();
+      // Rotunjim la cel mai apropiat slot (ora fixa sau :30)
+      let filterHour, filterMin;
+      if (cm < 30) {
+        filterHour = ch;
+        filterMin = 0;
+      } else {
+        filterHour = ch;
+        filterMin = 30;
+      }
+      const currentSlot = `${String(filterHour).padStart(2, "0")}:${String(filterMin).padStart(2, "0")}`;
+      const filterTime = mapTime || currentSlot;
+
+      const { data } = await supabase
         .from("reservations")
         .select("table_label")
         .eq("restaurant_id", restaurantId)
         .eq("date", mapDate)
-        .eq("status", "confirmed");
-      if (mapTime) query = query.eq("time", mapTime);
-      const { data } = await query;
+        .eq("time", filterTime)
+        .in("status", ["pending", "confirmed"]);
       if (data)
         setMapReservedTables(data.map((r) => r.table_label).filter(Boolean));
     };
@@ -1146,6 +1168,7 @@ export function WaiterTablet({
             setMapTime={setMapTime}
             mapZoom={mapZoom}
             setMapZoom={setMapZoom}
+            restProgram={restProgram}
             tab={tab}
           />
         )}

@@ -13,8 +13,53 @@ export function WaiterMap({
   setMapTime,
   mapZoom,
   setMapZoom,
+  restProgram,
   tab,
 }) {
+  const getAvailableHours = () => {
+    if (!mapDate || !restProgram) return [];
+    const date = new Date(mapDate);
+    const ZILE_MAP = [
+      "Duminică",
+      "Luni",
+      "Marți",
+      "Miercuri",
+      "Joi",
+      "Vineri",
+      "Sâmbătă",
+    ];
+    const zi = ZILE_MAP[date.getDay()];
+    const dayProg = restProgram[zi];
+    if (!dayProg || !dayProg.deschis) {
+      // Fallback ore default daca ziua e inchisa sau programul nu e setat
+      const defaultSlots = [];
+      for (let h = 10; h <= 21; h++) {
+        defaultSlots.push(`${String(h).padStart(2, "0")}:00`);
+        if (h < 21) defaultSlots.push(`${String(h).padStart(2, "0")}:30`);
+      }
+      return defaultSlots;
+    }
+    const start = dayProg.start || "10:00";
+    const end = dayProg.end || "22:00";
+    const [startH, startM] = start.split(":").map(Number);
+    const [endH, endM] = end.split(":").map(Number);
+    let lastH = endH - 1,
+      lastM = endM;
+    if (lastM < 0) {
+      lastH--;
+      lastM += 60;
+    }
+    const slots = [];
+    let h = startH,
+      m = startM;
+    while (h < lastH || (h === lastH && m <= lastM)) {
+      slots.push(`${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`);
+      h++;
+    }
+    return slots;
+  };
+  const availableHours = getAvailableHours();
+
   return (
     <div>
       {/* Selector dată/oră */}
@@ -30,7 +75,10 @@ export function WaiterMap({
         <input
           type="date"
           value={mapDate}
-          onChange={(e) => setMapDate(e.target.value)}
+          onChange={(e) => {
+            setMapDate(e.target.value);
+            setMapTime("");
+          }}
           style={{
             flex: 1,
             background: "#1e1a14",
@@ -57,21 +105,7 @@ export function WaiterMap({
           }}
         >
           <option value="">Toate orele</option>
-          {[
-            "12:00",
-            "12:30",
-            "13:00",
-            "13:30",
-            "14:00",
-            "14:30",
-            "18:00",
-            "18:30",
-            "19:00",
-            "19:30",
-            "20:00",
-            "20:30",
-            "21:00",
-          ].map((t) => (
+          {availableHours.map((t) => (
             <option key={t} value={t}>
               {t}
             </option>
