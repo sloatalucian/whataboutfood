@@ -32,9 +32,14 @@ export function WaiterTablet({
   const [mapZoom, setMapZoom] = useState(60);
   const [cancellingOrders, setCancellingOrders] = useState({}); // { orderId: { items: [...], note: "" } }
   const [dbFloors, setDbFloors] = useState([]);
-  const [mapDate, setMapDate] = useState(
-    () => new Date().toISOString().split("T")[0],
-  );
+  const [mapDate, setMapDate] = useState(() => {
+    // Folosim data locala (Romania) nu UTC
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, "0");
+    const day = String(now.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  });
   const [mapTime, setMapTime] = useState("");
   const [mapReservedTables, setMapReservedTables] = useState([]);
   const [mapHistorySessions, setMapHistorySessions] = useState([]); // { table_label, status }
