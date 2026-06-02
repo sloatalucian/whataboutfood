@@ -213,7 +213,7 @@ function GlowNav({ items, activeId, onNavigate, badge, scrollDir, onExpand }) {
         paddingRight: 12,
         paddingTop: 8,
         display: "flex",
-        justifyContent: collapsed ? "flex-start" : "center",
+        justifyContent: "flex-start",
         background: "transparent",
         transition: "justify-content 0s",
         pointerEvents: "none",
@@ -266,9 +266,13 @@ function GlowNav({ items, activeId, onNavigate, badge, scrollDir, onExpand }) {
           border-radius: 28px;
           padding: 6px;
           pointer-events: all;
-          transition: all 0.4s cubic-bezier(0.34,1.56,0.64,1);
+          transition: all 0.6s cubic-bezier(0.34,1.2,0.64,1);
           overflow: hidden;
           margin-bottom: 8px;
+          transform-origin: left center;
+        }
+        .waf-nav-item {
+          transition: all 0.5s cubic-bezier(0.34,1.2,0.64,1) !important;
         }
         .waf-nav-item {
           display: flex;
@@ -280,12 +284,18 @@ function GlowNav({ items, activeId, onNavigate, badge, scrollDir, onExpand }) {
           cursor: pointer;
           border-radius: 22px;
           padding: 8px 14px;
-          transition: all 0.35s cubic-bezier(0.34,1.2,0.64,1);
+          transition: max-width 0.55s cubic-bezier(0.34,1.2,0.64,1), padding 0.55s cubic-bezier(0.34,1.2,0.64,1), opacity 0.45s ease;
           max-width: 100px;
           overflow: hidden;
           white-space: nowrap;
           WebkitTapHighlightColor: transparent;
           gap: 0;
+        }
+        .waf-nav-item.waf-hidden {
+          max-width: 0 !important;
+          padding: 8px 0 !important;
+          opacity: 0 !important;
+          pointer-events: none !important;
         }
         .waf-nav-item.waf-hidden {
           max-width: 0;
