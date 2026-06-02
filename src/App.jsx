@@ -1086,7 +1086,7 @@ function Router() {
               onClick={() => setShowCart(true)}
               style={{
                 position: "fixed",
-                bottom: 96,
+                bottom: 78,
                 left: 16,
                 opacity: 0.75,
                 width: 54,
