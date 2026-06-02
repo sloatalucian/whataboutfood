@@ -66,6 +66,7 @@ export function TableProvider({ children, restaurantId }) {
   const loadTableStates = useCallback(async () => {
     if (!restaurantId) return;
     try {
+      // 1. Sesiuni active (ocupate fizic)
       const { data } = await supabase
         .from("table_sessions")
         .select("*")
@@ -81,6 +82,37 @@ export function TableProvider({ children, restaurantId }) {
           sessions[key] = s;
         }
       });
+
+      // 2. Rezervari de azi la ora curenta (+/- 30 min)
+      const now = new Date();
+      const todayStr = now.toISOString().split("T")[0];
+      const hh = String(now.getHours()).padStart(2, "0");
+      const mm = String(now.getMinutes()).padStart(2, "0");
+      const currentTime = `${hh}:${mm}`;
+
+      const { data: reservations } = await supabase
+        .from("reservations")
+        .select("table_label, time")
+        .eq("restaurant_id", restaurantId)
+        .eq("date", todayStr)
+        .in("status", ["pending", "confirmed"])
+        .not("table_label", "is", null);
+
+      (reservations || []).forEach((r) => {
+        if (!r.table_label || !r.time) return;
+        // Calculeaza diferenta in minute
+        const [rh, rm] = r.time.split(":").map(Number);
+        const [ch, cm] = currentTime.split(":").map(Number);
+        const diffMin = rh * 60 + rm - (ch * 60 + cm);
+        // Afiseaza ca rezervata intre -30 min si +120 min fata de ora rezervarii
+        if (diffMin >= -30 && diffMin <= 120) {
+          // Nu suprascrie daca masa e deja ocupata/platita fizic
+          if (!states[r.table_label] || states[r.table_label] === "free") {
+            states[r.table_label] = "reserved";
+          }
+        }
+      });
+
       setTableStates(states);
       setActiveSessions(sessions);
     } catch (err) {}
