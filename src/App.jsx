@@ -57,6 +57,7 @@ function Router() {
   const [splashDone, setSplashDone] = useState(false);
   const [waiterUser, setWaiterUser] = useState(null);
   const [checkingSession, setCheckingSession] = useState(true);
+  const sessionFoundAtStart = useRef(false); // true daca checkSession a gasit sesiune existenta
   const [isOffline, setIsOffline] = useState(!navigator.onLine);
 
   // ── QR Deep Link Handler ──
@@ -145,6 +146,7 @@ function Router() {
             },
           });
           setSplashDone(true);
+          sessionFoundAtStart.current = true;
         }
       } catch (err) {}
       setCheckingSession(false);
@@ -160,13 +162,22 @@ function Router() {
         dispatch({ type: "SET_USER", payload: null });
         setSplashDone(false);
         setWaiterUser(null);
-      } else if (event === "TOKEN_REFRESHED" && session?.user) {
-        // Token reinnoit automat - pastram userul logat
+      } else if (
+        (event === "TOKEN_REFRESHED" ||
+          (event === "SIGNED_IN" && sessionFoundAtStart.current)) &&
+        session?.user
+      ) {
+        // Token reinnoit sau sesiune restaurata dupa inactivitate
+        // sessionFoundAtStart.current garanteaza ca e restaurare dupa inactivitate
         const { data: profile } = await supabase
           .from("profiles")
           .select("*")
           .eq("id", session.user.id)
           .single();
+        if (profile?.role === "owner" && profile?.status === "pending") {
+          await supabase.auth.signOut();
+          return;
+        }
         dispatch({
           type: "SET_USER",
           payload: {
@@ -179,6 +190,7 @@ function Router() {
             rating: profile?.rating ?? 4,
           },
         });
+        setSplashDone(true);
       }
     });
     return () => subscription.unsubscribe();
