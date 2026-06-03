@@ -133,6 +133,12 @@ function Router() {
             setCheckingSession(false);
             return;
           }
+          // Ospătarii nu pot intra prin fluxul normal
+          if (profile?.role === "waiter") {
+            await supabase.auth.signOut();
+            setCheckingSession(false);
+            return;
+          }
           dispatch({
             type: "SET_USER",
             payload: {
@@ -175,6 +181,11 @@ function Router() {
           .eq("id", session.user.id)
           .single();
         if (profile?.role === "owner" && profile?.status === "pending") {
+          await supabase.auth.signOut();
+          return;
+        }
+        // Ospătarii nu pot intra prin fluxul normal de client
+        if (profile?.role === "waiter") {
           await supabase.auth.signOut();
           return;
         }
