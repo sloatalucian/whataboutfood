@@ -92,7 +92,7 @@ function useBrightness(src) {
   return dark;
 }
 
-export default function RestaurantCard({ restaurant }) {
+export default function RestaurantCard({ restaurant, hideTables }) {
   const { dispatch, navigate } = useApp();
   const coverImg = restaurant.cover_image || restaurant.cover || null;
   const isDark = useBrightness(coverImg);
@@ -232,7 +232,7 @@ export default function RestaurantCard({ restaurant }) {
                 📍 {restaurant.city || restaurant.address || ""}
               </span>
             </div>
-            <TableAvailability restaurantId={restaurant.id} />
+            {!hideTables && <TableAvailability restaurantId={restaurant.id} />}
           </div>
           {tags.length > 0 && (
             <div style={{ display: "flex", gap: 5, flexWrap: "wrap" }}>
