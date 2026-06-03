@@ -139,7 +139,11 @@ export function WaiterTablet({
         .select("*")
         .eq("restaurant_id", restaurantId)
         .in("status", ["pending", "cooking", "ready", "paying"])
-        .or(`waiter_id.is.null,waiter_id.eq.${waiterId}`)
+        .or(
+          waiterId
+            ? `waiter_id.is.null,waiter_id.eq.${waiterId}`
+            : `waiter_id.is.null`,
+        )
         .order("created_at", { ascending: true });
       if (error) throw error;
       setOrders(data || []);
