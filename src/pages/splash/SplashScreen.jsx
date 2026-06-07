@@ -16,7 +16,7 @@ export default function SplashScreen({ onComplete, onWaiterLogin }) {
   const [loginMode, setLoginMode] = useState("login");
   const [form, setForm] = useState({
     email: localStorage.getItem("waf_email") || "",
-    password: localStorage.getItem("waf_pass") || "",
+    password: "",
     name: "",
   });
   const [rememberMe, setRememberMe] = useState(
@@ -40,7 +40,7 @@ export default function SplashScreen({ onComplete, onWaiterLogin }) {
     // Salvam sau stergem credentialele din localStorage
     if (rememberMe) {
       localStorage.setItem("waf_email", form.email);
-      localStorage.setItem("waf_pass", form.password);
+      // parola nu se stocheaza niciodata
       localStorage.setItem("waf_remember", "true");
     } else {
       localStorage.removeItem("waf_email");

@@ -107,14 +107,25 @@ function Router() {
 
     const checkSession = async () => {
       try {
-        // Incercam sa reinnnoim sesiunea daca exista
         let session = null;
-        const { data: sessionData } = await supabase.auth.getSession();
+        const { data: sessionData, error: sessionError } =
+          await supabase.auth.getSession();
+
+        if (sessionError) {
+          await supabase.auth.signOut();
+          return;
+        }
+
         session = sessionData?.session;
 
-        // Daca sesiunea e expirata, o reinnnoim automat
         if (session && session.expires_at * 1000 < Date.now()) {
-          const { data: refreshData } = await supabase.auth.refreshSession();
+          const { data: refreshData, error: refreshError } =
+            await supabase.auth.refreshSession();
+          if (refreshError || !refreshData?.session) {
+            // Token expirat si nu poate fi reinnoit - curatam si lasam userul sa se logheze
+            await supabase.auth.signOut();
+            return;
+          }
           session = refreshData?.session;
         }
 
@@ -130,13 +141,10 @@ function Router() {
             profile?.role !== "superadmin"
           ) {
             await supabase.auth.signOut();
-            setCheckingSession(false);
             return;
           }
-          // Ospătarii nu pot intra prin fluxul normal
           if (profile?.role === "waiter") {
             await supabase.auth.signOut();
-            setCheckingSession(false);
             return;
           }
           dispatch({
@@ -154,12 +162,17 @@ function Router() {
           setSplashDone(true);
           sessionFoundAtStart.current = true;
         }
-      } catch (err) {}
-      setCheckingSession(false);
+      } catch (err) {
+        try {
+          await supabase.auth.signOut();
+        } catch {}
+      } finally {
+        setCheckingSession(false);
+      }
     };
     checkSession().finally(() => {
       clearTimeout(safetyTimeout);
-    });
+    }); // setCheckingSession(false) e in finally din checkSession
 
     const {
       data: { subscription },
