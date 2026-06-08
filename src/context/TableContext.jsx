@@ -85,7 +85,11 @@ export function TableProvider({ children, restaurantId }) {
 
       // 2. Rezervari de azi la ora curenta (+/- 30 min)
       const now = new Date();
-      const todayStr = now.toISOString().split("T")[0];
+      // Data locala (Romania) - nu UTC
+      const yyyy = now.getFullYear();
+      const mo = String(now.getMonth() + 1).padStart(2, "0");
+      const dd = String(now.getDate()).padStart(2, "0");
+      const todayStr = `${yyyy}-${mo}-${dd}`;
       const hh = String(now.getHours()).padStart(2, "0");
       const mm = String(now.getMinutes()).padStart(2, "0");
       const currentTime = `${hh}:${mm}`;
