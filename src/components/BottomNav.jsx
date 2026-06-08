@@ -165,7 +165,7 @@ const ACTIVE_COLOR = "#c0622f";
 const INACTIVE_COLOR = "#8a7a6a";
 
 // ── NavBar ────────────────────────────────────────────────────────────────────
-function GlowNav({ items, activeId, onNavigate, badge, scrollDir, onExpand }) {
+function GlowNav({ items, activeId, onNavigate, badge }) {
   const activeIdx = items.findIndex((i) => i.id === activeId);
   const current = activeIdx >= 0 ? activeIdx : 0;
   const [animIdx, setAnimIdx] = useState(current);
@@ -191,7 +191,6 @@ function GlowNav({ items, activeId, onNavigate, badge, scrollDir, onExpand }) {
   const handleClick = (item, idx) => {
     if (collapsed && idx === 0) {
       setCollapsed(false);
-      if (onExpand) onExpand();
       return;
     }
     prevIdx.current = idx;
@@ -416,8 +415,6 @@ export default function BottomNav({
   onWaiterClick,
   waiterLoggedIn,
   unreadCount: unreadProp,
-  scrollDir,
-  onExpand,
 }) {
   const { state, navigate } = useApp();
   const { screen, selectedRest, user } = state;
@@ -494,7 +491,7 @@ export default function BottomNav({
           background: "rgba(192,98,47,.15)",
           display: "flex",
           alignItems: "center",
-          justifyContent: collapsed ? "flex-start" : "center",
+          justifyContent: "center",
           color: "#c0622f",
         }}
       >
@@ -534,8 +531,6 @@ export default function BottomNav({
           activeId={screen}
           onNavigate={(item) => navigate(item.id)}
           badge={0}
-          scrollDir={scrollDir}
-          onExpand={onExpand}
         />
       </>
     );
@@ -548,8 +543,6 @@ export default function BottomNav({
       <GlowNav
         items={CLIENT_ITEMS}
         activeId={screen}
-        scrollDir={scrollDir}
-        onExpand={onExpand}
         onNavigate={(item) => {
           if (item.needsRest && !selectedRest) {
             navigate("home");
