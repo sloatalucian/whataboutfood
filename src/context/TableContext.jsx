@@ -71,7 +71,7 @@ export function TableProvider({ children, restaurantId }) {
         .from("table_sessions")
         .select("*")
         .eq("restaurant_id", restaurantId)
-        .in("status", ["occupied", "paid", "reserved"]);
+        .in("status", ["occupied", "paid"]);
 
       const states = {};
       const sessions = {};
@@ -85,11 +85,7 @@ export function TableProvider({ children, restaurantId }) {
 
       // 2. Rezervari de azi la ora curenta (+/- 30 min)
       const now = new Date();
-      // Data locala (Romania) - nu UTC
-      const yyyy = now.getFullYear();
-      const mo = String(now.getMonth() + 1).padStart(2, "0");
-      const dd = String(now.getDate()).padStart(2, "0");
-      const todayStr = `${yyyy}-${mo}-${dd}`;
+      const todayStr = now.toISOString().split("T")[0];
       const hh = String(now.getHours()).padStart(2, "0");
       const mm = String(now.getMinutes()).padStart(2, "0");
       const currentTime = `${hh}:${mm}`;
@@ -159,7 +155,7 @@ export function TableProvider({ children, restaurantId }) {
           .update({ status: "closed", closed_at: new Date().toISOString() })
           .eq("restaurant_id", restaurantId)
           .eq("table_label", tableLabel)
-          .in("status", ["occupied", "paid", "reserved"]);
+          .in("status", ["occupied", "paid"]);
 
         // Creează sesiune nouă cu session ID unic
         const { data } = await supabase
@@ -223,7 +219,7 @@ export function TableProvider({ children, restaurantId }) {
           .update({ status: "closed", closed_at: new Date().toISOString() })
           .eq("restaurant_id", restaurantId)
           .eq("table_label", tableLabel)
-          .in("status", ["occupied", "paid", "reserved"]);
+          .in("status", ["occupied", "paid"]);
 
         setTableStates((prev) => {
           const next = { ...prev };

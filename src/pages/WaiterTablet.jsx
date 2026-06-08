@@ -139,11 +139,7 @@ export function WaiterTablet({
         .select("*")
         .eq("restaurant_id", restaurantId)
         .in("status", ["pending", "cooking", "ready", "paying"])
-        .or(
-          waiterId
-            ? `waiter_id.is.null,waiter_id.eq.${waiterId}`
-            : `waiter_id.is.null`,
-        )
+        .or(`waiter_id.is.null,waiter_id.eq.${waiterId}`)
         .order("created_at", { ascending: true });
       if (error) throw error;
       setOrders(data || []);
@@ -536,34 +532,6 @@ export function WaiterTablet({
         prev.map((r) => (r.id === resId ? { ...r, status: "confirmed" } : r)),
       );
 
-      // Marchează masa ca rezervată (galben) în table_sessions
-      if (reservation?.table_label && restaurantId) {
-        // Închide sesiuni existente pe masa asta
-        await supabase
-          .from("table_sessions")
-          .update({ status: "closed", closed_at: new Date().toISOString() })
-          .eq("restaurant_id", restaurantId)
-          .eq("table_label", reservation.table_label)
-          .in("status", ["occupied", "paid", "reserved"]);
-        // Inserează sesiune nouă ca rezervată
-        await supabase.from("table_sessions").insert({
-          restaurant_id: restaurantId,
-          table_label: reservation.table_label,
-          status: "reserved",
-          started_at: new Date().toISOString(),
-        });
-      }
-
-      // Notificare client
-      if (reservation?.user_id) {
-        await supabase.from("notifications").insert({
-          user_id: reservation.user_id,
-          restaurant_id: restaurantId,
-          type: "reservation_confirmed",
-          message: "Rezervarea ta a fost confirmată! 📅",
-          is_read: false,
-        });
-      }
       reload(); // Actualizează instant culoarea mesei
       showToast("✅ Rezervare confirmată! Masa marcată ca rezervată.");
     } catch (err) {
