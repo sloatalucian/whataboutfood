@@ -118,11 +118,12 @@ function Router() {
 
         session = sessionData?.session;
 
-        if (session && session.expires_at * 1000 < Date.now()) {
+        // Reinnoire token la fiecare pornire - verifica validitatea cu serverul
+        if (session) {
           const { data: refreshData, error: refreshError } =
             await supabase.auth.refreshSession();
           if (refreshError || !refreshData?.session) {
-            // Token expirat si nu poate fi reinnoit - curatam si lasam userul sa se logheze
+            // Token invalid sau expirat - curatam si lasam userul sa se logheze
             await supabase.auth.signOut();
             return;
           }
