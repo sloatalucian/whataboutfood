@@ -100,10 +100,10 @@ function Router() {
   }, []);
 
   useEffect(() => {
-    // Timeout de siguranta - daca dureaza mai mult de 5 secunde, resetam
+    // Timeout de siguranta - 7s (Supabase elibereaza lock-ul la 5s)
     const safetyTimeout = setTimeout(() => {
       setCheckingSession(false);
-    }, 5000);
+    }, 7000);
 
     const checkSession = async () => {
       try {
