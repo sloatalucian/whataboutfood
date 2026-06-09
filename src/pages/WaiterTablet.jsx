@@ -103,27 +103,16 @@ export function WaiterTablet({
       const currentSlot = `${String(filterHour).padStart(2, "0")}:${String(filterMin).padStart(2, "0")}`;
       const filterTime = mapTime || currentSlot;
 
-      // Query 1: Rezervari — fereastra -30/+120 min fata de ora selectata
-      const [fh, fm] = filterTime.split(":").map(Number);
-      const filterMinutes = fh * 60 + fm;
-      const windowStart = filterMinutes - 30;
-      const windowEnd = filterMinutes + 120;
-
-      const { data: allRezData } = await supabase
+      // Query 1: Rezervari — ora exacta selectata
+      const { data: rezData } = await supabase
         .from("reservations")
-        .select("table_label, time")
+        .select("table_label")
         .eq("restaurant_id", restaurantId)
         .eq("date", mapDate)
+        .eq("time", filterTime)
         .in("status", ["pending", "confirmed"]);
-
-      const filteredRez = (allRezData || []).filter((r) => {
-        if (!r.table_label || !r.time) return false;
-        const [rh, rm] = r.time.split(":").map(Number);
-        const rezMinutes = rh * 60 + rm;
-        return rezMinutes >= windowStart && rezMinutes <= windowEnd;
-      });
       setMapReservedTables(
-        filteredRez.map((r) => r.table_label).filter(Boolean),
+        (rezData || []).map((r) => r.table_label).filter(Boolean),
       );
 
       // Query 2: Sesiuni istorice via RPC - timezone Romania gestionat in Postgres
