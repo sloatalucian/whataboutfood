@@ -103,16 +103,28 @@ export function WaiterTablet({
       const currentSlot = `${String(filterHour).padStart(2, "0")}:${String(filterMin).padStart(2, "0")}`;
       const filterTime = mapTime || currentSlot;
 
-      // Query 1: Rezervari
-      const { data: rezData } = await supabase
+      // Query 1: Rezervari — fereastra -30/+120 min fata de ora selectata
+      const [fh, fm] = filterTime.split(":").map(Number);
+      const filterMinutes = fh * 60 + fm;
+      const windowStart = filterMinutes - 30;
+      const windowEnd = filterMinutes + 120;
+
+      const { data: allRezData } = await supabase
         .from("reservations")
-        .select("table_label")
+        .select("table_label, time")
         .eq("restaurant_id", restaurantId)
         .eq("date", mapDate)
-        .eq("time", filterTime)
         .in("status", ["pending", "confirmed"]);
-      if (rezData)
-        setMapReservedTables(rezData.map((r) => r.table_label).filter(Boolean));
+
+      const filteredRez = (allRezData || []).filter((r) => {
+        if (!r.table_label || !r.time) return false;
+        const [rh, rm] = r.time.split(":").map(Number);
+        const rezMinutes = rh * 60 + rm;
+        return rezMinutes >= windowStart && rezMinutes <= windowEnd;
+      });
+      setMapReservedTables(
+        filteredRez.map((r) => r.table_label).filter(Boolean),
+      );
 
       // Query 2: Sesiuni istorice via RPC - timezone Romania gestionat in Postgres
       const { data: sessData } = await supabase.rpc("get_sessions_at_time", {
@@ -532,6 +544,34 @@ export function WaiterTablet({
         prev.map((r) => (r.id === resId ? { ...r, status: "confirmed" } : r)),
       );
 
+      // Marchează masa ca rezervată (galben) în table_sessions
+      if (reservation?.table_label && restaurantId) {
+        // Închide sesiuni existente pe masa asta
+        await supabase
+          .from("table_sessions")
+          .update({ status: "closed", closed_at: new Date().toISOString() })
+          .eq("restaurant_id", restaurantId)
+          .eq("table_label", reservation.table_label)
+          .in("status", ["occupied", "paid", "reserved"]);
+        // Inserează sesiune nouă ca rezervată
+        await supabase.from("table_sessions").insert({
+          restaurant_id: restaurantId,
+          table_label: reservation.table_label,
+          status: "reserved",
+          started_at: new Date().toISOString(),
+        });
+      }
+
+      // Notificare client
+      if (reservation?.user_id) {
+        await supabase.from("notifications").insert({
+          user_id: reservation.user_id,
+          restaurant_id: restaurantId,
+          type: "reservation_confirmed",
+          message: "Rezervarea ta a fost confirmată! 📅",
+          is_read: false,
+        });
+      }
       reload(); // Actualizează instant culoarea mesei
       showToast("✅ Rezervare confirmată! Masa marcată ca rezervată.");
     } catch (err) {
