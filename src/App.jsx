@@ -118,17 +118,8 @@ function Router() {
 
         session = sessionData?.session;
 
-        // Reinnoire token la fiecare pornire - verifica validitatea cu serverul
-        if (session) {
-          const { data: refreshData, error: refreshError } =
-            await supabase.auth.refreshSession();
-          if (refreshError || !refreshData?.session) {
-            // Token invalid sau expirat - curatam si lasam userul sa se logheze
-            await supabase.auth.signOut();
-            return;
-          }
-          session = refreshData?.session;
-        }
+        // Nu facem refresh manual - autoRefreshToken:true se ocupa automat
+        // refreshSession() manual cauza blocaj pe "Se verifica..." dupa login
 
         if (session?.user) {
           const { data: profile } = await supabase
@@ -218,7 +209,22 @@ function Router() {
         setSplashDone(true);
       }
     });
-    return () => subscription.unsubscribe();
+    // Reinnoire silentioasa token cand tab-ul revine activ
+    const handleVisibility = async () => {
+      if (document.visibilityState === "visible") {
+        const { data } = await supabase.auth.getSession();
+        const sess = data?.session;
+        if (sess && sess.expires_at * 1000 - Date.now() < 30 * 60 * 1000) {
+          await supabase.auth.refreshSession();
+        }
+      }
+    };
+    document.addEventListener("visibilitychange", handleVisibility);
+
+    return () => {
+      subscription.unsubscribe();
+      document.removeEventListener("visibilitychange", handleVisibility);
+    };
   }, []);
 
   // ── Notificări polling ──
