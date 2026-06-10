@@ -297,29 +297,31 @@ function LiveTablesModal({ restaurant, onClose }) {
     if (!restaurant?.id) return;
     const load = async () => {
       setLoadingFloors(true);
-      const { data: floorsData } = await supabase
-        .from("floors")
-        .select("*")
-        .eq("restaurant_id", restaurant.id)
-        .order("floor_order");
-      if (!floorsData || floorsData.length === 0) {
-        setLoadingFloors(false);
-        return;
-      }
-      const floorsWithData = await Promise.all(
-        floorsData.map(async (fl) => {
-          const { data: tables } = await supabase
-            .from("tables")
-            .select("*")
-            .eq("floor_id", fl.id);
-          const { data: elements } = await supabase
-            .from("floor_elements")
-            .select("*")
-            .eq("floor_id", fl.id);
-          return { ...fl, tables: tables || [], elements: elements || [] };
-        }),
-      );
-      setDbFloors(floorsWithData);
+      try {
+        const { data: floorsData } = await supabase
+          .from("floors")
+          .select("*")
+          .eq("restaurant_id", restaurant.id)
+          .order("floor_order");
+        if (!floorsData || floorsData.length === 0) {
+          setLoadingFloors(false);
+          return;
+        }
+        const floorsWithData = await Promise.all(
+          floorsData.map(async (fl) => {
+            const { data: tables } = await supabase
+              .from("tables")
+              .select("*")
+              .eq("floor_id", fl.id);
+            const { data: elements } = await supabase
+              .from("floor_elements")
+              .select("*")
+              .eq("floor_id", fl.id);
+            return { ...fl, tables: tables || [], elements: elements || [] };
+          }),
+        );
+        setDbFloors(floorsWithData);
+      } catch {}
       setLoadingFloors(false);
     };
     load();

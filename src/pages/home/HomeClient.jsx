@@ -29,12 +29,14 @@ function HomeClient() {
 
   useEffect(() => {
     const load = async () => {
-      const { data, error } = await supabase
-        .from("restaurants")
-        .select("*")
-        .eq("is_active", true)
-        .order("created_at");
-      if (data) setAllRestaurants(data);
+      try {
+        const { data } = await supabase
+          .from("restaurants")
+          .select("*")
+          .eq("is_active", true)
+          .order("created_at");
+        if (data) setAllRestaurants(data);
+      } catch {}
       setLoadingRests(false);
     };
     load();

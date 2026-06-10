@@ -13,20 +13,25 @@ export default function Notifications() {
       setLoading(false);
       return;
     }
-
+    // Fetch initial - independent de Realtime
     const load = async () => {
-      const { data } = await supabase
-        .from("notifications")
-        .select("*")
-        .eq("user_id", user.id)
-        .order("created_at", { ascending: false })
-        .limit(50);
-      if (data) setNotifications(data);
+      try {
+        const { data } = await supabase
+          .from("notifications")
+          .select("*")
+          .eq("user_id", user.id)
+          .order("created_at", { ascending: false })
+          .limit(50);
+        if (data) setNotifications(data);
+      } catch {}
       setLoading(false);
     };
     load();
+  }, [user?.id]);
 
-    // Realtime - notificări noi
+  // Realtime - separat de fetch initial
+  useEffect(() => {
+    if (!user?.id) return;
     const channel = supabase
       .channel(`notifications_${user.id}`)
       .on(
@@ -42,7 +47,6 @@ export default function Notifications() {
         },
       )
       .subscribe();
-
     return () => {
       supabase.removeChannel(channel);
     };

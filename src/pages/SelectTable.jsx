@@ -28,34 +28,36 @@ export function SelectTable({ restaurant, onSelected, onBack }) {
     }
     const load = async () => {
       setFloorsLoading(true);
-      const { data: floorsData } = await supabase
-        .from("floors")
-        .select("*")
-        .eq("restaurant_id", restaurant.id)
-        .order("floor_order");
-      if (!floorsData || floorsData.length === 0) {
-        setDbFloors([]);
-        setFloorsLoading(false);
-        return;
-      }
-      const floorsWithData = await Promise.all(
-        floorsData.map(async (fl) => {
-          const { data: tablesData } = await supabase
-            .from("tables")
-            .select("*")
-            .eq("floor_id", fl.id);
-          const { data: elementsData } = await supabase
-            .from("floor_elements")
-            .select("*")
-            .eq("floor_id", fl.id);
-          return {
-            ...fl,
-            tables: tablesData || [],
-            elements: elementsData || [],
-          };
-        }),
-      );
-      setDbFloors(floorsWithData);
+      try {
+        const { data: floorsData } = await supabase
+          .from("floors")
+          .select("*")
+          .eq("restaurant_id", restaurant.id)
+          .order("floor_order");
+        if (!floorsData || floorsData.length === 0) {
+          setDbFloors([]);
+          setFloorsLoading(false);
+          return;
+        }
+        const floorsWithData = await Promise.all(
+          floorsData.map(async (fl) => {
+            const { data: tablesData } = await supabase
+              .from("tables")
+              .select("*")
+              .eq("floor_id", fl.id);
+            const { data: elementsData } = await supabase
+              .from("floor_elements")
+              .select("*")
+              .eq("floor_id", fl.id);
+            return {
+              ...fl,
+              tables: tablesData || [],
+              elements: elementsData || [],
+            };
+          }),
+        );
+        setDbFloors(floorsWithData);
+      } catch {}
       setFloorsLoading(false);
     };
     load();
