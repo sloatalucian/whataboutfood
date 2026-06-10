@@ -209,13 +209,16 @@ function Router() {
         setSplashDone(true);
       }
     });
-    // Reinnoire silentioasa token cand tab-ul revine activ
+    // La revenire pe tab - verificam sesiunea, fara refresh manual
+    // autoRefreshToken:true din supabase.js se ocupa de refresh automat
     const handleVisibility = async () => {
       if (document.visibilityState === "visible") {
-        const { data } = await supabase.auth.getSession();
-        const sess = data?.session;
-        if (sess && sess.expires_at * 1000 - Date.now() < 30 * 60 * 1000) {
-          await supabase.auth.refreshSession();
+        const { data, error } = await supabase.auth.getSession();
+        if (error || !data?.session) {
+          // Sesiune invalida - logout curat, aratam ecranul de login
+          await supabase.auth.signOut();
+          dispatch({ type: "SET_USER", payload: null });
+          setSplashDone(false);
         }
       }
     };
