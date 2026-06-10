@@ -28,7 +28,7 @@ function Router() {
   const {
     state,
     dispatch,
-    navigate,
+    navigate: _navigate,
     showToast,
     cartTotal,
     cartCount,
@@ -39,6 +39,14 @@ function Router() {
     payNoteActiveOrder,
     paidTotal,
   } = useApp();
+  const [navKey, setNavKey] = React.useState(0);
+  const navigate = React.useCallback(
+    (scr) => {
+      setNavKey((k) => k + 1);
+      _navigate(scr);
+    },
+    [_navigate],
+  );
   const [showCart, setShowCart] = useState(false);
   const [cartObs, setCartObs] = useState("");
   const {
@@ -895,8 +903,10 @@ function Router() {
             </div>
           </div>
         )}
-        <div key={screen} className="page-transition">
-          {React.cloneElement(pages[screen] || <Home />, { key: screen })}
+        <div className="page-transition">
+          {React.cloneElement(pages[screen] || <Home />, {
+            key: `${screen}_${navKey}`,
+          })}
         </div>
         {screen !== "waiter" && !noNav.includes(screen) && (
           <BottomNav
