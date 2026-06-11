@@ -13,6 +13,7 @@ const AppContext = createContext(null);
 
 const initialState = {
   screen: "home",
+  navKey: 0,
   user: null,
   selectedRest: null,
   cart: [],
@@ -53,9 +54,14 @@ const initialState = {
 function reducer(state, { type, payload }) {
   switch (type) {
     case "NAVIGATE":
-      return { ...state, screen: payload };
+      return { ...state, screen: payload, navKey: (state.navKey || 0) + 1 };
     case "SET_REST":
-      return { ...state, selectedRest: payload, screen: "restaurant" };
+      return {
+        ...state,
+        selectedRest: payload,
+        screen: "restaurant",
+        navKey: (state.navKey || 0) + 1,
+      };
     case "UPDATE_REST_RATING":
       return {
         ...state,

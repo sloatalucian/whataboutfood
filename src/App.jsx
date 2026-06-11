@@ -39,14 +39,8 @@ function Router() {
     payNoteActiveOrder,
     paidTotal,
   } = useApp();
-  const [navKey, setNavKey] = React.useState(0);
-  const navigate = React.useCallback(
-    (scr) => {
-      setNavKey((k) => k + 1);
-      _navigate(scr);
-    },
-    [_navigate],
-  );
+  const navKey = state.navKey || 0;
+  const navigate = _navigate;
   const [showCart, setShowCart] = useState(false);
   const [cartObs, setCartObs] = useState("");
   const {
