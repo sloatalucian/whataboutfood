@@ -210,21 +210,8 @@ function Router() {
         setSplashDone(true);
       }
     });
-    // Reinnoire silentioasa token cand tab-ul revine activ
-    const handleVisibility = async () => {
-      if (document.visibilityState === "visible") {
-        const { data } = await supabase.auth.getSession();
-        const sess = data?.session;
-        if (sess && sess.expires_at * 1000 - Date.now() < 30 * 60 * 1000) {
-          await supabase.auth.refreshSession();
-        }
-      }
-    };
-    document.addEventListener("visibilitychange", handleVisibility);
-
     return () => {
       subscription.unsubscribe();
-      document.removeEventListener("visibilitychange", handleVisibility);
     };
   }, []);
 
