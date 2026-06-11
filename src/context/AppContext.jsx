@@ -13,7 +13,6 @@ const AppContext = createContext(null);
 
 const initialState = {
   screen: "home",
-  navKey: 0,
   user: null,
   selectedRest: null,
   cart: [],
@@ -54,14 +53,9 @@ const initialState = {
 function reducer(state, { type, payload }) {
   switch (type) {
     case "NAVIGATE":
-      return { ...state, screen: payload, navKey: (state.navKey || 0) + 1 };
+      return { ...state, screen: payload };
     case "SET_REST":
-      return {
-        ...state,
-        selectedRest: payload,
-        screen: "restaurant",
-        navKey: (state.navKey || 0) + 1,
-      };
+      return { ...state, selectedRest: payload, screen: "restaurant" };
     case "UPDATE_REST_RATING":
       return {
         ...state,
@@ -151,6 +145,8 @@ function reducer(state, { type, payload }) {
         unreadCount: state.unreadCount + 1,
       };
     case "SET_UNREAD":
+      // Evitam re-render daca valoarea nu s-a schimbat
+      if (state.unreadCount === payload) return state;
       return { ...state, unreadCount: payload };
     case "MARK_NOTIFICATIONS_READ":
       return {

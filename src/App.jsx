@@ -39,7 +39,6 @@ function Router() {
     payNoteActiveOrder,
     paidTotal,
   } = useApp();
-  const navKey = state.navKey || 0;
   const navigate = _navigate;
   const [showCart, setShowCart] = useState(false);
   const [cartObs, setCartObs] = useState("");
@@ -897,10 +896,8 @@ function Router() {
             </div>
           </div>
         )}
-        <div className="page-transition">
-          {React.cloneElement(pages[screen] || <Home />, {
-            key: `${screen}_${navKey}`,
-          })}
+        <div key={screen} className="page-transition">
+          {pages[screen] || <Home />}
         </div>
         {screen !== "waiter" && !noNav.includes(screen) && (
           <BottomNav
