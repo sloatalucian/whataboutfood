@@ -31,15 +31,22 @@ export default function SplashScreen({ onComplete, onWaiterLogin }) {
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
 
   const handleLogin = async () => {
-    if (!form.email || !form.password) {
+    const emailTrimmed = form.email.trim().toLowerCase();
+    const passwordTrimmed = form.password.trim();
+    if (!emailTrimmed || !passwordTrimmed) {
       setError("Completează email și parola.");
+      return;
+    }
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(emailTrimmed)) {
+      setError("Adresa de email nu este validă.");
       return;
     }
     setLoading(true);
     setError("");
     // Salvam sau stergem credentialele din localStorage
     if (rememberMe) {
-      localStorage.setItem("waf_email", form.email);
+      localStorage.setItem("waf_email", emailTrimmed);
       // parola nu se stocheaza niciodata
       localStorage.setItem("waf_remember", "true");
     } else {
@@ -48,8 +55,8 @@ export default function SplashScreen({ onComplete, onWaiterLogin }) {
       localStorage.setItem("waf_remember", "false");
     }
     const { data, error: authError } = await supabase.auth.signInWithPassword({
-      email: form.email,
-      password: form.password,
+      email: emailTrimmed,
+      password: passwordTrimmed,
     });
     if (authError) {
       setError("Email sau parolă incorectă.");
@@ -96,6 +103,7 @@ export default function SplashScreen({ onComplete, onWaiterLogin }) {
         plan: profile?.plan || "free",
         restName: profile?.restaurant_name || "Restaurantul meu",
         role: profile?.role || "client",
+        rating: profile?.rating ?? null,
       },
     });
     showToast("👋 Bine ai venit!");
@@ -104,15 +112,27 @@ export default function SplashScreen({ onComplete, onWaiterLogin }) {
   };
 
   const handleRegisterClient = async () => {
-    if (!form.name || !form.email || !form.password) {
+    const nameTrimmed = form.name.trim();
+    const emailTrimmed = form.email.trim().toLowerCase();
+    const passwordTrimmed = form.password.trim();
+    if (!nameTrimmed || !emailTrimmed || !passwordTrimmed) {
       setError("Completează toate câmpurile.");
       return;
     }
-    if (/\p{Emoji}/u.test(form.name)) {
+    if (nameTrimmed.length < 2) {
+      setError("Numele trebuie să aibă minim 2 caractere.");
+      return;
+    }
+    if (/\p{Emoji}/u.test(nameTrimmed)) {
       setError("Numele nu poate conține emoji.");
       return;
     }
-    if (form.password.length < 6) {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(emailTrimmed)) {
+      setError("Adresa de email nu este validă.");
+      return;
+    }
+    if (passwordTrimmed.length < 6) {
       setError("Parola trebuie să aibă minim 6 caractere.");
       return;
     }
@@ -125,12 +145,25 @@ export default function SplashScreen({ onComplete, onWaiterLogin }) {
     setLoading(true);
     setError("");
     const { data, error: authError } = await supabase.auth.signUp({
-      email: form.email,
-      password: form.password,
-      options: { data: { full_name: form.name } },
+      email: emailTrimmed,
+      password: passwordTrimmed,
+      options: { data: { full_name: nameTrimmed } },
     });
     if (authError) {
-      setError(authError.message);
+      // Traducere mesaje Supabase in romana
+      const msg = authError.message.toLowerCase();
+      if (
+        msg.includes("already registered") ||
+        msg.includes("already exists")
+      ) {
+        setError("Există deja un cont cu această adresă de email.");
+      } else if (msg.includes("invalid email")) {
+        setError("Adresa de email nu este validă.");
+      } else if (msg.includes("password")) {
+        setError("Parola nu este validă. Trebuie să aibă minim 6 caractere.");
+      } else {
+        setError("A apărut o eroare. Încearcă din nou.");
+      }
       setLoading(false);
       return;
     }
@@ -147,10 +180,11 @@ export default function SplashScreen({ onComplete, onWaiterLogin }) {
       type: "SET_USER",
       payload: {
         id: data.user?.id,
-        name: form.name,
-        email: form.email,
+        name: nameTrimmed,
+        email: emailTrimmed,
         plan: "free",
         role: "client",
+        rating: null,
       },
     });
     showToast(`🎉 Bun venit, ${form.name}!`);
