@@ -19,6 +19,7 @@ export default function SplashScreen({ onComplete, onWaiterLogin }) {
     password: "",
     name: "",
   });
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [rememberMe, setRememberMe] = useState(
     localStorage.getItem("waf_remember") === "true",
   );
@@ -136,6 +137,10 @@ export default function SplashScreen({ onComplete, onWaiterLogin }) {
       setError("Parola trebuie să aibă minim 6 caractere.");
       return;
     }
+    if (passwordTrimmed !== confirmPassword.trim()) {
+      setError("Parolele nu coincid.");
+      return;
+    }
     if (!agreeTermsC || !agreePrivacyC) {
       setError(
         "Trebuie să accepți Termenii și Condițiile și Politica de Confidențialitate.",
@@ -187,7 +192,8 @@ export default function SplashScreen({ onComplete, onWaiterLogin }) {
         rating: null,
       },
     });
-    showToast(`🎉 Bun venit, ${form.name}!`);
+    showToast(`🎉 Bun venit, ${nameTrimmed}!`);
+    setConfirmPassword("");
     onComplete("client");
     setLoading(false);
   };
@@ -629,6 +635,45 @@ export default function SplashScreen({ onComplete, onWaiterLogin }) {
                     boxSizing: "border-box",
                   }}
                 />
+              </div>
+              {/* Confirmare parola */}
+              <div style={{ marginBottom: 14 }}>
+                <label
+                  style={{
+                    fontSize: 11,
+                    fontWeight: 700,
+                    color: "#8a7a6a",
+                    letterSpacing: "1px",
+                    textTransform: "uppercase",
+                    marginBottom: 7,
+                    display: "block",
+                  }}
+                >
+                  Confirmă Parola
+                </label>
+                <input
+                  type="password"
+                  placeholder="Repetă parola"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  style={{
+                    width: "100%",
+                    background: "#1e1a14",
+                    border: `1px solid ${confirmPassword && confirmPassword !== form.password ? "#c0392b" : "#2a2218"}`,
+                    borderRadius: 14,
+                    padding: "13px 16px",
+                    color: "#f0ebe3",
+                    fontFamily: "'Plus Jakarta Sans',sans-serif",
+                    fontSize: 14,
+                    outline: "none",
+                    boxSizing: "border-box",
+                  }}
+                />
+                {confirmPassword && confirmPassword !== form.password && (
+                  <div style={{ fontSize: 12, color: "#c0392b", marginTop: 6 }}>
+                    Parolele nu coincid
+                  </div>
+                )}
               </div>
               <div
                 style={{
