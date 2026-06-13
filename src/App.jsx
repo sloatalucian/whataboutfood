@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef } from "react";
 import { AppProvider, useApp } from "./context/AppContext";
 import { TableProvider } from "./context/TableContext";
 import BottomNav from "./components/BottomNav";
@@ -28,7 +28,7 @@ function Router() {
   const {
     state,
     dispatch,
-    navigate: _navigate,
+    navigate,
     showToast,
     cartTotal,
     cartCount,
@@ -39,8 +39,6 @@ function Router() {
     payNoteActiveOrder,
     paidTotal,
   } = useApp();
-  const navigate = _navigate;
-  const navKey = state.navKey || 0;
   const [showCart, setShowCart] = useState(false);
   const [cartObs, setCartObs] = useState("");
   const {
@@ -59,7 +57,6 @@ function Router() {
   const [splashDone, setSplashDone] = useState(false);
   const [waiterUser, setWaiterUser] = useState(null);
   const [checkingSession, setCheckingSession] = useState(true);
-  const sessionFoundAtStart = useRef(false); // true daca checkSession a gasit sesiune existenta
   const [isOffline, setIsOffline] = useState(!navigator.onLine);
 
   // ── QR Deep Link Handler ──
@@ -154,7 +151,6 @@ function Router() {
             },
           });
           setSplashDone(true);
-          sessionFoundAtStart.current = true;
         }
       } catch (err) {
         try {
@@ -175,13 +171,8 @@ function Router() {
         dispatch({ type: "SET_USER", payload: null });
         setSplashDone(false);
         setWaiterUser(null);
-      } else if (
-        (event === "TOKEN_REFRESHED" ||
-          (event === "SIGNED_IN" && sessionFoundAtStart.current)) &&
-        session?.user
-      ) {
-        // Token reinnoit sau sesiune restaurata dupa inactivitate
-        // sessionFoundAtStart.current garanteaza ca e restaurare dupa inactivitate
+      } else if (event === "TOKEN_REFRESHED" && session?.user) {
+        // Token reinnoit automat - pastram userul logat
         const { data: profile } = await supabase
           .from("profiles")
           .select("*")
@@ -885,9 +876,7 @@ function Router() {
           </div>
         )}
         <div key={screen} className="page-transition">
-          {React.cloneElement(pages[screen] || <Home />, {
-            key: `${screen}_${navKey}`,
-          })}
+          {pages[screen] || <Home />}
         </div>
         {screen !== "waiter" && !noNav.includes(screen) && (
           <BottomNav

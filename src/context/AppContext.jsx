@@ -13,7 +13,6 @@ const AppContext = createContext(null);
 
 const initialState = {
   screen: "home",
-  navKey: 0,
   user: null,
   selectedRest: null,
   cart: [],
@@ -54,14 +53,9 @@ const initialState = {
 function reducer(state, { type, payload }) {
   switch (type) {
     case "NAVIGATE":
-      return { ...state, screen: payload, navKey: (state.navKey || 0) + 1 };
+      return { ...state, screen: payload };
     case "SET_REST":
-      return {
-        ...state,
-        selectedRest: payload,
-        screen: "restaurant",
-        navKey: (state.navKey || 0) + 1,
-      };
+      return { ...state, selectedRest: payload, screen: "restaurant" };
     case "UPDATE_REST_RATING":
       return {
         ...state,
@@ -70,18 +64,6 @@ function reducer(state, { type, payload }) {
           : state.selectedRest,
       };
     case "SET_USER":
-      // Idempotent: daca e acelasi user (acelasi id), nu re-renderam
-      // Previne re-render-uri inutile la SIGNED_IN/TOKEN_REFRESHED pe revenire tab
-      if (
-        state.user &&
-        payload &&
-        state.user.id === payload.id &&
-        state.user.rating === payload.rating &&
-        state.user.plan === payload.plan &&
-        state.user.role === payload.role
-      ) {
-        return state;
-      }
       return { ...state, user: payload };
     case "SET_TOAST":
       return { ...state, toast: payload };

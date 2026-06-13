@@ -10,6 +10,5 @@ export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     autoRefreshToken: true,
     detectSessionInUrl: true,
     storageKey: "waf-session",
-    lock: async (name, acquireTimeout, fn) => fn(),
   },
 });
