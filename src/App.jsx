@@ -210,23 +210,8 @@ function Router() {
         setSplashDone(true);
       }
     });
-    // Verificam sesiunea la revenire pe tab - fara refresh fortat
-    const handleVisibility = async () => {
-      if (document.visibilityState === "visible") {
-        const { data } = await supabase.auth.getSession();
-        if (!data?.session) {
-          // Sesiunea a expirat - logout curat, afisam ecranul de login
-          dispatch({ type: "SET_USER", payload: null });
-          setSplashDone(false);
-        }
-        // Daca sesiunea e valida nu facem nimic - autoRefreshToken se ocupa
-      }
-    };
-    document.addEventListener("visibilitychange", handleVisibility);
-
     return () => {
       subscription.unsubscribe();
-      document.removeEventListener("visibilitychange", handleVisibility);
     };
   }, []);
 
