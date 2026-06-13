@@ -70,6 +70,18 @@ function reducer(state, { type, payload }) {
           : state.selectedRest,
       };
     case "SET_USER":
+      // Idempotent: daca e acelasi user (acelasi id), nu re-renderam
+      // Previne re-render-uri inutile la SIGNED_IN/TOKEN_REFRESHED pe revenire tab
+      if (
+        state.user &&
+        payload &&
+        state.user.id === payload.id &&
+        state.user.rating === payload.rating &&
+        state.user.plan === payload.plan &&
+        state.user.role === payload.role
+      ) {
+        return state;
+      }
       return { ...state, user: payload };
     case "SET_TOAST":
       return { ...state, toast: payload };
