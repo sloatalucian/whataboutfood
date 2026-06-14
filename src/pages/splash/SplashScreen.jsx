@@ -45,71 +45,74 @@ export default function SplashScreen({ onComplete, onWaiterLogin }) {
     }
     setLoading(true);
     setError("");
-    // Salvam sau stergem credentialele din localStorage
-    if (rememberMe) {
-      localStorage.setItem("waf_email", emailTrimmed);
-      // parola nu se stocheaza niciodata
-      localStorage.setItem("waf_remember", "true");
-    } else {
-      localStorage.removeItem("waf_email");
-      localStorage.removeItem("waf_pass");
-      localStorage.setItem("waf_remember", "false");
-    }
-    const { data, error: authError } = await supabase.auth.signInWithPassword({
-      email: emailTrimmed,
-      password: passwordTrimmed,
-    });
-    if (authError) {
-      setError("Email sau parolă incorectă.");
-      setLoading(false);
-      return;
-    }
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("*")
-      .eq("id", data.user.id)
-      .single();
-    if (
-      profile?.role === "owner" &&
-      profile?.status === "pending" &&
-      profile?.role !== "superadmin"
-    ) {
-      await supabase.auth.signOut();
-      setError(
-        "Contul tău este în așteptarea aprobării. Vei fi contactat în 24-48 ore.",
+    try {
+      // Salvam sau stergem credentialele din localStorage
+      if (rememberMe) {
+        localStorage.setItem("waf_email", emailTrimmed);
+        // parola nu se stocheaza niciodata
+        localStorage.setItem("waf_remember", "true");
+      } else {
+        localStorage.removeItem("waf_email");
+        localStorage.removeItem("waf_pass");
+        localStorage.setItem("waf_remember", "false");
+      }
+      const { data, error: authError } = await supabase.auth.signInWithPassword(
+        {
+          email: emailTrimmed,
+          password: passwordTrimmed,
+        },
       );
+      if (authError) {
+        setError("Email sau parolă incorectă.");
+        return;
+      }
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("*")
+        .eq("id", data.user.id)
+        .single();
+      if (
+        profile?.role === "owner" &&
+        profile?.status === "pending" &&
+        profile?.role !== "superadmin"
+      ) {
+        await supabase.auth.signOut();
+        setError(
+          "Contul tău este în așteptarea aprobării. Vei fi contactat în 24-48 ore.",
+        );
+        return;
+      }
+      if (profile?.role === "owner" && profile?.status === "rejected") {
+        await supabase.auth.signOut();
+        setError("Cererea ta a fost respinsă. Contactează-ne pentru detalii.");
+        return;
+      }
+      if (profile?.role === "waiter") {
+        await supabase.auth.signOut();
+        setError(
+          "Contul tău este de ospătar. Folosește secțiunea de login pentru ospătari.",
+        );
+        return;
+      }
+      dispatch({
+        type: "SET_USER",
+        payload: {
+          id: data.user.id,
+          name: profile?.full_name || data.user.email.split("@")[0],
+          email: data.user.email,
+          plan: profile?.plan || "free",
+          restName: profile?.restaurant_name || "Restaurantul meu",
+          role: profile?.role || "client",
+          rating: profile?.rating ?? null,
+        },
+      });
+      showToast("👋 Bine ai venit!");
+      onComplete(profile?.role || "client");
+    } catch (err) {
+      setError("A apărut o eroare de conexiune. Încearcă din nou.");
+    } finally {
       setLoading(false);
-      return;
     }
-    if (profile?.role === "owner" && profile?.status === "rejected") {
-      await supabase.auth.signOut();
-      setError("Cererea ta a fost respinsă. Contactează-ne pentru detalii.");
-      setLoading(false);
-      return;
-    }
-    if (profile?.role === "waiter") {
-      await supabase.auth.signOut();
-      setError(
-        "Contul tău este de ospătar. Folosește secțiunea de login pentru ospătari.",
-      );
-      setLoading(false);
-      return;
-    }
-    dispatch({
-      type: "SET_USER",
-      payload: {
-        id: data.user.id,
-        name: profile?.full_name || data.user.email.split("@")[0],
-        email: data.user.email,
-        plan: profile?.plan || "free",
-        restName: profile?.restaurant_name || "Restaurantul meu",
-        role: profile?.role || "client",
-        rating: profile?.rating ?? null,
-      },
-    });
-    showToast("👋 Bine ai venit!");
-    onComplete(profile?.role || "client");
-    setLoading(false);
   };
 
   const handleRegisterClient = async () => {
