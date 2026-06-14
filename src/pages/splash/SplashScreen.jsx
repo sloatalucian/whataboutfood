@@ -45,6 +45,7 @@ export default function SplashScreen({ onComplete, onWaiterLogin }) {
     }
     setLoading(true);
     setError("");
+    console.log("DEBUG 1: start handleLogin");
     try {
       // Salvam sau stergem credentialele din localStorage
       if (rememberMe) {
@@ -56,21 +57,29 @@ export default function SplashScreen({ onComplete, onWaiterLogin }) {
         localStorage.removeItem("waf_pass");
         localStorage.setItem("waf_remember", "false");
       }
+      console.log("DEBUG 2: inainte de signInWithPassword");
       const { data, error: authError } = await supabase.auth.signInWithPassword(
         {
           email: emailTrimmed,
           password: passwordTrimmed,
         },
       );
+      console.log("DEBUG 3: dupa signInWithPassword", {
+        hasData: !!data,
+        hasUser: !!data?.user,
+        authError,
+      });
       if (authError) {
         setError("Email sau parolă incorectă.");
         return;
       }
+      console.log("DEBUG 4: inainte de query profiles, userId=", data.user.id);
       const { data: profile } = await supabase
         .from("profiles")
         .select("*")
         .eq("id", data.user.id)
         .single();
+      console.log("DEBUG 5: dupa query profiles", { profile });
       if (
         profile?.role === "owner" &&
         profile?.status === "pending" &&
@@ -94,6 +103,7 @@ export default function SplashScreen({ onComplete, onWaiterLogin }) {
         );
         return;
       }
+      console.log("DEBUG 6: inainte de dispatch SET_USER");
       dispatch({
         type: "SET_USER",
         payload: {
@@ -106,11 +116,15 @@ export default function SplashScreen({ onComplete, onWaiterLogin }) {
           rating: profile?.rating ?? null,
         },
       });
+      console.log("DEBUG 7: inainte de onComplete");
       showToast("👋 Bine ai venit!");
       onComplete(profile?.role || "client");
+      console.log("DEBUG 8: dupa onComplete");
     } catch (err) {
+      console.log("DEBUG CATCH:", err);
       setError("A apărut o eroare de conexiune. Încearcă din nou.");
     } finally {
+      console.log("DEBUG FINALLY: setLoading(false)");
       setLoading(false);
     }
   };
