@@ -20,6 +20,21 @@ const heatColor = (pct) => {
   return { bg: "rgba(255,255,255,.04)", color: "#6b6050" };
 };
 
+// Loader local, afisat in interiorul fiecarui card la reincarcare,
+// astfel incat scheletul paginii sa ramana vizibil (nu se mai reseteaza tot ecranul).
+const CardLoader = ({ pad = "20px 0" }) => (
+  <div
+    style={{
+      textAlign: "center",
+      padding: pad,
+      color: "#6b6050",
+      fontSize: 13,
+    }}
+  >
+    Se încarcă...
+  </div>
+);
+
 export default function StatisticiProprietar() {
   const { navigate, state, isLocked } = useApp();
   const { user } = state;
@@ -985,31 +1000,22 @@ export default function StatisticiProprietar() {
       </div>
 
       <div style={{ padding: 16 }}>
-        {loading ? (
+        <>
+          {/* Sumar azi */}
           <div
             style={{
-              textAlign: "center",
-              padding: "60px 0",
+              fontSize: 10,
+              letterSpacing: 2,
+              textTransform: "uppercase",
               color: "#6b6050",
-              fontSize: 13,
+              marginBottom: 10,
             }}
           >
-            Se încarcă statisticile...
+            Astăzi
           </div>
-        ) : (
-          <>
-            {/* Sumar azi */}
-            <div
-              style={{
-                fontSize: 10,
-                letterSpacing: 2,
-                textTransform: "uppercase",
-                color: "#6b6050",
-                marginBottom: 10,
-              }}
-            >
-              Astăzi
-            </div>
+          {loading ? (
+            <CardLoader />
+          ) : (
             <div
               style={{
                 display: "grid",
@@ -1065,19 +1071,23 @@ export default function StatisticiProprietar() {
                 </div>
               ))}
             </div>
+          )}
 
-            {/* Sumar */}
-            <div
-              style={{
-                fontSize: 10,
-                letterSpacing: 2,
-                textTransform: "uppercase",
-                color: "#6b6050",
-                marginBottom: 12,
-              }}
-            >
-              Sumar luna curentă
-            </div>
+          {/* Sumar */}
+          <div
+            style={{
+              fontSize: 10,
+              letterSpacing: 2,
+              textTransform: "uppercase",
+              color: "#6b6050",
+              marginBottom: 12,
+            }}
+          >
+            Sumar luna curentă
+          </div>
+          {loading ? (
+            <CardLoader />
+          ) : (
             <div
               style={{
                 display: "grid",
@@ -1115,152 +1125,298 @@ export default function StatisticiProprietar() {
                 color="#5b8dd9"
               />
             </div>
+          )}
 
-            {/* Grafic venituri */}
+          {/* Grafic venituri */}
+          <div
+            style={{
+              background: "#161210",
+              border: "1px solid #2a2218",
+              borderRadius: 18,
+              padding: 18,
+              marginBottom: 16,
+            }}
+          >
             <div
               style={{
-                background: "#161210",
-                border: "1px solid #2a2218",
-                borderRadius: 18,
-                padding: 18,
-                marginBottom: 16,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                marginBottom: 14,
               }}
             >
               <div
                 style={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  marginBottom: 14,
+                  fontFamily: "'Fraunces',serif",
+                  fontSize: 16,
+                  fontWeight: 700,
                 }}
               >
-                <div
-                  style={{
-                    fontFamily: "'Fraunces',serif",
-                    fontSize: 16,
-                    fontWeight: 700,
-                  }}
-                >
-                  Venituri
-                </div>
-                <div
-                  style={{
-                    display: "flex",
-                    gap: 4,
-                    background: "#1e1a14",
-                    borderRadius: 10,
-                    padding: 3,
-                  }}
-                >
-                  {[
-                    { key: "zi", label: "Azi" },
-                    { key: "saptamana", label: "7 zile" },
-                    { key: "luna", label: "Lună" },
-                  ].map((p) => (
-                    <button
-                      key={p.key}
-                      onClick={() => setPeriod(p.key)}
-                      style={{
-                        padding: "5px 10px",
-                        borderRadius: 8,
-                        fontSize: 11,
-                        cursor: "pointer",
-                        background:
-                          period === p.key ? "#c0622f" : "transparent",
-                        border: "none",
-                        color: period === p.key ? "#fff" : "#6b6050",
-                        fontWeight: period === p.key ? 700 : 400,
-                      }}
-                    >
-                      {p.label}
-                    </button>
-                  ))}
-                </div>
+                Venituri
               </div>
-
-              {/* Selector luna/an - vizibil cand period = luna */}
-              {period === "luna" && (
-                <div style={{ marginBottom: 12 }}>
-                  <select
-                    value={`${selectedYear}-${selectedMonth}`}
-                    onChange={(e) => {
-                      const [y, m] = e.target.value.split("-");
-                      setSelectedYear(Number(y));
-                      setSelectedMonth(Number(m));
-                    }}
+              <div
+                style={{
+                  display: "flex",
+                  gap: 4,
+                  background: "#1e1a14",
+                  borderRadius: 10,
+                  padding: 3,
+                }}
+              >
+                {[
+                  { key: "zi", label: "Azi" },
+                  { key: "saptamana", label: "7 zile" },
+                  { key: "luna", label: "Lună" },
+                ].map((p) => (
+                  <button
+                    key={p.key}
+                    onClick={() => setPeriod(p.key)}
                     style={{
-                      width: "100%",
-                      background: "#161210",
-                      border: "1px solid #2a2218",
-                      borderRadius: 10,
-                      padding: "8px 12px",
-                      color: "#f0ebe3",
-                      fontFamily: "inherit",
-                      fontSize: 13,
-                      outline: "none",
+                      padding: "5px 10px",
+                      borderRadius: 8,
+                      fontSize: 11,
                       cursor: "pointer",
+                      background: period === p.key ? "#c0622f" : "transparent",
+                      border: "none",
+                      color: period === p.key ? "#fff" : "#6b6050",
+                      fontWeight: period === p.key ? 700 : 400,
                     }}
                   >
-                    {getAvailableMonths().map((m) => (
-                      <option
-                        key={`${m.year}-${m.month}`}
-                        value={`${m.year}-${m.month}`}
-                      >
-                        {m.label}
-                      </option>
-                    ))}
-                  </select>
-                  {state.user?.plan === "pro" && (
-                    <div
-                      style={{
-                        fontSize: 11,
-                        color: "#6b6050",
-                        marginTop: 6,
-                        textAlign: "center",
-                      }}
-                    >
-                      Plan Pro — istoricul ultimelor 3 luni
-                    </div>
-                  )}
-                </div>
-              )}
-
-              <div style={{ marginBottom: 12 }}>
-                <span
-                  style={{
-                    fontFamily: "'Fraunces',serif",
-                    fontSize: 28,
-                    fontWeight: 900,
-                    color: "#c8a97e",
-                  }}
-                >
-                  {fmt(totalPeriod)}
-                </span>
-                <span style={{ fontSize: 12, color: "#6b6050", marginLeft: 8 }}>
-                  {period === "zi"
-                    ? "azi"
-                    : period === "saptamana"
-                      ? "această săptămână"
-                      : "această lună"}
-                </span>
+                    {p.label}
+                  </button>
+                ))}
               </div>
-              {revenueData.length > 0 ? (
-                <BarChart data={revenueData} color="#c0622f" height={140} />
-              ) : (
-                <div
-                  style={{
-                    textAlign: "center",
-                    padding: "30px 0",
-                    color: "#6b6050",
-                    fontSize: 12,
-                  }}
-                >
-                  Nicio comandă în această perioadă
-                </div>
-              )}
             </div>
 
-            {/* Top produse */}
+            {/* Selector luna/an - vizibil cand period = luna */}
+            {period === "luna" && (
+              <div style={{ marginBottom: 12 }}>
+                <select
+                  value={`${selectedYear}-${selectedMonth}`}
+                  onChange={(e) => {
+                    const [y, m] = e.target.value.split("-");
+                    setSelectedYear(Number(y));
+                    setSelectedMonth(Number(m));
+                  }}
+                  style={{
+                    width: "100%",
+                    background: "#161210",
+                    border: "1px solid #2a2218",
+                    borderRadius: 10,
+                    padding: "8px 12px",
+                    color: "#f0ebe3",
+                    fontFamily: "inherit",
+                    fontSize: 13,
+                    outline: "none",
+                    cursor: "pointer",
+                  }}
+                >
+                  {getAvailableMonths().map((m) => (
+                    <option
+                      key={`${m.year}-${m.month}`}
+                      value={`${m.year}-${m.month}`}
+                    >
+                      {m.label}
+                    </option>
+                  ))}
+                </select>
+                {state.user?.plan === "pro" && (
+                  <div
+                    style={{
+                      fontSize: 11,
+                      color: "#6b6050",
+                      marginTop: 6,
+                      textAlign: "center",
+                    }}
+                  >
+                    Plan Pro — istoricul ultimelor 3 luni
+                  </div>
+                )}
+              </div>
+            )}
+
+            {loading ? (
+              <CardLoader pad="30px 0" />
+            ) : (
+              <>
+                <div style={{ marginBottom: 12 }}>
+                  <span
+                    style={{
+                      fontFamily: "'Fraunces',serif",
+                      fontSize: 28,
+                      fontWeight: 900,
+                      color: "#c8a97e",
+                    }}
+                  >
+                    {fmt(totalPeriod)}
+                  </span>
+                  <span
+                    style={{
+                      fontSize: 12,
+                      color: "#6b6050",
+                      marginLeft: 8,
+                    }}
+                  >
+                    {period === "zi"
+                      ? "azi"
+                      : period === "saptamana"
+                        ? "această săptămână"
+                        : "această lună"}
+                  </span>
+                </div>
+                {revenueData.length > 0 ? (
+                  <BarChart data={revenueData} color="#c0622f" height={140} />
+                ) : (
+                  <div
+                    style={{
+                      textAlign: "center",
+                      padding: "30px 0",
+                      color: "#6b6050",
+                      fontSize: 12,
+                    }}
+                  >
+                    Nicio comandă în această perioadă
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+
+          {/* Top produse */}
+          <div
+            style={{
+              background: "#161210",
+              border: "1px solid #2a2218",
+              borderRadius: 18,
+              padding: 18,
+              marginBottom: 16,
+            }}
+          >
+            <div
+              style={{
+                fontFamily: "'Fraunces',serif",
+                fontSize: 16,
+                fontWeight: 700,
+                marginBottom: 16,
+              }}
+            >
+              🏆 Top Produse
+            </div>
+            {loading ? (
+              <CardLoader />
+            ) : topProducts.length === 0 ? (
+              <div
+                style={{
+                  textAlign: "center",
+                  padding: "20px 0",
+                  color: "#6b6050",
+                  fontSize: 12,
+                }}
+              >
+                Nicio comandă înregistrată
+              </div>
+            ) : (
+              topProducts.map((p, i) => (
+                <div key={p.name} style={{ marginBottom: 12 }}>
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 10,
+                      marginBottom: 5,
+                    }}
+                  >
+                    <div
+                      style={{
+                        width: 24,
+                        height: 24,
+                        borderRadius: 8,
+                        flexShrink: 0,
+                        background:
+                          i === 0
+                            ? "rgba(200,169,126,.3)"
+                            : i === 1
+                              ? "rgba(255,255,255,.08)"
+                              : i === 2
+                                ? "rgba(192,98,47,.15)"
+                                : "rgba(255,255,255,.04)",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        fontFamily: "'Fraunces',serif",
+                        fontSize: 11,
+                        fontWeight: 900,
+                        color:
+                          i === 0
+                            ? "#c8a97e"
+                            : i === 1
+                              ? "#aaa"
+                              : i === 2
+                                ? "#c0622f"
+                                : "#6b6050",
+                      }}
+                    >
+                      {i + 1}
+                    </div>
+                    <span style={{ fontSize: 18 }}>{p.emoji}</span>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div
+                        style={{
+                          fontSize: 13,
+                          fontWeight: 600,
+                          color: "#f0ebe3",
+                          whiteSpace: "nowrap",
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                        }}
+                      >
+                        {p.name}
+                      </div>
+                    </div>
+                    <div style={{ textAlign: "right", flexShrink: 0 }}>
+                      <div
+                        style={{
+                          fontSize: 12,
+                          fontWeight: 700,
+                          color: "#c8a97e",
+                        }}
+                      >
+                        {p.orders} comenzi
+                      </div>
+                      <div style={{ fontSize: 10, color: "#6b6050" }}>
+                        {fmt(p.revenue)}
+                      </div>
+                    </div>
+                  </div>
+                  <div
+                    style={{
+                      marginLeft: 34,
+                      height: 4,
+                      background: "#2a2218",
+                      borderRadius: 20,
+                      overflow: "hidden",
+                    }}
+                  >
+                    <div
+                      style={{
+                        height: "100%",
+                        borderRadius: 20,
+                        width: `${p.pct}%`,
+                        background:
+                          i < 3
+                            ? "linear-gradient(90deg,#c0622f,#e07a47)"
+                            : "linear-gradient(90deg,#2a2218,#3a3228)",
+                        transition: "width .5s ease",
+                      }}
+                    />
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+
+          {/* Heatmap */}
+          {heatmapData.length > 0 && (
             <div
               style={{
                 background: "#161210",
@@ -1275,99 +1431,264 @@ export default function StatisticiProprietar() {
                   fontFamily: "'Fraunces',serif",
                   fontSize: 16,
                   fontWeight: 700,
-                  marginBottom: 16,
+                  marginBottom: 6,
                 }}
               >
-                🏆 Top Produse
+                🔥 Ore aglomerate
               </div>
-              {topProducts.length === 0 ? (
+
+              {/* Selector luna + an */}
+              {(() => {
+                const available = getAvailableMonths();
+                const availableYears = [
+                  ...new Set(available.map((m) => m.year)),
+                ].sort((a, b) => b - a);
+                const availableMonths = available.filter(
+                  (m) => m.year === heatmapYear,
+                );
+                const LUNI = [
+                  "Ianuarie",
+                  "Februarie",
+                  "Martie",
+                  "Aprilie",
+                  "Mai",
+                  "Iunie",
+                  "Iulie",
+                  "August",
+                  "Septembrie",
+                  "Octombrie",
+                  "Noiembrie",
+                  "Decembrie",
+                ];
+                return (
+                  <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
+                    <select
+                      value={heatmapMonth}
+                      onChange={(e) => {
+                        setHeatmapMonth(Number(e.target.value));
+                        setHeatmapWeek(0);
+                      }}
+                      style={{
+                        flex: 2,
+                        background: "#1e1a14",
+                        border: "1px solid #2a2218",
+                        borderRadius: 8,
+                        padding: "6px 10px",
+                        color: "#f0ebe3",
+                        fontFamily: "inherit",
+                        fontSize: 12,
+                        outline: "none",
+                        cursor: "pointer",
+                      }}
+                    >
+                      {availableMonths.map((m) => (
+                        <option key={m.month} value={m.month}>
+                          {LUNI[m.month]}
+                        </option>
+                      ))}
+                    </select>
+                    <select
+                      value={heatmapYear}
+                      onChange={(e) => {
+                        setHeatmapYear(Number(e.target.value));
+                        setHeatmapWeek(0);
+                      }}
+                      style={{
+                        flex: 1,
+                        background: "#1e1a14",
+                        border: "1px solid #2a2218",
+                        borderRadius: 8,
+                        padding: "6px 10px",
+                        color: "#f0ebe3",
+                        fontFamily: "inherit",
+                        fontSize: 12,
+                        outline: "none",
+                        cursor: "pointer",
+                      }}
+                    >
+                      {availableYears.map((y) => (
+                        <option key={y} value={y}>
+                          {y}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                );
+              })()}
+
+              {/* Selector saptamana */}
+              <div style={{ display: "flex", gap: 4, marginBottom: 12 }}>
+                {[
+                  { label: "Toată luna", value: 0 },
+                  { label: "Săpt. 1", value: 1 },
+                  { label: "Săpt. 2", value: 2 },
+                  { label: "Săpt. 3", value: 3 },
+                  { label: "Săpt. 4", value: 4 },
+                ].map((w) => (
+                  <button
+                    key={w.value}
+                    onClick={() => setHeatmapWeek(w.value)}
+                    style={{
+                      flex: 1,
+                      padding: "4px 0",
+                      borderRadius: 20,
+                      border: "none",
+                      background:
+                        heatmapWeek === w.value ? "#c0622f" : "#161210",
+                      color: heatmapWeek === w.value ? "#fff" : "#6b6050",
+                      fontSize: 10,
+                      fontWeight: heatmapWeek === w.value ? 700 : 400,
+                      cursor: "pointer",
+                      fontFamily: "inherit",
+                    }}
+                  >
+                    {w.label}
+                  </button>
+                ))}
+              </div>
+
+              <div style={{ fontSize: 11, color: "#6b6050", marginBottom: 14 }}>
+                Activitate per zi și oră
+              </div>
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "48px repeat(7,1fr)",
+                  gap: 3,
+                  marginBottom: 3,
+                }}
+              >
+                <div />
+                {ZILE.map((z) => (
+                  <div
+                    key={z}
+                    style={{
+                      fontSize: 9,
+                      color: "#6b6050",
+                      textAlign: "center",
+                      fontWeight: 700,
+                    }}
+                  >
+                    {z}
+                  </div>
+                ))}
+              </div>
+              {ORE.map((ora, oi) => (
                 <div
+                  key={ora}
                   style={{
-                    textAlign: "center",
-                    padding: "20px 0",
-                    color: "#6b6050",
-                    fontSize: 12,
+                    display: "grid",
+                    gridTemplateColumns: "48px repeat(7,1fr)",
+                    gap: 3,
+                    marginBottom: 3,
                   }}
                 >
-                  Nicio comandă înregistrată
+                  <div
+                    style={{
+                      fontSize: 9,
+                      color: "#6b6050",
+                      display: "flex",
+                      alignItems: "center",
+                    }}
+                  >
+                    {ora}
+                  </div>
+                  {(heatmapData[oi] || ZILE.map(() => 0)).map((pct, di) => {
+                    const { bg, color } = heatColor(pct);
+                    return (
+                      <div
+                        key={di}
+                        style={{
+                          background: bg,
+                          borderRadius: 5,
+                          padding: "6px 2px",
+                          textAlign: "center",
+                          fontSize: 8,
+                          color,
+                          fontWeight: 700,
+                        }}
+                      >
+                        {pct > 0 ? `${pct}%` : "—"}
+                      </div>
+                    );
+                  })}
                 </div>
-              ) : (
-                topProducts.map((p, i) => (
-                  <div key={p.name} style={{ marginBottom: 12 }}>
+              ))}
+            </div>
+          )}
+
+          {/* Top categorii */}
+          {topCategories.length > 0 && (
+            <div
+              style={{
+                background: "#161210",
+                border: "1px solid #2a2218",
+                borderRadius: 18,
+                padding: 18,
+                marginBottom: 16,
+              }}
+            >
+              <div
+                style={{
+                  fontFamily: "'Fraunces',serif",
+                  fontSize: 16,
+                  fontWeight: 700,
+                  marginBottom: 14,
+                }}
+              >
+                🍽️ Venituri pe categorie
+              </div>
+              {topCategories.map((cat, i) => {
+                const colors = [
+                  "#c0622f",
+                  "#e07a47",
+                  "#c8a97e",
+                  "#6b9e6b",
+                  "#5b8dd9",
+                  "#8b6a8a",
+                ];
+                return (
+                  <div key={cat.name} style={{ marginBottom: 12 }}>
                     <div
                       style={{
                         display: "flex",
-                        alignItems: "center",
-                        gap: 10,
+                        justifyContent: "space-between",
                         marginBottom: 5,
                       }}
                     >
-                      <div
+                      <span
                         style={{
-                          width: 24,
-                          height: 24,
-                          borderRadius: 8,
-                          flexShrink: 0,
-                          background:
-                            i === 0
-                              ? "rgba(200,169,126,.3)"
-                              : i === 1
-                                ? "rgba(255,255,255,.08)"
-                                : i === 2
-                                  ? "rgba(192,98,47,.15)"
-                                  : "rgba(255,255,255,.04)",
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          fontFamily: "'Fraunces',serif",
-                          fontSize: 11,
-                          fontWeight: 900,
-                          color:
-                            i === 0
-                              ? "#c8a97e"
-                              : i === 1
-                                ? "#aaa"
-                                : i === 2
-                                  ? "#c0622f"
-                                  : "#6b6050",
+                          fontSize: 12,
+                          color: "#f0ebe3",
+                          fontWeight: 600,
                         }}
                       >
-                        {i + 1}
-                      </div>
-                      <span style={{ fontSize: 18 }}>{p.emoji}</span>
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div
-                          style={{
-                            fontSize: 13,
-                            fontWeight: 600,
-                            color: "#f0ebe3",
-                            whiteSpace: "nowrap",
-                            overflow: "hidden",
-                            textOverflow: "ellipsis",
-                          }}
-                        >
-                          {p.name}
-                        </div>
-                      </div>
-                      <div style={{ textAlign: "right", flexShrink: 0 }}>
-                        <div
+                        {cat.emoji} {cat.name}
+                      </span>
+                      <div style={{ textAlign: "right" }}>
+                        <span
                           style={{
                             fontSize: 12,
+                            color: colors[i],
                             fontWeight: 700,
-                            color: "#c8a97e",
                           }}
                         >
-                          {p.orders} comenzi
-                        </div>
-                        <div style={{ fontSize: 10, color: "#6b6050" }}>
-                          {fmt(p.revenue)}
-                        </div>
+                          {cat.pct}%
+                        </span>
+                        <span
+                          style={{
+                            fontSize: 11,
+                            color: "#6b6050",
+                            marginLeft: 6,
+                          }}
+                        >
+                          {fmt(cat.revenue)}
+                        </span>
                       </div>
                     </div>
                     <div
                       style={{
-                        marginLeft: 34,
-                        height: 4,
+                        height: 6,
                         background: "#2a2218",
                         borderRadius: 20,
                         overflow: "hidden",
@@ -1377,337 +1698,41 @@ export default function StatisticiProprietar() {
                         style={{
                           height: "100%",
                           borderRadius: 20,
-                          width: `${p.pct}%`,
-                          background:
-                            i < 3
-                              ? "linear-gradient(90deg,#c0622f,#e07a47)"
-                              : "linear-gradient(90deg,#2a2218,#3a3228)",
+                          width: `${cat.pct}%`,
+                          background: colors[i],
                           transition: "width .5s ease",
                         }}
                       />
                     </div>
                   </div>
-                ))
-              )}
+                );
+              })}
             </div>
+          )}
 
-            {/* Heatmap */}
-            {heatmapData.length > 0 && (
-              <div
-                style={{
-                  background: "#161210",
-                  border: "1px solid #2a2218",
-                  borderRadius: 18,
-                  padding: 18,
-                  marginBottom: 16,
-                }}
-              >
-                <div
-                  style={{
-                    fontFamily: "'Fraunces',serif",
-                    fontSize: 16,
-                    fontWeight: 700,
-                    marginBottom: 6,
-                  }}
-                >
-                  🔥 Ore aglomerate
-                </div>
-
-                {/* Selector luna + an */}
-                {(() => {
-                  const available = getAvailableMonths();
-                  const availableYears = [
-                    ...new Set(available.map((m) => m.year)),
-                  ].sort((a, b) => b - a);
-                  const availableMonths = available.filter(
-                    (m) => m.year === heatmapYear,
-                  );
-                  const LUNI = [
-                    "Ianuarie",
-                    "Februarie",
-                    "Martie",
-                    "Aprilie",
-                    "Mai",
-                    "Iunie",
-                    "Iulie",
-                    "August",
-                    "Septembrie",
-                    "Octombrie",
-                    "Noiembrie",
-                    "Decembrie",
-                  ];
-                  return (
-                    <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
-                      <select
-                        value={heatmapMonth}
-                        onChange={(e) => {
-                          setHeatmapMonth(Number(e.target.value));
-                          setHeatmapWeek(0);
-                        }}
-                        style={{
-                          flex: 2,
-                          background: "#1e1a14",
-                          border: "1px solid #2a2218",
-                          borderRadius: 8,
-                          padding: "6px 10px",
-                          color: "#f0ebe3",
-                          fontFamily: "inherit",
-                          fontSize: 12,
-                          outline: "none",
-                          cursor: "pointer",
-                        }}
-                      >
-                        {availableMonths.map((m) => (
-                          <option key={m.month} value={m.month}>
-                            {LUNI[m.month]}
-                          </option>
-                        ))}
-                      </select>
-                      <select
-                        value={heatmapYear}
-                        onChange={(e) => {
-                          setHeatmapYear(Number(e.target.value));
-                          setHeatmapWeek(0);
-                        }}
-                        style={{
-                          flex: 1,
-                          background: "#1e1a14",
-                          border: "1px solid #2a2218",
-                          borderRadius: 8,
-                          padding: "6px 10px",
-                          color: "#f0ebe3",
-                          fontFamily: "inherit",
-                          fontSize: 12,
-                          outline: "none",
-                          cursor: "pointer",
-                        }}
-                      >
-                        {availableYears.map((y) => (
-                          <option key={y} value={y}>
-                            {y}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                  );
-                })()}
-
-                {/* Selector saptamana */}
-                <div style={{ display: "flex", gap: 4, marginBottom: 12 }}>
-                  {[
-                    { label: "Toată luna", value: 0 },
-                    { label: "Săpt. 1", value: 1 },
-                    { label: "Săpt. 2", value: 2 },
-                    { label: "Săpt. 3", value: 3 },
-                    { label: "Săpt. 4", value: 4 },
-                  ].map((w) => (
-                    <button
-                      key={w.value}
-                      onClick={() => setHeatmapWeek(w.value)}
-                      style={{
-                        flex: 1,
-                        padding: "4px 0",
-                        borderRadius: 20,
-                        border: "none",
-                        background:
-                          heatmapWeek === w.value ? "#c0622f" : "#161210",
-                        color: heatmapWeek === w.value ? "#fff" : "#6b6050",
-                        fontSize: 10,
-                        fontWeight: heatmapWeek === w.value ? 700 : 400,
-                        cursor: "pointer",
-                        fontFamily: "inherit",
-                      }}
-                    >
-                      {w.label}
-                    </button>
-                  ))}
-                </div>
-
-                <div
-                  style={{ fontSize: 11, color: "#6b6050", marginBottom: 14 }}
-                >
-                  Activitate per zi și oră
-                </div>
-                <div
-                  style={{
-                    display: "grid",
-                    gridTemplateColumns: "48px repeat(7,1fr)",
-                    gap: 3,
-                    marginBottom: 3,
-                  }}
-                >
-                  <div />
-                  {ZILE.map((z) => (
-                    <div
-                      key={z}
-                      style={{
-                        fontSize: 9,
-                        color: "#6b6050",
-                        textAlign: "center",
-                        fontWeight: 700,
-                      }}
-                    >
-                      {z}
-                    </div>
-                  ))}
-                </div>
-                {ORE.map((ora, oi) => (
-                  <div
-                    key={ora}
-                    style={{
-                      display: "grid",
-                      gridTemplateColumns: "48px repeat(7,1fr)",
-                      gap: 3,
-                      marginBottom: 3,
-                    }}
-                  >
-                    <div
-                      style={{
-                        fontSize: 9,
-                        color: "#6b6050",
-                        display: "flex",
-                        alignItems: "center",
-                      }}
-                    >
-                      {ora}
-                    </div>
-                    {(heatmapData[oi] || ZILE.map(() => 0)).map((pct, di) => {
-                      const { bg, color } = heatColor(pct);
-                      return (
-                        <div
-                          key={di}
-                          style={{
-                            background: bg,
-                            borderRadius: 5,
-                            padding: "6px 2px",
-                            textAlign: "center",
-                            fontSize: 8,
-                            color,
-                            fontWeight: 700,
-                          }}
-                        >
-                          {pct > 0 ? `${pct}%` : "—"}
-                        </div>
-                      );
-                    })}
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {/* Top categorii */}
-            {topCategories.length > 0 && (
-              <div
-                style={{
-                  background: "#161210",
-                  border: "1px solid #2a2218",
-                  borderRadius: 18,
-                  padding: 18,
-                  marginBottom: 16,
-                }}
-              >
-                <div
-                  style={{
-                    fontFamily: "'Fraunces',serif",
-                    fontSize: 16,
-                    fontWeight: 700,
-                    marginBottom: 14,
-                  }}
-                >
-                  🍽️ Venituri pe categorie
-                </div>
-                {topCategories.map((cat, i) => {
-                  const colors = [
-                    "#c0622f",
-                    "#e07a47",
-                    "#c8a97e",
-                    "#6b9e6b",
-                    "#5b8dd9",
-                    "#8b6a8a",
-                  ];
-                  return (
-                    <div key={cat.name} style={{ marginBottom: 12 }}>
-                      <div
-                        style={{
-                          display: "flex",
-                          justifyContent: "space-between",
-                          marginBottom: 5,
-                        }}
-                      >
-                        <span
-                          style={{
-                            fontSize: 12,
-                            color: "#f0ebe3",
-                            fontWeight: 600,
-                          }}
-                        >
-                          {cat.emoji} {cat.name}
-                        </span>
-                        <div style={{ textAlign: "right" }}>
-                          <span
-                            style={{
-                              fontSize: 12,
-                              color: colors[i],
-                              fontWeight: 700,
-                            }}
-                          >
-                            {cat.pct}%
-                          </span>
-                          <span
-                            style={{
-                              fontSize: 11,
-                              color: "#6b6050",
-                              marginLeft: 6,
-                            }}
-                          >
-                            {fmt(cat.revenue)}
-                          </span>
-                        </div>
-                      </div>
-                      <div
-                        style={{
-                          height: 6,
-                          background: "#2a2218",
-                          borderRadius: 20,
-                          overflow: "hidden",
-                        }}
-                      >
-                        <div
-                          style={{
-                            height: "100%",
-                            borderRadius: 20,
-                            width: `${cat.pct}%`,
-                            background: colors[i],
-                            transition: "width .5s ease",
-                          }}
-                        />
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-
-            {/* Insights */}
+          {/* Insights */}
+          <div
+            style={{
+              background: "#161210",
+              border: "1px solid #2a2218",
+              borderRadius: 18,
+              padding: 18,
+            }}
+          >
             <div
               style={{
-                background: "#161210",
-                border: "1px solid #2a2218",
-                borderRadius: 18,
-                padding: 18,
+                fontFamily: "'Fraunces',serif",
+                fontSize: 16,
+                fontWeight: 700,
+                marginBottom: 14,
               }}
             >
-              <div
-                style={{
-                  fontFamily: "'Fraunces',serif",
-                  fontSize: 16,
-                  fontWeight: 700,
-                  marginBottom: 14,
-                }}
-              >
-                💡 Insights
-              </div>
-              {[
+              💡 Insights
+            </div>
+            {loading ? (
+              <CardLoader />
+            ) : (
+              [
                 {
                   icon: "📈",
                   text: `Cea mai activă zi: ${topDay}`,
@@ -1762,60 +1787,60 @@ export default function StatisticiProprietar() {
                     </div>
                   </div>
                 </div>
-              ))}
-            </div>
-
-            {/* ── PERFORMANTA PER OSPATAR (Pro) ── */}
-            {!isLocked("stats_waiter") && (
-              <OspatarSection
-                period={period}
-                waiterStats={waiterStats}
-                waiterLoading={waiterLoading}
-                setPeriod={setPeriod}
-              />
+              ))
             )}
+          </div>
 
-            {/* ── RATA OCUPARE MESE (Pro) ── */}
-            {!isLocked("stats_waiter") && (
-              <OcupareSection
-                occupancyData={occupancyData}
-                occupancyTables={occupancyTables}
-                occupancyProgram={occupancyProgram}
-                occupancyLoading={occupancyLoading}
-                occupancyWeek={occupancyWeek}
-                occupancyMonth={occupancyMonth}
-                occupancyYear={occupancyYear}
-                setOccupancyWeek={setOccupancyWeek}
-                setOccupancyMonth={setOccupancyMonth}
-                setOccupancyYear={setOccupancyYear}
-                getAvailableMonths={getAvailableMonths}
-              />
-            )}
+          {/* ── PERFORMANTA PER OSPATAR (Pro) ── */}
+          {!isLocked("stats_waiter") && (
+            <OspatarSection
+              period={period}
+              waiterStats={waiterStats}
+              waiterLoading={waiterLoading}
+              setPeriod={setPeriod}
+            />
+          )}
 
-            {/* ── RATING CLIENTI (Pro) ── */}
-            {!isLocked("stats_waiter") && (
-              <RatingSection
-                ratingStats={ratingStats}
-                ratingLoading={ratingLoading}
-                ratingPeriod={ratingPeriod}
-                setRatingPeriod={setRatingPeriod}
-              />
-            )}
+          {/* ── RATA OCUPARE MESE (Pro) ── */}
+          {!isLocked("stats_waiter") && (
+            <OcupareSection
+              occupancyData={occupancyData}
+              occupancyTables={occupancyTables}
+              occupancyProgram={occupancyProgram}
+              occupancyLoading={occupancyLoading}
+              occupancyWeek={occupancyWeek}
+              occupancyMonth={occupancyMonth}
+              occupancyYear={occupancyYear}
+              setOccupancyWeek={setOccupancyWeek}
+              setOccupancyMonth={setOccupancyMonth}
+              setOccupancyYear={setOccupancyYear}
+              getAvailableMonths={getAvailableMonths}
+            />
+          )}
 
-            {/* ── NO-SHOW REZERVARI (Pro) ── */}
-            {!isLocked("stats_waiter") && (
-              <NoShowSection
-                noShowStats={noShowStats}
-                noShowLoading={noShowLoading}
-                noShowPeriod={noShowPeriod}
-                setNoShowPeriod={setNoShowPeriod}
-              />
-            )}
+          {/* ── RATING CLIENTI (Pro) ── */}
+          {!isLocked("stats_waiter") && (
+            <RatingSection
+              ratingStats={ratingStats}
+              ratingLoading={ratingLoading}
+              ratingPeriod={ratingPeriod}
+              setRatingPeriod={setRatingPeriod}
+            />
+          )}
 
-            {/* ── PRO LOCK OVERLAY ── */}
-            {isLocked("stats_waiter") && <ProLockOverlay navigate={navigate} />}
-          </>
-        )}
+          {/* ── NO-SHOW REZERVARI (Pro) ── */}
+          {!isLocked("stats_waiter") && (
+            <NoShowSection
+              noShowStats={noShowStats}
+              noShowLoading={noShowLoading}
+              noShowPeriod={noShowPeriod}
+              setNoShowPeriod={setNoShowPeriod}
+            />
+          )}
+
+          {/* ── PRO LOCK OVERLAY ── */}
+          {isLocked("stats_waiter") && <ProLockOverlay navigate={navigate} />}
+        </>
       </div>
     </div>
   );
