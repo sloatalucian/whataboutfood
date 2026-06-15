@@ -6,39 +6,56 @@ export const SUPABASE_ANON_KEY =
 
 // Lock custom cu fallback - previne blocajul cauzat de lock-uri orfane
 // dupa ce tab-ul a fost suspendat in inactivitate.
-// Daca lock-ul "lock:waf-session" e liber → il foloseste normal (serializare corecta intre tab-uri).
-// Daca e ocupat sau orfan → ruleaza direct fara sa astepte (evita blocajul "Se incarca" infinit).
+//
+// Comportament:
+// - Lock LIBER → il obtine si ruleaza fn() in interiorul lui (serializare
+//   corecta intre tab-uri, exact ca un lock Web Locks normal).
+// - Lock OCUPAT/ORFAN → dupa un timeout scurt (LOCK_TIMEOUT_MS) abortam cererea,
+//   request() arunca AbortError, il prindem si rulam fn() DIRECT, fara lock.
+//   Astfel nu ramanem niciodata blocati pe un lock care nu se mai elibereaza
+//   (cazul "Se incarca..." / "Se verifica..." infinit dupa inactivitate).
+//
+// fn() ruleaza EXACT O SINGURA DATA in toate cazurile:
+// - daca lock-ul e obtinut → ruleaza in interiorul callback-ului;
+// - daca cererea e abortata INAINTE de obtinerea lock-ului → callback-ul NU mai
+//   este apelat de browser, deci ruleaza doar in ramura catch.
+//
+// NU folosim AbortSignal.timeout(...) pentru ca nu e suportat pe iOS Safari 15;
+// folosim AbortController + setTimeout manual (compatibil universal).
+const LOCK_TIMEOUT_MS = 5000;
+
 const lockWithFallback = async (name, acquireTimeout, fn) => {
   // Web Locks API indisponibil (browsere foarte vechi) → rulam direct
   if (typeof navigator === "undefined" || !navigator.locks) {
     return await fn();
   }
 
-  let ranInLock = false;
-  let result;
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => {
+    // Lock-ul nu s-a obtinut in LOCK_TIMEOUT_MS → il consideram orfan/blocat
+    // si abortam cererea ca sa iesim din asteptare.
+    controller.abort();
+  }, LOCK_TIMEOUT_MS);
+
   try {
-    result = await navigator.locks.request(
+    // Daca lock-ul e liber, callback-ul ruleaza imediat cu fn() in interior.
+    // Daca e ocupat, request() asteapta; la abort, arunca AbortError (catch-ul de jos).
+    return await navigator.locks.request(
       name,
-      { ifAvailable: true },
-      async (lock) => {
-        if (lock) {
-          // Lock obtinut cu succes → executam in interiorul lui
-          ranInLock = true;
-          return await fn();
-        }
-        // Lock ocupat/orfan → iesim imediat, rulam mai jos fara lock
-        return undefined;
+      { signal: controller.signal },
+      async () => {
+        return await fn();
       },
     );
   } catch (e) {
-    ranInLock = false;
-  }
-
-  // Daca nu am reusit sa rulam in lock (ocupat/orfan), rulam direct
-  if (!ranInLock) {
+    // AbortError (lock orfan/blocat, timeout depasit) SAU orice alta eroare
+    // legata de lock → rulam fn() direct, o singura data.
+    // Important: daca cererea a fost abortata inainte de a obtine lock-ul,
+    // callback-ul de mai sus NU a fost apelat, deci fn() NU a rulat inca.
     return await fn();
+  } finally {
+    clearTimeout(timeoutId);
   }
-  return result;
 };
 
 export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
