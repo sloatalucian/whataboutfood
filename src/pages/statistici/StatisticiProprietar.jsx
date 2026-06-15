@@ -20,18 +20,20 @@ const heatColor = (pct) => {
   return { bg: "rgba(255,255,255,.04)", color: "#6b6050" };
 };
 
-// Loader local, afisat in interiorul fiecarui card la reincarcare,
-// astfel incat scheletul paginii sa ramana vizibil (nu se mai reseteaza tot ecranul).
-const CardLoader = ({ pad = "20px 0" }) => (
+// Wrapper care, la reincarcare, pastreaza continutul cardului randat la aceeasi
+// inaltime si doar il estompeaza usor (dim in place), in loc sa-l inlocuiasca cu
+// un loader care ar micsora cardul. Astfel cardul ramane la marimea sa, nu mai
+// exista salt de layout, iar datele se actualizeaza pe loc cand sosesc.
+const Refreshing = ({ loading, children, style }) => (
   <div
     style={{
-      textAlign: "center",
-      padding: pad,
-      color: "#6b6050",
-      fontSize: 13,
+      opacity: loading ? 0.4 : 1,
+      transition: "opacity .25s ease",
+      pointerEvents: loading ? "none" : "auto",
+      ...style,
     }}
   >
-    Se încarcă...
+    {children}
   </div>
 );
 
@@ -1013,9 +1015,7 @@ export default function StatisticiProprietar() {
           >
             Astăzi
           </div>
-          {loading ? (
-            <CardLoader />
-          ) : (
+          <Refreshing loading={loading}>
             <div
               style={{
                 display: "grid",
@@ -1071,7 +1071,7 @@ export default function StatisticiProprietar() {
                 </div>
               ))}
             </div>
-          )}
+          </Refreshing>
 
           {/* Sumar */}
           <div
@@ -1085,9 +1085,7 @@ export default function StatisticiProprietar() {
           >
             Sumar luna curentă
           </div>
-          {loading ? (
-            <CardLoader />
-          ) : (
+          <Refreshing loading={loading}>
             <div
               style={{
                 display: "grid",
@@ -1125,7 +1123,7 @@ export default function StatisticiProprietar() {
                 color="#5b8dd9"
               />
             </div>
-          )}
+          </Refreshing>
 
           {/* Grafic venituri */}
           <div
@@ -1235,51 +1233,47 @@ export default function StatisticiProprietar() {
               </div>
             )}
 
-            {loading ? (
-              <CardLoader pad="30px 0" />
-            ) : (
-              <>
-                <div style={{ marginBottom: 12 }}>
-                  <span
-                    style={{
-                      fontFamily: "'Fraunces',serif",
-                      fontSize: 28,
-                      fontWeight: 900,
-                      color: "#c8a97e",
-                    }}
-                  >
-                    {fmt(totalPeriod)}
-                  </span>
-                  <span
-                    style={{
-                      fontSize: 12,
-                      color: "#6b6050",
-                      marginLeft: 8,
-                    }}
-                  >
-                    {period === "zi"
-                      ? "azi"
-                      : period === "saptamana"
-                        ? "această săptămână"
-                        : "această lună"}
-                  </span>
+            <Refreshing loading={loading}>
+              <div style={{ marginBottom: 12 }}>
+                <span
+                  style={{
+                    fontFamily: "'Fraunces',serif",
+                    fontSize: 28,
+                    fontWeight: 900,
+                    color: "#c8a97e",
+                  }}
+                >
+                  {fmt(totalPeriod)}
+                </span>
+                <span
+                  style={{
+                    fontSize: 12,
+                    color: "#6b6050",
+                    marginLeft: 8,
+                  }}
+                >
+                  {period === "zi"
+                    ? "azi"
+                    : period === "saptamana"
+                      ? "această săptămână"
+                      : "această lună"}
+                </span>
+              </div>
+              {revenueData.length > 0 ? (
+                <BarChart data={revenueData} color="#c0622f" height={140} />
+              ) : (
+                <div
+                  style={{
+                    textAlign: "center",
+                    padding: "30px 0",
+                    color: "#6b6050",
+                    fontSize: 12,
+                  }}
+                >
+                  Nicio comandă în această perioadă
                 </div>
-                {revenueData.length > 0 ? (
-                  <BarChart data={revenueData} color="#c0622f" height={140} />
-                ) : (
-                  <div
-                    style={{
-                      textAlign: "center",
-                      padding: "30px 0",
-                      color: "#6b6050",
-                      fontSize: 12,
-                    }}
-                  >
-                    Nicio comandă în această perioadă
-                  </div>
-                )}
-              </>
-            )}
+              )}
+            </Refreshing>
           </div>
 
           {/* Top produse */}
@@ -1302,117 +1296,117 @@ export default function StatisticiProprietar() {
             >
               🏆 Top Produse
             </div>
-            {loading ? (
-              <CardLoader />
-            ) : topProducts.length === 0 ? (
-              <div
-                style={{
-                  textAlign: "center",
-                  padding: "20px 0",
-                  color: "#6b6050",
-                  fontSize: 12,
-                }}
-              >
-                Nicio comandă înregistrată
-              </div>
-            ) : (
-              topProducts.map((p, i) => (
-                <div key={p.name} style={{ marginBottom: 12 }}>
-                  <div
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 10,
-                      marginBottom: 5,
-                    }}
-                  >
+            <Refreshing loading={loading}>
+              {topProducts.length === 0 ? (
+                <div
+                  style={{
+                    textAlign: "center",
+                    padding: "20px 0",
+                    color: "#6b6050",
+                    fontSize: 12,
+                  }}
+                >
+                  Nicio comandă înregistrată
+                </div>
+              ) : (
+                topProducts.map((p, i) => (
+                  <div key={p.name} style={{ marginBottom: 12 }}>
                     <div
                       style={{
-                        width: 24,
-                        height: 24,
-                        borderRadius: 8,
-                        flexShrink: 0,
-                        background:
-                          i === 0
-                            ? "rgba(200,169,126,.3)"
-                            : i === 1
-                              ? "rgba(255,255,255,.08)"
-                              : i === 2
-                                ? "rgba(192,98,47,.15)"
-                                : "rgba(255,255,255,.04)",
                         display: "flex",
                         alignItems: "center",
-                        justifyContent: "center",
-                        fontFamily: "'Fraunces',serif",
-                        fontSize: 11,
-                        fontWeight: 900,
-                        color:
-                          i === 0
-                            ? "#c8a97e"
-                            : i === 1
-                              ? "#aaa"
-                              : i === 2
-                                ? "#c0622f"
-                                : "#6b6050",
+                        gap: 10,
+                        marginBottom: 5,
                       }}
                     >
-                      {i + 1}
-                    </div>
-                    <span style={{ fontSize: 18 }}>{p.emoji}</span>
-                    <div style={{ flex: 1, minWidth: 0 }}>
                       <div
                         style={{
-                          fontSize: 13,
-                          fontWeight: 600,
-                          color: "#f0ebe3",
-                          whiteSpace: "nowrap",
-                          overflow: "hidden",
-                          textOverflow: "ellipsis",
+                          width: 24,
+                          height: 24,
+                          borderRadius: 8,
+                          flexShrink: 0,
+                          background:
+                            i === 0
+                              ? "rgba(200,169,126,.3)"
+                              : i === 1
+                                ? "rgba(255,255,255,.08)"
+                                : i === 2
+                                  ? "rgba(192,98,47,.15)"
+                                  : "rgba(255,255,255,.04)",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          fontFamily: "'Fraunces',serif",
+                          fontSize: 11,
+                          fontWeight: 900,
+                          color:
+                            i === 0
+                              ? "#c8a97e"
+                              : i === 1
+                                ? "#aaa"
+                                : i === 2
+                                  ? "#c0622f"
+                                  : "#6b6050",
                         }}
                       >
-                        {p.name}
+                        {i + 1}
+                      </div>
+                      <span style={{ fontSize: 18 }}>{p.emoji}</span>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div
+                          style={{
+                            fontSize: 13,
+                            fontWeight: 600,
+                            color: "#f0ebe3",
+                            whiteSpace: "nowrap",
+                            overflow: "hidden",
+                            textOverflow: "ellipsis",
+                          }}
+                        >
+                          {p.name}
+                        </div>
+                      </div>
+                      <div style={{ textAlign: "right", flexShrink: 0 }}>
+                        <div
+                          style={{
+                            fontSize: 12,
+                            fontWeight: 700,
+                            color: "#c8a97e",
+                          }}
+                        >
+                          {p.orders} comenzi
+                        </div>
+                        <div style={{ fontSize: 10, color: "#6b6050" }}>
+                          {fmt(p.revenue)}
+                        </div>
                       </div>
                     </div>
-                    <div style={{ textAlign: "right", flexShrink: 0 }}>
-                      <div
-                        style={{
-                          fontSize: 12,
-                          fontWeight: 700,
-                          color: "#c8a97e",
-                        }}
-                      >
-                        {p.orders} comenzi
-                      </div>
-                      <div style={{ fontSize: 10, color: "#6b6050" }}>
-                        {fmt(p.revenue)}
-                      </div>
-                    </div>
-                  </div>
-                  <div
-                    style={{
-                      marginLeft: 34,
-                      height: 4,
-                      background: "#2a2218",
-                      borderRadius: 20,
-                      overflow: "hidden",
-                    }}
-                  >
                     <div
                       style={{
-                        height: "100%",
+                        marginLeft: 34,
+                        height: 4,
+                        background: "#2a2218",
                         borderRadius: 20,
-                        width: `${p.pct}%`,
-                        background:
-                          i < 3
-                            ? "linear-gradient(90deg,#c0622f,#e07a47)"
-                            : "linear-gradient(90deg,#2a2218,#3a3228)",
-                        transition: "width .5s ease",
+                        overflow: "hidden",
                       }}
-                    />
+                    >
+                      <div
+                        style={{
+                          height: "100%",
+                          borderRadius: 20,
+                          width: `${p.pct}%`,
+                          background:
+                            i < 3
+                              ? "linear-gradient(90deg,#c0622f,#e07a47)"
+                              : "linear-gradient(90deg,#2a2218,#3a3228)",
+                          transition: "width .5s ease",
+                        }}
+                      />
+                    </div>
                   </div>
-                </div>
-              ))
-            )}
+                ))
+              )}
+            </Refreshing>
           </div>
 
           {/* Heatmap */}
@@ -1729,10 +1723,8 @@ export default function StatisticiProprietar() {
             >
               💡 Insights
             </div>
-            {loading ? (
-              <CardLoader />
-            ) : (
-              [
+            <Refreshing loading={loading}>
+              {[
                 {
                   icon: "📈",
                   text: `Cea mai activă zi: ${topDay}`,
@@ -1787,8 +1779,8 @@ export default function StatisticiProprietar() {
                     </div>
                   </div>
                 </div>
-              ))
-            )}
+              ))}
+            </Refreshing>
           </div>
 
           {/* ── PERFORMANTA PER OSPATAR (Pro) ── */}
