@@ -312,7 +312,6 @@ export default function FloorEditor() {
   // ── Adaugă masă ──
   const addTable = (seats) => {
     const floor = floors[floorIdx];
-    const tableNum = (floor.tables?.length || 0) + 1;
     // Prefix: TP = Parter, TE1/TE2 = Etaj, TT = Terasa
     let prefix;
     if (floor.type === "terrace") {
@@ -324,6 +323,18 @@ export default function FloorEditor() {
       const floorNum = indoorFloors.indexOf(floor);
       prefix = floorNum === 0 ? "TP" : `TE${floorNum}-`;
     }
+    // Numarul mesei = cel mai mare numar existent (cu acest prefix) + 1.
+    // NU folosim length, pentru ca daca stergi o masa din mijloc si adaugi
+    // alta, length+1 ar putea genera o eticheta care exista deja -> duplicat.
+    const existingNums = (floor.tables || [])
+      .map((t) => {
+        if (!t.label || !t.label.startsWith(prefix)) return 0;
+        const n = parseInt(t.label.slice(prefix.length), 10);
+        return Number.isNaN(n) ? 0 : n;
+      })
+      .filter((n) => n > 0);
+    const tableNum =
+      existingNums.length > 0 ? Math.max(...existingNums) + 1 : 1;
     const newTable = {
       id: `local_t_${Date.now()}`,
       label: `${prefix}${tableNum}`,
