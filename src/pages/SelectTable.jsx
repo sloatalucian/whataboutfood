@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { supabase } from "../supabase";
 import { useTable, TABLE_STATUS } from "../context/TableContext";
 import { useApp } from "../context/AppContext";
+import { TableShape, FixedShape } from "../components/FloorShapes";
 
 export function SelectTable({ restaurant, onSelected, onBack }) {
   const { getStatus, occupyTable } = useTable();
@@ -673,9 +674,6 @@ export function SelectTable({ restaurant, onSelected, onBack }) {
                     top: el.y,
                     width: el.w,
                     height: el.h,
-                    background: `${el.color}22`,
-                    border: `2px solid ${el.color}66`,
-                    borderRadius: 8,
                     display: "flex",
                     flexDirection: "column",
                     alignItems: "center",
@@ -684,9 +682,16 @@ export function SelectTable({ restaurant, onSelected, onBack }) {
                     pointerEvents: "none",
                   }}
                 >
-                  <span style={{ fontSize: 16 }}>{el.icon}</span>
+                  <div style={{ width: "100%", flex: 1, minHeight: 0 }}>
+                    <FixedShape type={el.type} color={el.color} />
+                  </div>
                   <span
-                    style={{ fontSize: 8, color: el.color, fontWeight: 700 }}
+                    style={{
+                      fontSize: 8,
+                      color: el.color,
+                      fontWeight: 700,
+                      whiteSpace: "nowrap",
+                    }}
                   >
                     {el.label}
                   </span>
@@ -697,8 +702,8 @@ export function SelectTable({ restaurant, onSelected, onBack }) {
                 const cfg = TABLE_STATUS[status] || TABLE_STATUS.free;
                 const isFree = status === "free";
                 const isSel = confirming?.id === table.id;
-                const w = table.seats <= 2 ? 52 : table.seats <= 4 ? 64 : 80;
-                const h = table.seats <= 2 ? 52 : table.seats <= 4 ? 64 : 52;
+                const w = table.seats <= 2 ? 56 : table.seats <= 4 ? 70 : 90;
+                const h = table.seats <= 2 ? 56 : table.seats <= 4 ? 70 : 64;
                 return (
                   <div
                     key={table.id}
@@ -709,44 +714,65 @@ export function SelectTable({ restaurant, onSelected, onBack }) {
                       top: table.y,
                       width: w,
                       height: h,
-                      background: cfg.bg,
-                      border: `2px solid ${isSel ? "#fff" : cfg.border}`,
-                      borderRadius: 10,
                       display: "flex",
                       flexDirection: "column",
                       alignItems: "center",
                       justifyContent: "center",
-                      gap: 1,
                       cursor: isFree ? "pointer" : "not-allowed",
-                      outline: isSel ? "3px solid #fff" : "none",
                       transform: isSel ? "scale(1.1)" : "scale(1)",
                       transition: "transform .15s",
+                      filter: isSel
+                        ? "drop-shadow(0 0 6px rgba(255,255,255,.7))"
+                        : "none",
                     }}
                   >
-                    <span style={{ fontSize: 14, pointerEvents: "none" }}>
-                      🪑
-                    </span>
-                    <span
+                    {/* Forma mesei (blat lemn + scaune). Voalul de status coloreaza
+                        blatul cand masa nu e libera; pentru free ramane lemn natural. */}
+                    <div
                       style={{
-                        fontFamily: "'Fraunces',serif",
-                        fontSize: 12,
-                        fontWeight: 700,
-                        color: cfg.color,
+                        width: "100%",
+                        flex: 1,
+                        minHeight: 0,
                         pointerEvents: "none",
                       }}
                     >
-                      {table.label}
-                    </span>
-                    <span
+                      <TableShape
+                        seats={table.seats}
+                        statusColor={isFree ? null : cfg.border}
+                      />
+                    </div>
+                    {/* Eticheta + capacitatea, sub forma */}
+                    <div
                       style={{
-                        fontSize: 9,
-                        color: cfg.color,
-                        opacity: 0.7,
+                        display: "flex",
+                        alignItems: "baseline",
+                        gap: 4,
                         pointerEvents: "none",
+                        lineHeight: 1,
+                        marginTop: 1,
                       }}
                     >
-                      {table.seats}p
-                    </span>
+                      <span
+                        style={{
+                          fontFamily: "'Fraunces',serif",
+                          fontSize: 12,
+                          fontWeight: 700,
+                          color: cfg.color,
+                        }}
+                      >
+                        {table.label}
+                      </span>
+                      <span
+                        style={{
+                          fontSize: 10,
+                          fontWeight: 700,
+                          color: cfg.color,
+                          opacity: 0.8,
+                        }}
+                      >
+                        {table.seats}p
+                      </span>
+                    </div>
                   </div>
                 );
               })}

@@ -3,6 +3,7 @@ import { supabase } from "../supabase";
 import { useApp } from "../context/AppContext";
 import { useTable, TABLE_STATUS } from "../context/TableContext";
 import { PLANS } from "../data/constants";
+import { TableShape, FixedShape } from "../components/FloorShapes";
 
 // ─── DATE IMPLICITE PROGRAM ───────────────────────────────────────────────────
 const ZILE = [
@@ -666,22 +667,23 @@ function LiveTablesModal({ restaurant, onClose }) {
                           top: el.y,
                           width: el.w || 60,
                           height: el.h || 60,
-                          borderRadius: 10,
-                          background: `${el.color || "#2a2218"}22`,
-                          border: `1px solid ${el.color || "#2a2218"}55`,
                           display: "flex",
                           flexDirection: "column",
                           alignItems: "center",
                           justifyContent: "center",
+                          gap: 2,
                           pointerEvents: "none",
                         }}
                       >
-                        <span style={{ fontSize: 18 }}>{el.icon}</span>
+                        <div style={{ width: "100%", flex: 1, minHeight: 0 }}>
+                          <FixedShape type={el.type} color={el.color} />
+                        </div>
                         <span
                           style={{
                             fontSize: 8,
                             color: el.color || "#6b6050",
                             fontWeight: 700,
+                            whiteSpace: "nowrap",
                           }}
                         >
                           {el.label}
@@ -697,12 +699,6 @@ function LiveTablesModal({ restaurant, onClose }) {
                         reserved: "#c8a97e",
                         paid: "#5b8dd9",
                       };
-                      const bgs = {
-                        free: "rgba(74,110,74,.15)",
-                        occupied: "rgba(192,98,47,.2)",
-                        reserved: "rgba(200,169,126,.15)",
-                        paid: "rgba(91,141,217,.15)",
-                      };
                       const icons = {
                         free: "",
                         occupied: "🍽️",
@@ -710,7 +706,9 @@ function LiveTablesModal({ restaurant, onClose }) {
                         paid: "💳",
                       };
                       const w =
-                        table.seats <= 2 ? 52 : table.seats <= 4 ? 64 : 80;
+                        table.seats <= 2 ? 56 : table.seats <= 4 ? 70 : 90;
+                      const h =
+                        table.seats <= 2 ? 56 : table.seats <= 4 ? 70 : 64;
                       return (
                         <div
                           key={table.id}
@@ -719,39 +717,70 @@ function LiveTablesModal({ restaurant, onClose }) {
                             left: table.x,
                             top: table.y,
                             width: w,
-                            height: w * 0.85,
-                            borderRadius: 12,
-                            background: bgs[status],
-                            border: `2px solid ${colors[status]}`,
+                            height: h,
                             display: "flex",
                             flexDirection: "column",
                             alignItems: "center",
                             justifyContent: "center",
-                            gap: 1,
                           }}
                         >
                           <div
                             style={{
-                              fontFamily: "'Fraunces',serif",
-                              fontSize: 13,
-                              fontWeight: 700,
-                              color: colors[status],
+                              width: "100%",
+                              flex: 1,
+                              minHeight: 0,
+                              position: "relative",
                             }}
                           >
-                            {table.label}
+                            <TableShape
+                              seats={table.seats}
+                              statusColor={
+                                status === "free" ? null : colors[status]
+                              }
+                            />
+                            {icons[status] && (
+                              <div
+                                style={{
+                                  position: "absolute",
+                                  top: 0,
+                                  right: 0,
+                                  fontSize: 10,
+                                }}
+                              >
+                                {icons[status]}
+                              </div>
+                            )}
                           </div>
                           <div
                             style={{
-                              fontSize: 8,
-                              color: colors[status],
-                              opacity: 0.7,
+                              display: "flex",
+                              alignItems: "baseline",
+                              gap: 4,
+                              lineHeight: 1,
+                              marginTop: 1,
                             }}
                           >
-                            {table.seats}p
+                            <span
+                              style={{
+                                fontFamily: "'Fraunces',serif",
+                                fontSize: 13,
+                                fontWeight: 700,
+                                color: colors[status],
+                              }}
+                            >
+                              {table.label}
+                            </span>
+                            <span
+                              style={{
+                                fontSize: 9,
+                                fontWeight: 700,
+                                color: colors[status],
+                                opacity: 0.8,
+                              }}
+                            >
+                              {table.seats}p
+                            </span>
                           </div>
-                          {icons[status] && (
-                            <div style={{ fontSize: 10 }}>{icons[status]}</div>
-                          )}
                         </div>
                       );
                     })}

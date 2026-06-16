@@ -1,3 +1,5 @@
+import { TableShape, FixedShape } from "../components/FloorShapes";
+
 export function WaiterMap({
   tables,
   tableStates,
@@ -263,9 +265,6 @@ export function WaiterMap({
                     top: el.y,
                     width: el.w || 60,
                     height: el.h || 60,
-                    borderRadius: 10,
-                    background: `${el.color || "#2a2218"}22`,
-                    border: `1px solid ${el.color || "#2a2218"}44`,
                     display: "flex",
                     flexDirection: "column",
                     alignItems: "center",
@@ -274,12 +273,15 @@ export function WaiterMap({
                     pointerEvents: "none",
                   }}
                 >
-                  <span style={{ fontSize: 18 }}>{el.icon}</span>
+                  <div style={{ width: "100%", flex: 1, minHeight: 0 }}>
+                    <FixedShape type={el.type} color={el.color} />
+                  </div>
                   <span
                     style={{
                       fontSize: 9,
                       color: el.color || "#6b6050",
                       fontWeight: 700,
+                      whiteSpace: "nowrap",
                     }}
                   >
                     {el.label}
@@ -323,14 +325,8 @@ export function WaiterMap({
                   occupied: "#c0622f",
                   paid: "#5b8dd9",
                 };
-                const bgs = {
-                  free: "rgba(74,110,74,.15)",
-                  reserved: "rgba(200,169,126,.15)",
-                  occupied: "rgba(192,98,47,.15)",
-                  paid: "rgba(91,141,217,.15)",
-                };
-                const w = table.seats <= 2 ? 52 : table.seats <= 4 ? 64 : 80;
-                const h = table.seats <= 2 ? 52 : table.seats <= 4 ? 64 : 52;
+                const w = table.seats <= 2 ? 56 : table.seats <= 4 ? 70 : 90;
+                const h = table.seats <= 2 ? 56 : table.seats <= 4 ? 70 : 64;
                 return (
                   <div
                     key={table.id}
@@ -340,14 +336,10 @@ export function WaiterMap({
                       top: table.y,
                       width: w,
                       height: h,
-                      borderRadius: 12,
-                      background: bgs[status],
-                      border: `2px solid ${colors[status]}`,
                       display: "flex",
                       flexDirection: "column",
                       alignItems: "center",
                       justifyContent: "center",
-                      gap: 1,
                       cursor: status === "occupied" ? "pointer" : "default",
                     }}
                     onClick={() => {
@@ -357,22 +349,47 @@ export function WaiterMap({
                   >
                     <div
                       style={{
-                        fontFamily: "'Fraunces',serif",
-                        fontSize: 13,
-                        fontWeight: 700,
-                        color: colors[status],
+                        width: "100%",
+                        flex: 1,
+                        minHeight: 0,
+                        pointerEvents: "none",
                       }}
                     >
-                      {table.label}
+                      <TableShape
+                        seats={table.seats}
+                        statusColor={status === "free" ? null : colors[status]}
+                      />
                     </div>
                     <div
                       style={{
-                        fontSize: 8,
-                        color: colors[status],
-                        opacity: 0.7,
+                        display: "flex",
+                        alignItems: "baseline",
+                        gap: 4,
+                        lineHeight: 1,
+                        marginTop: 1,
+                        pointerEvents: "none",
                       }}
                     >
-                      {table.seats}p
+                      <span
+                        style={{
+                          fontFamily: "'Fraunces',serif",
+                          fontSize: 13,
+                          fontWeight: 700,
+                          color: colors[status],
+                        }}
+                      >
+                        {table.label}
+                      </span>
+                      <span
+                        style={{
+                          fontSize: 9,
+                          fontWeight: 700,
+                          color: colors[status],
+                          opacity: 0.8,
+                        }}
+                      >
+                        {table.seats}p
+                      </span>
                     </div>
                     {status === "occupied" && (
                       <div
@@ -380,6 +397,7 @@ export function WaiterMap({
                           fontSize: 7,
                           color: "#5b8dd9",
                           fontWeight: 700,
+                          pointerEvents: "none",
                         }}
                       >
                         → Achitat
@@ -391,6 +409,7 @@ export function WaiterMap({
                           fontSize: 7,
                           color: "#6b9e6b",
                           fontWeight: 700,
+                          pointerEvents: "none",
                         }}
                       >
                         → Eliberează

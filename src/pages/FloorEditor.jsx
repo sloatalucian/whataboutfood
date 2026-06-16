@@ -1,7 +1,8 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useApp } from "../context/AppContext";
 import { supabase } from "../supabase";
-import { tableClass, PLANS } from "../data/constants";
+import { PLANS } from "../data/constants";
+import { TableShape, FixedShape } from "../components/FloorShapes";
 
 const FIXED_ELEMENTS = [
   {
@@ -654,7 +655,10 @@ export default function FloorEditor() {
             {[
               { seats: 2, label: "⭕ 2p" },
               { seats: 4, label: "⬛ 4p" },
+              { seats: 6, label: "▭ 6p" },
               { seats: 8, label: "▬ 8p" },
+              { seats: 12, label: "▬ 12p" },
+              { seats: 16, label: "▬ 16p" },
             ].map((b) => (
               <button
                 key={b.seats}
@@ -877,15 +881,23 @@ export default function FloorEditor() {
                       setSelectedNode(el.id);
                     }}
                   >
-                    <span style={{ fontSize: 18, pointerEvents: "none" }}>
-                      {el.icon}
-                    </span>
+                    <div
+                      style={{
+                        width: "100%",
+                        flex: 1,
+                        minHeight: 0,
+                        pointerEvents: "none",
+                      }}
+                    >
+                      <FixedShape type={el.type} color={el.color} />
+                    </div>
                     <span
                       style={{
                         fontSize: 9,
                         color: el.color,
                         fontWeight: 700,
                         pointerEvents: "none",
+                        whiteSpace: "nowrap",
                       }}
                     >
                       {el.label}
@@ -894,28 +906,91 @@ export default function FloorEditor() {
                 ))}
 
                 {/* Mese */}
-                {(currentFloor?.tables || []).map((t) => (
-                  <div
-                    key={t.id}
-                    className={`tnode ${tableClass(t.seats)} draggable ${selectedNode === t.id ? "sel-node" : ""}`}
-                    style={{
-                      left: t.x,
-                      top: t.y,
-                      cursor: "grab",
-                      touchAction: "none",
-                      userSelect: "none",
-                    }}
-                    onMouseDown={(e) => onNodeDown(e, t.id)}
-                    onTouchStart={(e) => onNodeDown(e, t.id)}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setSelectedNode(t.id);
-                    }}
-                  >
-                    🪑<span>{t.label}</span>
-                    <span className="tnode-seats">{t.seats}p</span>
-                  </div>
-                ))}
+                {(currentFloor?.tables || []).map((t) => {
+                  const w =
+                    t.seats <= 2
+                      ? 56
+                      : t.seats <= 4
+                        ? 70
+                        : t.seats <= 6
+                          ? 90
+                          : t.seats <= 8
+                            ? 108
+                            : t.seats <= 12
+                              ? 132
+                              : 160;
+                  const h = t.seats <= 2 ? 56 : t.seats <= 4 ? 70 : 72;
+                  return (
+                    <div
+                      key={t.id}
+                      style={{
+                        position: "absolute",
+                        left: t.x,
+                        top: t.y,
+                        width: w,
+                        height: h,
+                        cursor: "grab",
+                        touchAction: "none",
+                        userSelect: "none",
+                        display: "flex",
+                        flexDirection: "column",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        borderRadius: 10,
+                        outline:
+                          selectedNode === t.id ? "3px solid #c0622f" : "none",
+                        outlineOffset: 2,
+                      }}
+                      onMouseDown={(e) => onNodeDown(e, t.id)}
+                      onTouchStart={(e) => onNodeDown(e, t.id)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSelectedNode(t.id);
+                      }}
+                    >
+                      <div
+                        style={{
+                          width: "100%",
+                          flex: 1,
+                          minHeight: 0,
+                          pointerEvents: "none",
+                        }}
+                      >
+                        <TableShape seats={t.seats} statusColor={null} />
+                      </div>
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "baseline",
+                          gap: 4,
+                          lineHeight: 1,
+                          marginTop: 1,
+                          pointerEvents: "none",
+                        }}
+                      >
+                        <span
+                          style={{
+                            fontSize: 11,
+                            fontWeight: 700,
+                            color: "#c8a97e",
+                          }}
+                        >
+                          {t.label}
+                        </span>
+                        <span
+                          style={{
+                            fontSize: 10,
+                            fontWeight: 700,
+                            color: "#c8a97e",
+                            opacity: 0.8,
+                          }}
+                        >
+                          {t.seats}p
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })}
 
                 {allNodes.length === 0 && (
                   <div
