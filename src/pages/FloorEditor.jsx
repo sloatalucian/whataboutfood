@@ -216,6 +216,7 @@ export default function FloorEditor() {
             seats: t.seats,
             x: Math.round(t.x),
             y: Math.round(t.y),
+            rotation: t.rotation || 0,
           }));
           await supabase.from("tables").insert(tablesToInsert);
         }
@@ -232,6 +233,7 @@ export default function FloorEditor() {
             w: e.w,
             h: e.h,
             color: e.color,
+            rotation: e.rotation || 0,
           }));
           await supabase.from("floor_elements").insert(elementsToInsert);
         }
@@ -360,6 +362,29 @@ export default function FloorEditor() {
       }),
     );
     setSelectedNode(null);
+  };
+
+  // ── Rotește nodul selectat cu 90° (mese + bar/kitchen) ──
+  const rotateSelected = () => {
+    if (!selectedNode) return;
+    setFloors((prev) =>
+      prev.map((f, i) => {
+        if (i !== floorIdx) return f;
+        return {
+          ...f,
+          tables: (f.tables || []).map((t) =>
+            t.id === selectedNode
+              ? { ...t, rotation: ((t.rotation || 0) + 90) % 360 }
+              : t,
+          ),
+          elements: (f.elements || []).map((e) =>
+            e.id === selectedNode
+              ? { ...e, rotation: ((e.rotation || 0) + 90) % 360 }
+              : e,
+          ),
+        };
+      }),
+    );
   };
 
   // ── Adaugă etaj ──
@@ -676,6 +701,26 @@ export default function FloorEditor() {
                 + {b.label}
               </button>
             ))}
+            {selectedNode &&
+              selectedItem &&
+              (selectedItem.seats !== undefined ||
+                selectedItem.type === "bar" ||
+                selectedItem.type === "kitchen") && (
+                <button
+                  onClick={rotateSelected}
+                  style={{
+                    padding: "8px 14px",
+                    borderRadius: 12,
+                    background: "none",
+                    border: "1px solid rgba(200,169,126,.35)",
+                    color: "var(--warm)",
+                    fontSize: 12,
+                    cursor: "pointer",
+                  }}
+                >
+                  ↻ Rotește 90°
+                </button>
+              )}
             {selectedNode && (
               <button
                 onClick={deleteSelected}
@@ -873,6 +918,10 @@ export default function FloorEditor() {
                           : "none",
                       userSelect: "none",
                       touchAction: "none",
+                      transform: el.rotation
+                        ? `rotate(${el.rotation}deg)`
+                        : "none",
+                      transition: "transform .2s ease",
                     }}
                     onMouseDown={(e) => onNodeDown(e, el.id)}
                     onTouchStart={(e) => onNodeDown(e, el.id)}
@@ -940,6 +989,10 @@ export default function FloorEditor() {
                         outline:
                           selectedNode === t.id ? "3px solid #c0622f" : "none",
                         outlineOffset: 2,
+                        transform: t.rotation
+                          ? `rotate(${t.rotation}deg)`
+                          : "none",
+                        transition: "transform .2s ease",
                       }}
                       onMouseDown={(e) => onNodeDown(e, t.id)}
                       onTouchStart={(e) => onNodeDown(e, t.id)}

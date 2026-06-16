@@ -673,6 +673,9 @@ function LiveTablesModal({ restaurant, onClose }) {
                           justifyContent: "center",
                           gap: 2,
                           pointerEvents: "none",
+                          transform: el.rotation
+                            ? `rotate(${el.rotation}deg)`
+                            : "none",
                         }}
                       >
                         <div style={{ width: "100%", flex: 1, minHeight: 0 }}>
@@ -722,6 +725,9 @@ function LiveTablesModal({ restaurant, onClose }) {
                             flexDirection: "column",
                             alignItems: "center",
                             justifyContent: "center",
+                            transform: table.rotation
+                              ? `rotate(${table.rotation}deg)`
+                              : "none",
                           }}
                         >
                           <div

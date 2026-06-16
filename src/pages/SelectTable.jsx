@@ -680,6 +680,9 @@ export function SelectTable({ restaurant, onSelected, onBack }) {
                     justifyContent: "center",
                     gap: 2,
                     pointerEvents: "none",
+                    transform: el.rotation
+                      ? `rotate(${el.rotation}deg)`
+                      : "none",
                   }}
                 >
                   <div style={{ width: "100%", flex: 1, minHeight: 0 }}>
@@ -719,7 +722,7 @@ export function SelectTable({ restaurant, onSelected, onBack }) {
                       alignItems: "center",
                       justifyContent: "center",
                       cursor: isFree ? "pointer" : "not-allowed",
-                      transform: isSel ? "scale(1.1)" : "scale(1)",
+                      transform: `rotate(${table.rotation || 0}deg) scale(${isSel ? 1.1 : 1})`,
                       transition: "transform .15s",
                       filter: isSel
                         ? "drop-shadow(0 0 6px rgba(255,255,255,.7))"

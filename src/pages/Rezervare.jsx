@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { useApp } from "../context/AppContext";
 import { supabase } from "../supabase";
+import { TableShape, FixedShape } from "../components/FloorShapes";
 
 export function Rezervare() {
   const { state, dispatch, navigate, showToast } = useApp();
@@ -889,22 +890,26 @@ export function Rezervare() {
                           top: el.y,
                           width: el.w || 60,
                           height: el.h || 60,
-                          borderRadius: 10,
-                          background: `${el.color || "#2a2218"}22`,
-                          border: `1px solid ${el.color || "#2a2218"}55`,
                           display: "flex",
                           flexDirection: "column",
                           alignItems: "center",
                           justifyContent: "center",
+                          gap: 2,
                           pointerEvents: "none",
+                          transform: el.rotation
+                            ? `rotate(${el.rotation}deg)`
+                            : "none",
                         }}
                       >
-                        <span style={{ fontSize: 18 }}>{el.icon}</span>
+                        <div style={{ width: "100%", flex: 1, minHeight: 0 }}>
+                          <FixedShape type={el.type} color={el.color} />
+                        </div>
                         <span
                           style={{
                             fontSize: 8,
                             color: el.color || "#6b6050",
                             fontWeight: 700,
+                            whiteSpace: "nowrap",
                           }}
                         >
                           {el.label}
@@ -917,7 +922,15 @@ export function Rezervare() {
                       const isSel = resForm.tableId === t.id;
                       const isLocked = !isSel && !!lockedTables[t.id];
                       const isDisabled = isTaken || isLocked;
-                      const w = t.seats <= 2 ? 52 : t.seats <= 4 ? 64 : 80;
+                      const statusCol = isSel
+                        ? "#c0622f"
+                        : isTaken
+                          ? "#e05050"
+                          : isLocked
+                            ? "#a0785a"
+                            : "#4a6e4a";
+                      const w = t.seats <= 2 ? 56 : t.seats <= 4 ? 70 : 90;
+                      const h = t.seats <= 2 ? 56 : t.seats <= 4 ? 70 : 64;
                       return (
                         <div
                           key={t.id}
@@ -931,53 +944,78 @@ export function Rezervare() {
                             left: t.x,
                             top: t.y,
                             width: w,
-                            height: w * 0.85,
-                            borderRadius: 12,
-                            background: isSel
-                              ? "rgba(192,98,47,.35)"
-                              : isTaken
-                                ? "rgba(192,57,43,.15)"
-                                : isLocked
-                                  ? "rgba(160,120,90,.15)"
-                                  : "rgba(74,110,74,.15)",
-                            border: `2px solid ${isSel ? "#c0622f" : isTaken ? "#e05050" : isLocked ? "#a0785a" : "#4a6e4a"}`,
+                            height: h,
                             display: "flex",
                             flexDirection: "column",
                             alignItems: "center",
                             justifyContent: "center",
                             cursor: isDisabled ? "not-allowed" : "pointer",
-                            gap: 1,
+                            transform: `rotate(${t.rotation || 0}deg) scale(${isSel ? 1.08 : 1})`,
+                            transition: "transform .15s",
+                            filter: isSel
+                              ? "drop-shadow(0 0 5px rgba(192,98,47,.6))"
+                              : "none",
                           }}
                         >
-                          <span style={{ fontSize: 14 }}>🪑</span>
-                          <span
+                          <div
                             style={{
-                              fontFamily: "'Fraunces',serif",
-                              fontSize: 12,
-                              fontWeight: 700,
-                              color: isSel
-                                ? "#c0622f"
-                                : isTaken
-                                  ? "#e05050"
-                                  : "#4a6e4a",
+                              width: "100%",
+                              flex: 1,
+                              minHeight: 0,
+                              position: "relative",
+                              pointerEvents: "none",
                             }}
                           >
-                            {t.label}
-                          </span>
-                          <span style={{ fontSize: 9, color: "#6b6050" }}>
-                            {t.seats}p
-                          </span>
-                          {isLocked && (
+                            <TableShape
+                              seats={t.seats}
+                              statusColor={
+                                isSel || isDisabled ? statusCol : null
+                              }
+                            />
+                            {isLocked && (
+                              <span
+                                style={{
+                                  position: "absolute",
+                                  top: 0,
+                                  right: 2,
+                                  fontSize: 10,
+                                }}
+                              >
+                                🔒
+                              </span>
+                            )}
+                          </div>
+                          <div
+                            style={{
+                              display: "flex",
+                              alignItems: "baseline",
+                              gap: 4,
+                              lineHeight: 1,
+                              marginTop: 1,
+                              pointerEvents: "none",
+                            }}
+                          >
                             <span
                               style={{
-                                fontSize: 8,
-                                color: "#a0785a",
-                                marginTop: 1,
+                                fontFamily: "'Fraunces',serif",
+                                fontSize: 12,
+                                fontWeight: 700,
+                                color: statusCol,
                               }}
                             >
-                              🔒
+                              {t.label}
                             </span>
-                          )}
+                            <span
+                              style={{
+                                fontSize: 10,
+                                fontWeight: 700,
+                                color: statusCol,
+                                opacity: 0.8,
+                              }}
+                            >
+                              {t.seats}p
+                            </span>
+                          </div>
                         </div>
                       );
                     })}

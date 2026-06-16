@@ -271,6 +271,9 @@ export function WaiterMap({
                     justifyContent: "center",
                     gap: 2,
                     pointerEvents: "none",
+                    transform: el.rotation
+                      ? `rotate(${el.rotation}deg)`
+                      : "none",
                   }}
                 >
                   <div style={{ width: "100%", flex: 1, minHeight: 0 }}>
@@ -341,6 +344,9 @@ export function WaiterMap({
                       alignItems: "center",
                       justifyContent: "center",
                       cursor: status === "occupied" ? "pointer" : "default",
+                      transform: table.rotation
+                        ? `rotate(${table.rotation}deg)`
+                        : "none",
                     }}
                     onClick={() => {
                       // Masa se eliberează DOAR prin "Confirmă plata", nu din hartă
