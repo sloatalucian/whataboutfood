@@ -204,13 +204,36 @@ export default function FloorEditor() {
             .eq("id", floorId);
         }
 
-        // Șterge mesele și elementele vechi și reinserează
-        await supabase.from("tables").delete().eq("floor_id", floorId);
-        await supabase.from("floor_elements").delete().eq("floor_id", floorId);
+        // ── MESE: update pe cele existente, insert pe cele noi, delete pe
+        //    cele scoase din editor. NU stergem tot + reinseram, pentru ca
+        //    mesele cu rezervari au FK (reservations.table_id) si stergerea
+        //    lor esueaza (409) -> insert-ul ar crea duplicate. Pastrand id-ul
+        //    mesei, rezervarile raman legate de aceeasi masa.
+        const tablesNow = floor.tables || [];
+        const existingTables = tablesNow.filter(
+          (t) => !String(t.id).startsWith("local_"),
+        );
+        const newTables = tablesNow.filter((t) =>
+          String(t.id).startsWith("local_"),
+        );
 
-        // Inserează mesele
-        if (floor.tables && floor.tables.length > 0) {
-          const tablesToInsert = floor.tables.map((t) => ({
+        // Update mese existente (dupa id)
+        for (const t of existingTables) {
+          await supabase
+            .from("tables")
+            .update({
+              label: t.label,
+              seats: t.seats,
+              x: Math.round(t.x),
+              y: Math.round(t.y),
+              rotation: t.rotation || 0,
+            })
+            .eq("id", t.id);
+        }
+
+        // Insert mese noi
+        if (newTables.length > 0) {
+          const tablesToInsert = newTables.map((t) => ({
             floor_id: floorId,
             label: t.label,
             seats: t.seats,
@@ -221,7 +244,25 @@ export default function FloorEditor() {
           await supabase.from("tables").insert(tablesToInsert);
         }
 
-        // Inserează elementele
+        // Sterge mesele scoase din editor (cele din DB care nu mai sunt in
+        // state). Le filtram prin .in(...) pe id-urile pastrate, ca sa stergem
+        // doar diferenta. Mesele cu rezervari care raman in editor NU se ating.
+        const keepIds = existingTables.map((t) => t.id);
+        let delTablesQuery = supabase
+          .from("tables")
+          .delete()
+          .eq("floor_id", floorId);
+        if (keepIds.length > 0) {
+          delTablesQuery = delTablesQuery.not(
+            "id",
+            "in",
+            `(${keepIds.join(",")})`,
+          );
+        }
+        await delTablesQuery;
+
+        // ── ELEMENTE FIXE: nu au FK cu rezervari, deci delete + insert simplu
+        await supabase.from("floor_elements").delete().eq("floor_id", floorId);
         if (floor.elements && floor.elements.length > 0) {
           const elementsToInsert = floor.elements.map((e) => ({
             floor_id: floorId,
