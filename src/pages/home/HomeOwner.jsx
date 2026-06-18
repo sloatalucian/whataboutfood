@@ -470,20 +470,17 @@ function HomeOwner({ onLogout }) {
             }}
           >
             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-              <div
+              <img
+                src={`${process.env.PUBLIC_URL}/logo.png`}
+                alt="WhataboutFood"
                 style={{
                   width: 38,
                   height: 38,
-                  background: "linear-gradient(135deg,var(--terra),#8b3a18)",
                   borderRadius: 11,
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  fontSize: 20,
+                  display: "block",
+                  objectFit: "cover",
                 }}
-              >
-                🍽️
-              </div>
+              />
               <div
                 style={{
                   fontFamily: "'Fraunces',serif",

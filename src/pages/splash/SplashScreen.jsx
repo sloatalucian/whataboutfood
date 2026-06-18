@@ -322,22 +322,19 @@ export default function SplashScreen({ onComplete, onWaiterLogin }) {
                 "radial-gradient(ellipse 80% 60% at 50% 0%, rgba(192,98,47,.1), transparent 70%)",
             }}
           />
-          <div
+          <img
+            src={`${process.env.PUBLIC_URL}/logo.png`}
+            alt="WhataboutFood"
             style={{
               width: 72,
               height: 72,
-              background: "linear-gradient(135deg,#c0622f,#8b3a18)",
               borderRadius: 20,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              fontSize: 36,
+              display: "block",
               margin: "0 auto 20px",
               boxShadow: "0 8px 32px rgba(192,98,47,.3)",
+              objectFit: "cover",
             }}
-          >
-            🍽️
-          </div>
+          />
           <div
             style={{
               fontFamily: "'Fraunces',serif",
