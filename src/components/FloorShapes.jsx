@@ -506,71 +506,8 @@ function Kitchen({ color }) {
   );
 }
 
-// Toaleta - vas WC + lavoar. Diferentiata doar prin culoare (F vs B).
-function Toilet({ color, fillBg, accent }) {
-  return (
-    <FixedSvg vbw={62} vbh={78}>
-      <rect
-        x="6"
-        y="6"
-        width="50"
-        height="66"
-        rx="6"
-        fill={fillBg}
-        stroke={color}
-        strokeWidth="2"
-      />
-      {/* rezervor */}
-      <rect
-        x="18"
-        y="12"
-        width="26"
-        height="13"
-        rx="2"
-        fill={`${color}22`}
-        stroke={accent}
-        strokeWidth="1.3"
-      />
-      {/* vasul WC */}
-      <path
-        d="M20 25 v8 a11 11 0 0 0 22 0 v-8 z"
-        fill={`${color}11`}
-        stroke={accent}
-        strokeWidth="1.4"
-      />
-      <ellipse
-        cx="31"
-        cy="33"
-        rx="9"
-        ry="6"
-        fill={`${color}22`}
-        stroke={accent}
-        strokeWidth="1"
-      />
-      {/* lavoar */}
-      <rect
-        x="14"
-        y="54"
-        width="34"
-        height="14"
-        rx="2"
-        fill={`${color}22`}
-        stroke={accent}
-        strokeWidth="1.3"
-      />
-      <ellipse
-        cx="31"
-        cy="61"
-        rx="12"
-        ry="5"
-        fill={`${color}11`}
-        stroke={accent}
-        strokeWidth="1"
-      />
-      <circle cx="31" cy="56" r="1.4" fill={accent} />
-    </FixedSvg>
-  );
-}
+// Toaletele folosesc pictogramele originale ale aplicatiei (emoji 🚺 / 🚹),
+// randate prin EmojiShape (vezi mai jos).
 
 function Stairs({ color }) {
   return (
@@ -625,6 +562,27 @@ function Reception({ color }) {
   );
 }
 
+// Afiseaza un emoji centrat, scalat sa umple zona ca celelalte forme.
+// Folosit pentru elementele unde se prefera pictograma originala a aplicatiei
+// (ex. toaletele 🚺 🚹), nu un SVG desenat.
+function EmojiShape({ emoji }) {
+  return (
+    <div
+      style={{
+        width: "100%",
+        height: "100%",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        fontSize: "clamp(18px, 60%, 30px)",
+        lineHeight: 1,
+      }}
+    >
+      <span style={{ fontSize: "min(2.2em, 30px)" }}>{emoji}</span>
+    </div>
+  );
+}
+
 export function FixedShape({ type, color = "#6b6050" }) {
   switch (type) {
     case "entrance":
@@ -634,9 +592,9 @@ export function FixedShape({ type, color = "#6b6050" }) {
     case "kitchen":
       return <Kitchen color={color} />;
     case "wc_f":
-      return <Toilet color="#5b8dd9" fillBg="#23303a" accent="#9fbde8" />;
+      return <EmojiShape emoji="🚺" />;
     case "wc_m":
-      return <Toilet color="#4a6e4a" fillBg="#23332a" accent="#9bc49b" />;
+      return <EmojiShape emoji="🚹" />;
     case "stairs":
       return <Stairs color="#a89c8a" />;
     case "reception":
