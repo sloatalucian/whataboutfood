@@ -28,7 +28,7 @@ const FIXED_ELEMENTS = [
     label: "Toaletă Femei",
     w: 70,
     h: 40,
-    color: "#5b8dd9",
+    color: "#e89ab5",
   },
   {
     type: "wc_m",
@@ -245,21 +245,36 @@ export default function FloorEditor() {
         }
 
         // Sterge mesele scoase din editor (cele din DB care nu mai sunt in
-        // state). Le filtram prin .in(...) pe id-urile pastrate, ca sa stergem
-        // doar diferenta. Mesele cu rezervari care raman in editor NU se ating.
+        // state). Inainte de stergere, aflam care sunt acele mese si le stergem
+        // rezervarile (altfel FK reservations.table_id blocheaza stergerea).
+        // La cererea proprietarului: rezervarile dispar odata cu masa (ospatarul
+        // are deja datele clientului si il contacteaza).
         const keepIds = existingTables.map((t) => t.id);
-        let delTablesQuery = supabase
+
+        // Gaseste id-urile meselor de pe acest floor care NU se mai pastreaza
+        let toDeleteQuery = supabase
           .from("tables")
-          .delete()
+          .select("id")
           .eq("floor_id", floorId);
         if (keepIds.length > 0) {
-          delTablesQuery = delTablesQuery.not(
+          toDeleteQuery = toDeleteQuery.not(
             "id",
             "in",
             `(${keepIds.join(",")})`,
           );
         }
-        await delTablesQuery;
+        const { data: tablesToDelete } = await toDeleteQuery;
+        const deleteIds = (tablesToDelete || []).map((t) => t.id);
+
+        if (deleteIds.length > 0) {
+          // Sterge intai rezervarile legate de aceste mese (ireversibil)
+          await supabase
+            .from("reservations")
+            .delete()
+            .in("table_id", deleteIds);
+          // Apoi sterge mesele (acum fara FK care sa blocheze)
+          await supabase.from("tables").delete().in("id", deleteIds);
+        }
 
         // ── ELEMENTE FIXE: nu au FK cu rezervari, deci delete + insert simplu
         await supabase.from("floor_elements").delete().eq("floor_id", floorId);
