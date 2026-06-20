@@ -553,11 +553,49 @@ export function WaiterTablet({
 
       // Notificare client
       if (reservation?.user_id) {
+        // Formatam data frumos in romana: "2026-06-21" -> "sâmbătă, 21 iun."
+        const ZILE = [
+          "duminică",
+          "luni",
+          "marți",
+          "miercuri",
+          "joi",
+          "vineri",
+          "sâmbătă",
+        ];
+        const LUNI = [
+          "ian.",
+          "feb.",
+          "mar.",
+          "apr.",
+          "mai",
+          "iun.",
+          "iul.",
+          "aug.",
+          "sep.",
+          "oct.",
+          "noi.",
+          "dec.",
+        ];
+        let dataText = reservation.date || "";
+        if (reservation.date) {
+          const d = new Date(reservation.date + "T00:00:00");
+          if (!isNaN(d)) {
+            dataText = `${ZILE[d.getDay()]}, ${d.getDate()} ${LUNI[d.getMonth()]}`;
+          }
+        }
+        const oraText = (reservation.time || "").slice(0, 5); // "19:00:00" -> "19:00"
+        const restName = restaurant?.name || "restaurant";
+        const persText = reservation.persons
+          ? ` · ${reservation.persons} ${reservation.persons === 1 ? "persoană" : "persoane"}`
+          : "";
+        const message = `Rezervarea ta la ${restName} a fost confirmată pentru ${dataText}${oraText ? `, ora ${oraText}` : ""}${persText}.`;
+
         await supabase.from("notifications").insert({
           user_id: reservation.user_id,
           restaurant_id: restaurantId,
           type: "reservation_confirmed",
-          message: "Rezervarea ta a fost confirmată! 📅",
+          message,
           is_read: false,
         });
       }

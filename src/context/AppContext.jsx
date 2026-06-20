@@ -48,12 +48,16 @@ const initialState = {
   unreadCount: 0,
   // Restaurante proprietar
   myRestaurants: [],
+  // Tab care trebuie deschis in pagina Cont (Auth) la navigare - ex. din notificari
+  authTab: null,
 };
 
 function reducer(state, { type, payload }) {
   switch (type) {
     case "NAVIGATE":
       return { ...state, screen: payload };
+    case "SET_AUTH_TAB":
+      return { ...state, authTab: payload };
     case "SET_REST":
       return { ...state, selectedRest: payload, screen: "restaurant" };
     case "UPDATE_REST_RATING":

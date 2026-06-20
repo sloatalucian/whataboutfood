@@ -3,7 +3,7 @@ import { useApp } from "../context/AppContext";
 import { supabase } from "../supabase";
 
 export default function Notifications() {
-  const { state, navigate } = useApp();
+  const { state, navigate, dispatch } = useApp();
   const { user } = state;
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -168,20 +168,48 @@ export default function Notifications() {
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
             {notifications.map((notif) => {
-              const { icon, color, bg } = getIcon(notif.type);
+              const { icon, bg } = getIcon(notif.type);
+              const isReservation = notif.type === "reservation_confirmed";
+              const handleClick = () => {
+                if (isReservation) {
+                  dispatch({
+                    type: "SET_AUTH_TAB",
+                    payload: "rezervari_viitoare",
+                  });
+                  navigate("auth");
+                }
+              };
+              // Titlu scurt in functie de tip
+              const title =
+                notif.type === "reservation_confirmed"
+                  ? "Rezervare confirmată"
+                  : notif.type === "reservation_rejected"
+                    ? "Rezervare refuzată"
+                    : notif.type === "order_accepted"
+                      ? "Comandă preluată"
+                      : notif.type === "order_ready"
+                        ? "Comandă gata"
+                        : notif.type === "order_paid"
+                          ? "Plată confirmată"
+                          : "Notificare";
               return (
                 <div
                   key={notif.id}
+                  onClick={handleClick}
                   style={{
                     background: notif.is_read
                       ? "#161210"
                       : "rgba(192,98,47,.06)",
                     border: `1px solid ${notif.is_read ? "#2a2218" : "rgba(192,98,47,.2)"}`,
+                    borderLeft: isReservation
+                      ? `3px solid ${notif.is_read ? "#5a4a3a" : "#c0622f"}`
+                      : `1px solid ${notif.is_read ? "#2a2218" : "rgba(192,98,47,.2)"}`,
                     borderRadius: 16,
                     padding: "14px 16px",
                     display: "flex",
                     alignItems: "flex-start",
                     gap: 12,
+                    cursor: isReservation ? "pointer" : "default",
                   }}
                 >
                   <div
@@ -199,20 +227,61 @@ export default function Notifications() {
                   >
                     {icon}
                   </div>
-                  <div style={{ flex: 1 }}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
                     <div
                       style={{
-                        fontSize: 14,
-                        fontWeight: 600,
-                        color: "#f0ebe3",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                        gap: 8,
                         marginBottom: 4,
+                      }}
+                    >
+                      <span
+                        style={{
+                          fontSize: 14,
+                          fontWeight: 600,
+                          color: notif.is_read ? "#8a7a6a" : "#f0ebe3",
+                        }}
+                      >
+                        {title}
+                      </span>
+                      <span
+                        style={{
+                          fontSize: 11,
+                          color: "#6b6050",
+                          whiteSpace: "nowrap",
+                          flexShrink: 0,
+                        }}
+                      >
+                        {formatTime(notif.created_at)}
+                      </span>
+                    </div>
+                    <div
+                      style={{
+                        fontSize: 13,
+                        color: notif.is_read ? "#6b5a4a" : "#c8a97e",
+                        lineHeight: 1.5,
                       }}
                     >
                       {notif.message}
                     </div>
-                    <div style={{ fontSize: 11, color: "#6b6050" }}>
-                      {formatTime(notif.created_at)}
-                    </div>
+                    {isReservation && (
+                      <div
+                        style={{
+                          marginTop: 10,
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 4,
+                          fontSize: 12,
+                          color: notif.is_read ? "#6b5a4a" : "#c0622f",
+                          fontWeight: 600,
+                        }}
+                      >
+                        <span>Vezi rezervarea</span>
+                        <span>→</span>
+                      </div>
+                    )}
                   </div>
                   {!notif.is_read && (
                     <div

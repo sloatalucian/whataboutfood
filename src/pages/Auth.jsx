@@ -18,6 +18,15 @@ export function Auth() {
 
   const today = new Date().toISOString().split("T")[0];
 
+  // Daca s-a cerut deschiderea unui tab anume (ex. din notificari -> rezervari
+  // viitoare), il aplicam si resetam flag-ul ca sa nu ramana lipit data viitoare.
+  useEffect(() => {
+    if (state.authTab) {
+      setTab(state.authTab);
+      dispatch({ type: "SET_AUTH_TAB", payload: null });
+    }
+  }, [state.authTab, dispatch]);
+
   useEffect(() => {
     if (!user?.id) {
       setLoading(false);
