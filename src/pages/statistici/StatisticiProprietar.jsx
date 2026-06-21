@@ -190,6 +190,7 @@ export default function StatisticiProprietar() {
       const tz = `${sign}${tzHH}:${tzMM}`;
       const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
       let startDate;
+      let endDate = null; // limita superioara - doar pentru mod "luna"
       if (period === "zi") {
         startDate = `${todayStr}T00:00:00${tz}`;
       } else if (period === "saptamana") {
@@ -199,16 +200,27 @@ export default function StatisticiProprietar() {
       } else {
         const monthStr = `${selectedYear}-${String(selectedMonth + 1).padStart(2, "0")}-01`;
         startDate = `${monthStr}T00:00:00${tz}`;
+        // Sfarsitul lunii = inceputul lunii urmatoare (gestioneaza si trecerea
+        // de an: decembrie -> ianuarie an+1). Folosim < endDate.
+        const nextMonth = selectedMonth + 1;
+        const endYear = nextMonth > 11 ? selectedYear + 1 : selectedYear;
+        const endMonth = nextMonth > 11 ? 0 : nextMonth;
+        const endStr = `${endYear}-${String(endMonth + 1).padStart(2, "0")}-01`;
+        endDate = `${endStr}T00:00:00${tz}`;
       }
 
       // Toate comenzile plătite din perioada selectată
-      const { data: orders } = await supabase
+      let ordersQuery = supabase
         .from("orders")
         .select("*")
         .eq("restaurant_id", restId)
         .in("status", ["paid", "completed"])
-        .gte("created_at", startDate)
-        .order("created_at");
+        .gte("created_at", startDate);
+      // Pentru luna, limitam si superior ca sa nu includem lunile urmatoare
+      if (endDate) {
+        ordersQuery = ordersQuery.lt("created_at", endDate);
+      }
+      const { data: orders } = await ordersQuery.order("created_at");
 
       const allOrders = orders || [];
 
@@ -456,6 +468,7 @@ export default function StatisticiProprietar() {
         const tz = `${sign}${tzHH}:${tzMM}`;
         const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
         let startDate;
+        let endDate = null; // limita superioara - doar pentru mod "luna"
         if (period === "zi") {
           startDate = `${todayStr}T00:00:00${tz}`;
         } else if (period === "saptamana") {
@@ -463,15 +476,22 @@ export default function StatisticiProprietar() {
           const d7Str = `${d7.getFullYear()}-${String(d7.getMonth() + 1).padStart(2, "0")}-${String(d7.getDate()).padStart(2, "0")}`;
           startDate = `${d7Str}T00:00:00${tz}`;
         } else {
-          const monthStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-01`;
+          const monthStr = `${selectedYear}-${String(selectedMonth + 1).padStart(2, "0")}-01`;
           startDate = `${monthStr}T00:00:00${tz}`;
+          // Limita superioara = inceputul lunii urmatoare (cu trecere de an)
+          const nextMonth = selectedMonth + 1;
+          const endYear = nextMonth > 11 ? selectedYear + 1 : selectedYear;
+          const endMonth = nextMonth > 11 ? 0 : nextMonth;
+          const endStr = `${endYear}-${String(endMonth + 1).padStart(2, "0")}-01`;
+          endDate = `${endStr}T00:00:00${tz}`;
         }
 
         // Incarca comenzile platite cu waiter_id din perioada selectata
         // Folosim ISO string simplu fara timezone pentru compatibilitate Supabase
         const startDateISO = new Date(startDate).toISOString();
+        const endDateISO = endDate ? new Date(endDate).toISOString() : null;
 
-        const { data: allOrders, error } = await supabase
+        let waiterQuery = supabase
           .from("orders")
           .select(
             "id, waiter_id, waiter_name, total, accepted_at, completed_at",
@@ -479,6 +499,10 @@ export default function StatisticiProprietar() {
           .eq("restaurant_id", selectedRestId)
           .eq("status", "paid")
           .gte("created_at", startDateISO);
+        if (endDateISO) {
+          waiterQuery = waiterQuery.lt("created_at", endDateISO);
+        }
+        const { data: allOrders, error } = await waiterQuery;
 
         if (error) {
           setWaiterStats([]);
@@ -558,7 +582,7 @@ export default function StatisticiProprietar() {
     };
 
     loadWaiterStats();
-  }, [selectedRestId, period]);
+  }, [selectedRestId, period, selectedMonth, selectedYear]);
 
   // ── No-show rezervari ──
   useEffect(() => {
