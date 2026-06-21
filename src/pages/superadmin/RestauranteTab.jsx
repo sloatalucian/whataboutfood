@@ -1,5 +1,4 @@
-import { useState } from "react";
-import { supabase } from "../../supabase";
+import { exportToCSV } from "../../utils/exportCsv";
 
 const PLAN_COLOR = { free: "#6b6050", pro: "#c8a97e", business: "#4a6e4a" };
 const PLAN_BG = {

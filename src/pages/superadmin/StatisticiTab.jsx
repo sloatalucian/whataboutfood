@@ -1,7 +1,11 @@
-import { useState } from "react";
-import { supabase } from "../../supabase";
+import { exportToCSV } from "../../utils/exportCsv";
 
-export default function StatisticiTab({ statistici }) {
+export default function StatisticiTab({
+  statistici,
+  proprietari,
+  restaurante,
+  abonamente,
+}) {
   return (
     <div>
       <div

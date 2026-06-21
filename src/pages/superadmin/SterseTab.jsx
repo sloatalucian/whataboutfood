@@ -1,7 +1,10 @@
-import { useState } from "react";
 import { supabase } from "../../supabase";
 
-export default function SterseTab({ sterseRestaurante, showToast }) {
+export default function SterseTab({
+  sterseRestaurante,
+  setSterseRestaurante,
+  showToast,
+}) {
   return (
     <div style={{ padding: "0 0 40px" }}>
       <div
