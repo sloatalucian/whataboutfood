@@ -6,6 +6,7 @@ import { ProgramEditorModal } from "../Restaurant";
 import { RestaurantLocationPicker } from "../NewRestaurant";
 import MiniDatePicker from "./MiniDatePicker";
 import QrModal from "./QrModal";
+import DeleteRestaurantModal from "./DeleteRestaurantModal";
 
 function HomeOwner({ onLogout }) {
   const { state, navigate, dispatch, showToast } = useApp();
