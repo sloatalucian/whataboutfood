@@ -108,7 +108,7 @@ export default function StatisticiProprietar() {
     if (!user?.id) return;
     supabase
       .from("restaurants")
-      .select("id, name")
+      .select("id, name, is_deleted")
       .eq("owner_id", user.id)
       .then(({ data }) => {
         if (data && data.length > 0) {
@@ -957,6 +957,7 @@ export default function StatisticiProprietar() {
               {myRestaurants.map((r) => (
                 <option key={r.id} value={r.id}>
                   {r.name}
+                  {r.is_deleted ? " (șters)" : ""}
                 </option>
               ))}
             </select>

@@ -96,6 +96,7 @@ export default function FloorEditor() {
           .from("restaurants")
           .select("id, name, emoji, plan")
           .eq("owner_id", user.id)
+          .eq("is_deleted", false)
           .order("created_at");
         if (!error && data && data.length > 0) {
           setRestaurants(data);

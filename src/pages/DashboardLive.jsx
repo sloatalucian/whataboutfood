@@ -72,6 +72,7 @@ export default function DashboardLive() {
       .from("restaurants")
       .select("id, name, emoji")
       .eq("owner_id", user.id)
+      .eq("is_deleted", false)
       .then(({ data }) => {
         if (data && data.length > 0) {
           setRestaurants(data);

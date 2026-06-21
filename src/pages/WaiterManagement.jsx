@@ -325,6 +325,7 @@ export function WaiterManagement({ onBack, onLogout }) {
           .from("restaurants")
           .select("id, name, emoji")
           .eq("owner_id", user.id)
+          .eq("is_deleted", false)
           .order("created_at");
         if (data && data.length > 0) {
           setRestaurants(data);
