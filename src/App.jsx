@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, lazy, Suspense } from "react";
 import { AppProvider, useApp } from "./context/AppContext";
 import { TableProvider } from "./context/TableContext";
 import BottomNav from "./components/BottomNav";
@@ -8,21 +8,63 @@ import { Rezervare } from "./pages/Rezervare";
 import { Meniu } from "./pages/Meniu";
 import { Auth } from "./pages/Auth";
 import { SelectTable } from "./pages/SelectTable";
-import { WaiterTablet } from "./pages/WaiterTablet";
-import DashboardLive from "./pages/DashboardLive";
-import { WaiterLogin, WaiterManagement } from "./pages/WaiterManagement";
-import HartaPage from "./pages/HartaPage";
-import StatisticiProprietar from "./pages/statistici/StatisticiProprietar";
-import SplashScreen from "./pages/splash/SplashScreen";
-import MenuEditor from "./pages/MenuEditor";
-import NewRestaurant from "./pages/NewRestaurant";
 import Notifications from "./pages/Notifications";
-import FloorEditor from "./pages/FloorEditor";
-import SuperAdmin from "./pages/superadmin/SuperAdmin";
+import SplashScreen from "./pages/splash/SplashScreen";
+// WaiterLogin + WaiterManagement raman statice: sunt in acelasi fisier, iar
+// WaiterLogin (login ospatar) e pe calea critica. Lazy pe WaiterManagement
+// n-ar avea efect, fiindca WaiterLogin oricum aduce fisierul in bundle.
+import { WaiterLogin, WaiterManagement } from "./pages/WaiterManagement";
 import { supabase } from "./supabase";
 import "./styles/global.css";
 
+// ── Pagini incarcate lazy (grele + accesate rar: proprietar/admin/ospatar) ──
+// Reduc bundle-ul initial cu ~11.000 linii. Se descarca doar la prima accesare.
+// Pentru export-uri NAMED folosim .then(m => ({ default: m.NumeExport })).
+const WaiterTablet = lazy(() =>
+  import("./pages/WaiterTablet").then((m) => ({ default: m.WaiterTablet })),
+);
+const DashboardLive = lazy(() => import("./pages/DashboardLive"));
+const HartaPage = lazy(() => import("./pages/HartaPage"));
+const StatisticiProprietar = lazy(
+  () => import("./pages/statistici/StatisticiProprietar"),
+);
+const MenuEditor = lazy(() =>
+  import("./pages/MenuEditor").then((m) => ({ default: m.Meniu })),
+);
+const NewRestaurant = lazy(() => import("./pages/NewRestaurant"));
+const FloorEditor = lazy(() => import("./pages/FloorEditor"));
+const SuperAdmin = lazy(() => import("./pages/superadmin/SuperAdmin"));
+
 const ADMIN_EMAIL = "sloatalucian@yahoo.com";
+
+// Spinner afisat cat se incarca o pagina lazy (grele: admin/statistici/editoare).
+// Apare doar la prima accesare a paginii, sub o secunda.
+function PageLoader() {
+  return (
+    <div
+      style={{
+        minHeight: "70vh",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+      }}
+    >
+      <style>{`
+        @keyframes pageLoaderSpin { to { transform: rotate(360deg) } }
+      `}</style>
+      <div
+        style={{
+          width: 42,
+          height: 42,
+          borderRadius: "50%",
+          border: "3px solid rgba(192,98,47,.2)",
+          borderTopColor: "#c0622f",
+          animation: "pageLoaderSpin 0.8s linear infinite",
+        }}
+      />
+    </div>
+  );
+}
 
 function Router() {
   const {
@@ -461,21 +503,23 @@ function Router() {
       <TableProvider restaurantId={selectedRest?.id}>
         <div className="app">
           {toast && <div className="toast">{toast}</div>}
-          <WaiterTablet
-            restaurant={
-              selectedRest || {
-                name: waiterUser?.restaurantName || "Restaurant",
-                floors: [],
+          <Suspense fallback={<PageLoader />}>
+            <WaiterTablet
+              restaurant={
+                selectedRest || {
+                  name: waiterUser?.restaurantName || "Restaurant",
+                  floors: [],
+                }
               }
-            }
-            restaurantId={waiterUser?.restaurantId || selectedRest?.id}
-            orders={orders}
-            onOrderUpdate={handleOrderUpdate}
-            onOrderClose={handleOrderClose}
-            onBack={handleWaiterLogout}
-            waiterName={waiterUser?.name || "Ospătar"}
-            waiterId={waiterUser?.id}
-          />
+              restaurantId={waiterUser?.restaurantId || selectedRest?.id}
+              orders={orders}
+              onOrderUpdate={handleOrderUpdate}
+              onOrderClose={handleOrderClose}
+              onBack={handleWaiterLogout}
+              waiterName={waiterUser?.name || "Ospătar"}
+              waiterId={waiterUser?.id}
+            />
+          </Suspense>
         </div>
       </TableProvider>
     );
@@ -876,7 +920,9 @@ function Router() {
           </div>
         )}
         <div key={screen} className="page-transition">
-          {pages[screen] || <Home />}
+          <Suspense fallback={<PageLoader />}>
+            {pages[screen] || <Home />}
+          </Suspense>
         </div>
         {screen !== "waiter" && !noNav.includes(screen) && (
           <BottomNav
