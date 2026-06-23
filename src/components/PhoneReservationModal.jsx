@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react";
 import { supabase } from "../supabase";
 import FloorPicker from "../components/FloorPicker";
+import TimeWheelPicker from "../components/TimeWheelPicker";
+import { getAvailableHours } from "../utils/timeSlots";
 
 // Modal pentru ospatar: adauga o rezervare TELEFONICA.
 // Foloseste acelasi FloorPicker ca rezervarea clientului, dar:
@@ -31,15 +33,26 @@ export default function PhoneReservationModal({
   const [floors, setFloors] = useState([]);
   const [floorIdx, setFloorIdx] = useState(0);
   const [reservedTables, setReservedTables] = useState([]);
+  const [program, setProgram] = useState(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
   const floor = floors[floorIdx] || floors[0] || null;
+  // Orele disponibile la data aleasa, pe baza programului restaurantului
+  const availableHours = getAvailableHours(date, program);
 
   // Incarca floors + tables (acelasi pattern ca Rezervare.jsx)
   useEffect(() => {
     if (!restaurantId) return;
     const load = async () => {
+      // Programul restaurantului (pentru orele disponibile)
+      const { data: restData } = await supabase
+        .from("restaurants")
+        .select("program")
+        .eq("id", restaurantId)
+        .single();
+      setProgram(restData?.program || {});
+
       const { data: floorsData } = await supabase
         .from("floors")
         .select("*")
@@ -204,15 +217,32 @@ export default function PhoneReservationModal({
           />
         </div>
 
-        {/* Ora */}
+        {/* Ora - selector tip roata (din program) */}
         <div className="form-group">
           <label className="form-label">Ora</label>
-          <input
-            className="form-input"
-            type="time"
-            value={time}
-            onChange={(e) => setTime(e.target.value)}
-          />
+          {availableHours.length > 0 ? (
+            <TimeWheelPicker
+              hours={availableHours}
+              value={time}
+              onChange={setTime}
+            />
+          ) : (
+            <div
+              style={{
+                padding: 16,
+                textAlign: "center",
+                color: "#8a7a6a",
+                fontSize: 14,
+                background: "#0d0a07",
+                borderRadius: 12,
+                border: "1px solid #2a2218",
+              }}
+            >
+              {date
+                ? "Restaurantul e închis în ziua aleasă."
+                : "Alege întâi data."}
+            </div>
+          )}
         </div>
 
         {/* Persoane */}

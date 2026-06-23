@@ -1,7 +1,9 @@
 import { useState, useRef, useEffect } from "react";
 import { useApp } from "../context/AppContext";
 import { supabase } from "../supabase";
-import { TableShape, FixedShape } from "../components/FloorShapes";
+import FloorPicker from "../components/FloorPicker";
+import TimeWheelPicker from "../components/TimeWheelPicker";
+import { getAvailableHours } from "../utils/timeSlots";
 
 export function Rezervare() {
   const { state, dispatch, navigate, showToast } = useApp();
@@ -168,52 +170,6 @@ export function Rezervare() {
       if (countdownRef.current) clearInterval(countdownRef.current);
     };
   }, []); // array gol - ruleaza DOAR la unmount
-
-  // Generează orele disponibile bazat pe ziua selectată și program
-  const getAvailableSlots = () => {
-    if (!resForm.date || restProgram === null) return [];
-
-    const date = new Date(resForm.date);
-    const dayIndex = date.getDay(); // 0=Duminică, 1=Luni...
-    const ZILE_MAP = [
-      "Duminică",
-      "Luni",
-      "Marți",
-      "Miercuri",
-      "Joi",
-      "Vineri",
-      "Sâmbătă",
-    ];
-    const zi = ZILE_MAP[dayIndex];
-    const dayProg = restProgram[zi];
-
-    if (!dayProg || !dayProg.deschis) return [];
-
-    const start = dayProg.start || "10:00";
-    const end = dayProg.end || "22:00";
-
-    const [startH, startM] = start.split(":").map(Number);
-    const [endH, endM] = end.split(":").map(Number);
-
-    // Ultima rezervare cu 1 oră înainte de închidere
-    let lastH = endH - 1;
-    let lastM = endM;
-    if (lastM < 0) {
-      lastH--;
-      lastM += 60;
-    }
-
-    const slots = [];
-    let h = startH;
-    let m = startM;
-
-    while (h < lastH || (h === lastH && m <= lastM)) {
-      slots.push(`${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`);
-      h++;
-    }
-
-    return slots;
-  };
 
   const isDayClosed = () => {
     if (!resForm.date || !restProgram) return false;
@@ -767,7 +723,7 @@ export function Rezervare() {
                 Restaurantul nu funcționează în această zi. Alege altă dată.
               </div>
             </div>
-          ) : getAvailableSlots().length === 0 ? (
+          ) : getAvailableHours(resForm.date, restProgram).length === 0 ? (
             <div
               style={{
                 fontSize: 13,
@@ -781,34 +737,11 @@ export function Rezervare() {
                 : "Se încarcă programul..."}
             </div>
           ) : (
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "repeat(3,1fr)",
-                gap: 8,
-              }}
-            >
-              {getAvailableSlots().map((t) => (
-                <div
-                  key={t}
-                  onClick={() => set({ time: t, tableId: null })}
-                  style={{
-                    background:
-                      resForm.time === t ? "var(--terra)" : "var(--card2)",
-                    border: `1px solid ${resForm.time === t ? "var(--terra)" : "var(--border)"}`,
-                    borderRadius: 12,
-                    padding: "11px 4px",
-                    textAlign: "center",
-                    fontSize: 13,
-                    cursor: "pointer",
-                    color: resForm.time === t ? "#fff" : "var(--muted)",
-                    fontWeight: resForm.time === t ? 700 : 400,
-                  }}
-                >
-                  {t}
-                </div>
-              ))}
-            </div>
+            <TimeWheelPicker
+              hours={getAvailableHours(resForm.date, restProgram)}
+              value={resForm.time}
+              onChange={(t) => set({ time: t, tableId: null })}
+            />
           )}
         </div>
         {resForm.time && (
@@ -842,201 +775,16 @@ export function Rezervare() {
               ))}
             </div>
             <label className="form-label">Selectează masa</label>
-            {(() => {
-              const allTables = floor?.tables || [];
-              const allElements = floor?.elements || [];
-              const allItems = [
-                ...allTables.map((t) => ({ x: t.x + 80, y: t.y + 80 })),
-                ...allElements.map((e) => ({
-                  x: e.x + (e.w || 60),
-                  y: e.y + (e.h || 60),
-                })),
-              ];
-              const maxX = Math.max(300, ...allItems.map((i) => i.x));
-              const maxY = Math.max(200, ...allItems.map((i) => i.y));
-              const containerW = 340;
-              const containerH = 320;
-              const autoZoom =
-                Math.min(containerW / maxX, containerH / maxY, 1) * 0.92;
-              return (
-                <div
-                  style={{
-                    position: "relative",
-                    width: "100%",
-                    height: containerH,
-                    background: "#0d0a07",
-                    borderRadius: 16,
-                    border: "1px solid #2a2218",
-                    overflow: "hidden",
-                    marginBottom: 16,
-                  }}
-                >
-                  <div
-                    style={{
-                      position: "absolute",
-                      fontSize: 9,
-                      top: 6,
-                      left: 8,
-                      color: "#6b6050",
-                      letterSpacing: 1,
-                      textTransform: "uppercase",
-                    }}
-                  >
-                    {floor?.name}
-                  </div>
-                  <div
-                    style={{
-                      position: "absolute",
-                      inset: 0,
-                      transform: `scale(${autoZoom})`,
-                      transformOrigin: "top left",
-                      width: maxX / autoZoom,
-                      height: maxY / autoZoom,
-                    }}
-                  >
-                    {/* Elemente decorative */}
-                    {allElements.map((el) => (
-                      <div
-                        key={el.id}
-                        style={{
-                          position: "absolute",
-                          left: el.x,
-                          top: el.y,
-                          width: el.w || 60,
-                          height: el.h || 60,
-                          display: "flex",
-                          flexDirection: "column",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          gap: 2,
-                          pointerEvents: "none",
-                          transform: el.rotation
-                            ? `rotate(${el.rotation}deg)`
-                            : "none",
-                        }}
-                      >
-                        <div style={{ width: "100%", flex: 1, minHeight: 0 }}>
-                          <FixedShape type={el.type} color={el.color} />
-                        </div>
-                        <span
-                          style={{
-                            fontSize: 8,
-                            color: el.color || "#6b6050",
-                            fontWeight: 700,
-                            whiteSpace: "nowrap",
-                          }}
-                        >
-                          {el.label}
-                        </span>
-                      </div>
-                    ))}
-                    {/* Mese */}
-                    {allTables.map((t) => {
-                      const isTaken = reservedTables.includes(t.label);
-                      const isSel = resForm.tableId === t.id;
-                      const isLocked = !isSel && !!lockedTables[t.id];
-                      const isDisabled = isTaken || isLocked;
-                      const statusCol = isSel
-                        ? "#c0622f"
-                        : isTaken
-                          ? "#e05050"
-                          : isLocked
-                            ? "#a0785a"
-                            : "#4a6e4a";
-                      const w = t.seats <= 2 ? 56 : t.seats <= 4 ? 70 : 90;
-                      const h = t.seats <= 2 ? 56 : t.seats <= 4 ? 70 : 64;
-                      return (
-                        <div
-                          key={t.id}
-                          onClick={() => {
-                            if (isDisabled) return;
-                            set({ tableId: t.id });
-                            selectTable(t.id);
-                          }}
-                          style={{
-                            position: "absolute",
-                            left: t.x,
-                            top: t.y,
-                            width: w,
-                            height: h,
-                            display: "flex",
-                            flexDirection: "column",
-                            alignItems: "center",
-                            justifyContent: "center",
-                            cursor: isDisabled ? "not-allowed" : "pointer",
-                            transform: `rotate(${t.rotation || 0}deg) scale(${isSel ? 1.08 : 1})`,
-                            transition: "transform .15s",
-                            filter: isSel
-                              ? "drop-shadow(0 0 5px rgba(192,98,47,.6))"
-                              : "none",
-                          }}
-                        >
-                          <div
-                            style={{
-                              width: "100%",
-                              flex: 1,
-                              minHeight: 0,
-                              position: "relative",
-                              pointerEvents: "none",
-                            }}
-                          >
-                            <TableShape
-                              seats={t.seats}
-                              statusColor={
-                                isSel || isDisabled ? statusCol : null
-                              }
-                            />
-                            {isLocked && (
-                              <span
-                                style={{
-                                  position: "absolute",
-                                  top: 0,
-                                  right: 2,
-                                  fontSize: 10,
-                                }}
-                              >
-                                🔒
-                              </span>
-                            )}
-                          </div>
-                          <div
-                            style={{
-                              display: "flex",
-                              alignItems: "baseline",
-                              gap: 4,
-                              lineHeight: 1,
-                              marginTop: 1,
-                              pointerEvents: "none",
-                            }}
-                          >
-                            <span
-                              style={{
-                                fontFamily: "'Fraunces',serif",
-                                fontSize: 12,
-                                fontWeight: 700,
-                                color: statusCol,
-                              }}
-                            >
-                              {t.label}
-                            </span>
-                            <span
-                              style={{
-                                fontSize: 10,
-                                fontWeight: 700,
-                                color: statusCol,
-                                opacity: 0.8,
-                              }}
-                            >
-                              {t.seats}p
-                            </span>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              );
-            })()}
+            <FloorPicker
+              floor={floor}
+              reservedTables={reservedTables}
+              lockedTables={lockedTables}
+              selectedTableId={resForm.tableId}
+              onSelectTable={(tableId) => {
+                set({ tableId });
+                selectTable(tableId);
+              }}
+            />
           </div>
         )}
         {/* Countdown lock */}
