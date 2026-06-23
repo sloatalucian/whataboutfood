@@ -1,3 +1,6 @@
+import { useState } from "react";
+import PhoneReservationModal from "../components/PhoneReservationModal";
+
 export function WaiterReservations({
   reservations,
   refuseReservation,
@@ -16,9 +19,39 @@ export function WaiterReservations({
   suggestionModal,
   setSuggestionModal,
   sendRefusalWithSuggestion,
+  onReservationAdded,
 }) {
+  const [showPhoneModal, setShowPhoneModal] = useState(false);
+
   return (
     <div>
+      <button
+        onClick={() => setShowPhoneModal(true)}
+        style={{
+          width: "100%",
+          padding: "12px",
+          borderRadius: 12,
+          border: "1px dashed #c0622f",
+          background: "rgba(192,98,47,.08)",
+          color: "#c0622f",
+          fontWeight: 700,
+          fontSize: 14,
+          cursor: "pointer",
+          marginBottom: 20,
+          fontFamily: "'DM Sans',sans-serif",
+        }}
+      >
+        📞 + Rezervare telefonică
+      </button>
+
+      {showPhoneModal && (
+        <PhoneReservationModal
+          restaurantId={restaurantId}
+          onClose={() => setShowPhoneModal(false)}
+          onSaved={() => onReservationAdded?.()}
+        />
+      )}
+
       {pendingRes.length > 0 && (
         <div style={{ marginBottom: 20 }}>
           <div
@@ -224,6 +257,9 @@ export function WaiterReservations({
                   </div>
                   <div style={{ flex: 1 }}>
                     <div style={{ fontWeight: 600, fontSize: 14 }}>
+                      {r.source === "phone" && (
+                        <span title="Rezervare telefonică">📞 </span>
+                      )}
                       {r.customer_name}
                     </div>
                     <div

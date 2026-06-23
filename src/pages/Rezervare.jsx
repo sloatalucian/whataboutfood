@@ -14,6 +14,9 @@ export function Rezervare() {
   const [myLockedTableId, setMyLockedTableId] = useState(null); // masa pe care am blocat-o eu
   const myLockedTableIdRef = useRef(null); // ref pentru acces in closures
   const countdownRef = useRef(null);
+  // Pastram sessionId-ul folosit la lock, ca sa-l putem trimite la unlock
+  // (RPC-ul de unlock verifica locked_by = sessionId pentru securitate).
+  const sessionIdRef = useRef(null);
   const LOCK_SECONDS = 120; // 2 minute
 
   // Încarcă programul restaurantului din Supabase
@@ -71,9 +74,10 @@ export function Rezervare() {
     // 2. Daca aveam o masa blocata, o eliberam in DB si in state
     if (prevId && prevId !== tableId) {
       supabase
-        .from("tables")
-        .update({ locked_until: null, locked_by: null })
-        .eq("id", prevId)
+        .rpc("unlock_table", {
+          p_table_id: prevId,
+          p_locked_by: sessionIdRef.current,
+        })
         .then(() => {});
       setLockedTables((prev) => {
         const n = { ...prev };
@@ -90,11 +94,21 @@ export function Rezervare() {
     const lockedUntil = new Date(
       Date.now() + LOCK_SECONDS * 1000,
     ).toISOString();
-    const sessionId = user?.id || "anon-" + Math.random().toString(36).slice(2);
+    // sessionId stabil: daca userul e logat, mereu user.id. Daca e anonim,
+    // generam un ID o singura data si il refolosim pe toata sesiunea (ca sa
+    // ramana acelasi intre lock/unlock).
+    if (user?.id) {
+      sessionIdRef.current = user.id;
+    } else if (!sessionIdRef.current) {
+      sessionIdRef.current = "anon-" + Math.random().toString(36).slice(2);
+    }
+    const sessionId = sessionIdRef.current;
     supabase
-      .from("tables")
-      .update({ locked_until: lockedUntil, locked_by: sessionId })
-      .eq("id", tableId)
+      .rpc("lock_table", {
+        p_table_id: tableId,
+        p_locked_until: lockedUntil,
+        p_locked_by: sessionId,
+      })
       .then(() => {});
 
     // 5. Pornim countdown nou de la 0
@@ -105,9 +119,10 @@ export function Rezervare() {
           clearInterval(id);
           // Expirat — eliberam in DB si resetam
           supabase
-            .from("tables")
-            .update({ locked_until: null, locked_by: null })
-            .eq("id", tableId)
+            .rpc("unlock_table", {
+              p_table_id: tableId,
+              p_locked_by: sessionIdRef.current,
+            })
             .then(() => {});
           myLockedTableIdRef.current = null;
           setMyLockedTableId(null);
@@ -132,9 +147,10 @@ export function Rezervare() {
     setMyLockedTableId(null);
     setLockCountdown(null);
     supabase
-      .from("tables")
-      .update({ locked_until: null, locked_by: null })
-      .eq("id", tableId)
+      .rpc("unlock_table", {
+        p_table_id: tableId,
+        p_locked_by: sessionIdRef.current,
+      })
       .then(() => {});
   };
 
@@ -143,12 +159,10 @@ export function Rezervare() {
     return () => {
       if (myLockedTableIdRef.current) {
         supabase
-          .from("tables")
-          .update({
-            locked_until: null,
-            locked_by: null,
+          .rpc("unlock_table", {
+            p_table_id: myLockedTableIdRef.current,
+            p_locked_by: sessionIdRef.current,
           })
-          .eq("id", myLockedTableIdRef.current)
           .then(() => {});
       }
       if (countdownRef.current) clearInterval(countdownRef.current);

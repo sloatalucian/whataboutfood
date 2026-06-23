@@ -25,6 +25,8 @@ export function WaiterTablet({
   const [loading, setLoading] = useState(true);
   const [activeMapFloor, setActiveMapFloor] = useState(0);
   const [displayReservations, setDisplayReservations] = useState([]);
+  // Cheie de refresh: cand creste, reincarca rezervarile (dupa adaugare telefonica)
+  const [reservationsRefreshKey, setReservationsRefreshKey] = useState(0);
   const [suggestionModal, setSuggestionModal] = useState(null);
   const [waiterCalls, setWaiterCalls] = useState([]);
 
@@ -221,7 +223,7 @@ export function WaiterTablet({
     // Polling la fiecare 10 secunde pentru rezervări noi
     const interval = setInterval(loadReservations, 10000);
     return () => clearInterval(interval);
-  }, [restaurantId]);
+  }, [restaurantId, reservationsRefreshKey]);
 
   // ── Realtime — ascultă comenzi noi ──
   useEffect(() => {
@@ -1247,6 +1249,7 @@ export function WaiterTablet({
             suggestionModal={suggestionModal}
             setSuggestionModal={setSuggestionModal}
             sendRefusalWithSuggestion={sendRefusalWithSuggestion}
+            onReservationAdded={() => setReservationsRefreshKey((k) => k + 1)}
           />
         )}
 
