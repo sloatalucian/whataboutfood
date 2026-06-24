@@ -3,6 +3,7 @@ import { useApp } from "../context/AppContext";
 import { supabase } from "../supabase";
 import FloorPicker from "../components/FloorPicker";
 import TimeWheelPicker from "../components/TimeWheelPicker";
+import DurationPicker from "../components/DurationPicker";
 import { getAvailableHours } from "../utils/timeSlots";
 
 export function Rezervare() {
@@ -302,6 +303,7 @@ export function Rezervare() {
         persons: resForm.persons || 1,
         table_label: selectedTable?.label || resForm.tableId || null,
         observations: resForm.observations || null,
+        duration_minutes: resForm.durationMinutes || 90,
         status: "pending",
       });
     } catch (err) {
@@ -816,6 +818,15 @@ export function Rezervare() {
               {Math.floor(lockCountdown / 60)}:
               {String(lockCountdown % 60).padStart(2, "0")}
             </span>
+          </div>
+        )}
+        {resForm.tableId && (
+          <div style={{ marginBottom: 16 }}>
+            <label className="form-label">Cât timp veți sta?</label>
+            <DurationPicker
+              value={resForm.durationMinutes || 90}
+              onChange={(min) => set({ durationMinutes: min })}
+            />
           </div>
         )}
         <button

@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { supabase } from "../supabase";
 import FloorPicker from "../components/FloorPicker";
 import TimeWheelPicker from "../components/TimeWheelPicker";
+import DurationPicker from "../components/DurationPicker";
 import { getAvailableHours } from "../utils/timeSlots";
 
 // Modal pentru ospatar: adauga o rezervare TELEFONICA.
@@ -29,6 +30,7 @@ export default function PhoneReservationModal({
   const [customerPhone, setCustomerPhone] = useState("");
   const [tableId, setTableId] = useState(null);
   const [tableLabel, setTableLabel] = useState(null);
+  const [durationMinutes, setDurationMinutes] = useState(90);
 
   const [floors, setFloors] = useState([]);
   const [floorIdx, setFloorIdx] = useState(0);
@@ -130,6 +132,7 @@ export default function PhoneReservationModal({
         time,
         persons,
         table_label: tableLabel,
+        duration_minutes: durationMinutes,
         status: "confirmed",
         source: "phone",
       });
@@ -354,6 +357,16 @@ export default function PhoneReservationModal({
             }}
           >
             Masă selectată: {tableLabel}
+          </div>
+        )}
+
+        {tableId && (
+          <div style={{ marginBottom: 12 }}>
+            <label className="form-label">Cât timp va sta clientul?</label>
+            <DurationPicker
+              value={durationMinutes}
+              onChange={setDurationMinutes}
+            />
           </div>
         )}
 
