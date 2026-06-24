@@ -28,8 +28,8 @@ const HartaPage = lazy(() => import("./pages/HartaPage"));
 const StatisticiProprietar = lazy(
   () => import("./pages/statistici/StatisticiProprietar"),
 );
-const MenuEditor = lazy(() =>
-  import("./pages/MenuEditor").then((m) => ({ default: m.Meniu })),
+const EditorMeniu = lazy(() =>
+  import("./pages/EditorMeniu").then((m) => ({ default: m.EditorMeniu })),
 );
 const NewRestaurant = lazy(() => import("./pages/NewRestaurant"));
 const FloorEditor = lazy(() => import("./pages/FloorEditor"));
@@ -541,7 +541,7 @@ function Router() {
     adminFloor: <FloorEditor />,
     statistici: <StatisticiProprietar />,
     dashboardLive: <DashboardLive />,
-    menuEditor: <MenuEditor />,
+    menuEditor: <EditorMeniu />,
     newRestaurant: <NewRestaurant />,
     notifications: <Notifications />,
     superAdmin: <SuperAdmin />,
