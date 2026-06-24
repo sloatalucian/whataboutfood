@@ -274,7 +274,7 @@ export function EditorMeniu() {
                     style={{
                       display: "flex",
                       gap: 12,
-                      alignItems: "center",
+                      alignItems: "flex-start",
                       background: "#1e1a14",
                       border: "1px solid #2a2218",
                       borderRadius: 16,
@@ -323,6 +323,21 @@ export function EditorMeniu() {
                         }}
                       >
                         {item.name}
+                        {item.is_vegetarian && (
+                          <span
+                            style={{
+                              fontSize: 9,
+                              padding: "2px 6px",
+                              borderRadius: 8,
+                              background: "rgba(74,110,74,.2)",
+                              color: "#6b9e6b",
+                              marginLeft: 6,
+                              whiteSpace: "nowrap",
+                            }}
+                          >
+                            🌿 Veg
+                          </span>
+                        )}
                         {item.is_available === false && (
                           <span
                             style={{
@@ -336,6 +351,18 @@ export function EditorMeniu() {
                           </span>
                         )}
                       </div>
+                      {item.description && (
+                        <div
+                          style={{
+                            fontSize: 12,
+                            color: "#8a7a6a",
+                            lineHeight: 1.4,
+                            marginBottom: 5,
+                          }}
+                        >
+                          {item.description}
+                        </div>
+                      )}
                       <div
                         style={{
                           fontFamily: "'Fraunces',serif",
