@@ -949,14 +949,14 @@ export function Meniu() {
                 >
                   <div
                     style={{
-                      width: 52,
-                      height: 52,
+                      width: 124,
+                      height: 84,
                       background: "var(--card2)",
                       borderRadius: 13,
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "center",
-                      fontSize: 24,
+                      fontSize: 38,
                       flexShrink: 0,
                       overflow: "hidden",
                     }}

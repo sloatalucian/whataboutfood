@@ -425,8 +425,8 @@ export function EditorMeniu() {
                     {/* Miniatura: poza sau emoji */}
                     <div
                       style={{
-                        width: 58,
-                        height: 58,
+                        width: 124,
+                        height: 84,
                         borderRadius: 12,
                         overflow: "hidden",
                         flexShrink: 0,
@@ -434,7 +434,7 @@ export function EditorMeniu() {
                         display: "flex",
                         alignItems: "center",
                         justifyContent: "center",
-                        fontSize: 26,
+                        fontSize: 38,
                       }}
                     >
                       {item.image_url ? (
