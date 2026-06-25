@@ -1,5 +1,23 @@
 import { useState, useEffect, useCallback } from "react";
 import imageCompression from "browser-image-compression";
+import {
+  DndContext,
+  closestCenter,
+  PointerSensor,
+  TouchSensor,
+  KeyboardSensor,
+  useSensor,
+  useSensors,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+  horizontalListSortingStrategy,
+  arrayMove,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import { useApp } from "../context/AppContext";
 import { supabase } from "../supabase";
 
@@ -277,6 +295,76 @@ export function EditorMeniu() {
   const updateCatField = (value) =>
     setEditingCat((prev) => ({ ...prev, name: value }));
 
+  // ─── Drag & drop ───
+  // Sensori: pointer (mouse) + touch (telefon) + tastatura (accesibilitate).
+  // activationConstraint previne declansarea accidentala la scroll/tap.
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: { distance: 6 },
+    }),
+    useSensor(TouchSensor, {
+      activationConstraint: { delay: 180, tolerance: 6 },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    }),
+  );
+
+  // Reordonare PRODUSE in categoria activa
+  const handleProductDragEnd = async (event) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id || !activeCat) return;
+    const items = activeCat.items || [];
+    const oldIndex = items.findIndex((i) => i.id === active.id);
+    const newIndex = items.findIndex((i) => i.id === over.id);
+    if (oldIndex === -1 || newIndex === -1) return;
+
+    const reordered = arrayMove(items, oldIndex, newIndex);
+    // Update optimist in UI (instant)
+    setCategories((prev) =>
+      prev.map((c) => (c.id === activeCat.id ? { ...c, items: reordered } : c)),
+    );
+    // Salveaza noul item_order in DB
+    try {
+      await Promise.all(
+        reordered.map((it, idx) =>
+          supabase
+            .from("menu_items")
+            .update({ item_order: idx })
+            .eq("id", it.id),
+        ),
+      );
+    } catch {
+      showToast("❌ Eroare la salvarea ordinii.");
+      loadMenu(); // revine la starea din DB
+    }
+  };
+
+  // Reordonare CATEGORII (tab-uri)
+  const handleCategoryDragEnd = async (event) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    const oldIndex = categories.findIndex((c) => c.id === active.id);
+    const newIndex = categories.findIndex((c) => c.id === over.id);
+    if (oldIndex === -1 || newIndex === -1) return;
+
+    const reordered = arrayMove(categories, oldIndex, newIndex);
+    setCategories(reordered); // optimist
+    try {
+      await Promise.all(
+        reordered.map((c, idx) =>
+          supabase
+            .from("menu_categories")
+            .update({ category_order: idx })
+            .eq("id", c.id),
+        ),
+      );
+    } catch {
+      showToast("❌ Eroare la salvarea ordinii.");
+      loadMenu();
+    }
+  };
+
   // Upload poza produs: comprima -> incarca in Storage -> seteaza image_url
   const handlePhotoSelect = async (e) => {
     const file = e.target.files?.[0];
@@ -465,38 +553,25 @@ export function EditorMeniu() {
                 scrollbarWidth: "none",
               }}
             >
-              {categories.map((cat) => {
-                const on = cat.id === activeCat?.id;
-                return (
-                  <button
-                    key={cat.id}
-                    onClick={() => setActiveCatId(cat.id)}
-                    style={{
-                      flexShrink: 0,
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 7,
-                      padding: "10px 16px",
-                      borderRadius: 99,
-                      background: on ? "#c0622f" : "#1e1a14",
-                      border: `1px solid ${on ? "#c0622f" : "#2a2218"}`,
-                      color: on ? "#fff" : "#8a7a6a",
-                      fontSize: 12.5,
-                      fontWeight: 700,
-                      letterSpacing: "0.02em",
-                      textTransform: "uppercase",
-                      whiteSpace: "nowrap",
-                      cursor: "pointer",
-                    }}
-                  >
-                    {cat.emoji && <span>{cat.emoji}</span>}
-                    {cat.name}
-                    <span style={{ opacity: 0.7, fontSize: 11 }}>
-                      {(cat.items || []).length}
-                    </span>
-                  </button>
-                );
-              })}
+              <DndContext
+                sensors={sensors}
+                collisionDetection={closestCenter}
+                onDragEnd={handleCategoryDragEnd}
+              >
+                <SortableContext
+                  items={categories.map((c) => c.id)}
+                  strategy={horizontalListSortingStrategy}
+                >
+                  {categories.map((cat) => (
+                    <SortableTab
+                      key={cat.id}
+                      cat={cat}
+                      active={cat.id === activeCat?.id}
+                      onSelect={() => setActiveCatId(cat.id)}
+                    />
+                  ))}
+                </SortableContext>
+              </DndContext>
 
               {/* Buton adauga categorie */}
               <button
@@ -583,157 +658,25 @@ export function EditorMeniu() {
                   Nicio produs în această categorie.
                 </div>
               ) : (
-                (activeCat?.items || []).map((item) => (
-                  <div
-                    key={item.id}
-                    style={{
-                      display: "flex",
-                      gap: 12,
-                      alignItems: "flex-start",
-                      background: "#1e1a14",
-                      border: "1px solid #2a2218",
-                      borderRadius: 16,
-                      padding: 11,
-                      opacity: item.is_available === false ? 0.5 : 1,
-                    }}
+                <DndContext
+                  sensors={sensors}
+                  collisionDetection={closestCenter}
+                  onDragEnd={handleProductDragEnd}
+                >
+                  <SortableContext
+                    items={(activeCat?.items || []).map((i) => i.id)}
+                    strategy={verticalListSortingStrategy}
                   >
-                    {/* Miniatura: poza sau emoji */}
-                    <div
-                      style={{
-                        width: 124,
-                        height: 84,
-                        borderRadius: 12,
-                        overflow: "hidden",
-                        flexShrink: 0,
-                        background: "linear-gradient(135deg,#4a3322,#2a1d13)",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        fontSize: 38,
-                      }}
-                    >
-                      {item.image_url ? (
-                        <img
-                          src={item.image_url}
-                          alt={item.name}
-                          style={{
-                            width: "100%",
-                            height: "100%",
-                            objectFit: "cover",
-                          }}
-                        />
-                      ) : (
-                        item.emoji || "🍽️"
-                      )}
-                    </div>
-
-                    {/* Info */}
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div
-                        style={{
-                          fontWeight: 600,
-                          fontSize: 14,
-                          lineHeight: 1.25,
-                          marginBottom: 3,
-                        }}
-                      >
-                        {item.name}
-                        {item.is_vegetarian && (
-                          <span
-                            style={{
-                              fontSize: 9,
-                              padding: "2px 6px",
-                              borderRadius: 8,
-                              background: "rgba(74,110,74,.2)",
-                              color: "#6b9e6b",
-                              marginLeft: 6,
-                              whiteSpace: "nowrap",
-                            }}
-                          >
-                            🌿 Veg
-                          </span>
-                        )}
-                        {item.is_available === false && (
-                          <span
-                            style={{
-                              color: "#c0392b",
-                              fontSize: 11,
-                              fontWeight: 400,
-                            }}
-                          >
-                            {" "}
-                            · indisponibil
-                          </span>
-                        )}
-                      </div>
-                      {item.description && (
-                        <div
-                          style={{
-                            fontSize: 12,
-                            color: "#8a7a6a",
-                            lineHeight: 1.4,
-                            marginBottom: 5,
-                          }}
-                        >
-                          {item.description}
-                        </div>
-                      )}
-                      <div
-                        style={{
-                          fontFamily: "'Fraunces',serif",
-                          fontWeight: 700,
-                          fontSize: 15,
-                          color: "#c8a97e",
-                        }}
-                      >
-                        {item.price} lei
-                      </div>
-                    </div>
-
-                    {/* Butoane editare / stergere */}
-                    <div
-                      style={{
-                        display: "flex",
-                        flexDirection: "column",
-                        gap: 6,
-                        flexShrink: 0,
-                      }}
-                    >
-                      <button
-                        onClick={() => openEditItem(item)}
-                        style={{
-                          width: 32,
-                          height: 32,
-                          borderRadius: 9,
-                          border: "none",
-                          background: "#252018",
-                          color: "#c8a97e",
-                          fontSize: 13,
-                          cursor: "pointer",
-                        }}
-                        aria-label="Editează produs"
-                      >
-                        ✏️
-                      </button>
-                      <button
-                        onClick={() => setDeleteConfirm(item)}
-                        style={{
-                          width: 32,
-                          height: 32,
-                          borderRadius: 9,
-                          border: "none",
-                          background: "rgba(192,57,43,.15)",
-                          color: "#e07060",
-                          fontSize: 13,
-                          cursor: "pointer",
-                        }}
-                        aria-label="Șterge produs"
-                      >
-                        🗑
-                      </button>
-                    </div>
-                  </div>
-                ))
+                    {(activeCat?.items || []).map((item) => (
+                      <SortableProduct
+                        key={item.id}
+                        item={item}
+                        onEdit={() => openEditItem(item)}
+                        onDelete={() => setDeleteConfirm(item)}
+                      />
+                    ))}
+                  </SortableContext>
+                </DndContext>
               )}
             </div>
 
@@ -1381,5 +1324,265 @@ function Switch({ on, green }) {
         }}
       />
     </span>
+  );
+}
+
+// ─── Produs sortabil (drag & drop cu maner) ───
+function SortableProduct({ item, onEdit, onDelete }) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: item.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    display: "flex",
+    gap: 10,
+    alignItems: "flex-start",
+    background: "#1e1a14",
+    border: `1px solid ${isDragging ? "#c0622f" : "#2a2218"}`,
+    borderRadius: 16,
+    padding: 11,
+    opacity: isDragging ? 0.85 : item.is_available === false ? 0.5 : 1,
+    boxShadow: isDragging ? "0 12px 30px rgba(0,0,0,.5)" : "none",
+    zIndex: isDragging ? 10 : "auto",
+    position: "relative",
+  };
+
+  return (
+    <div ref={setNodeRef} style={style}>
+      {/* Maner de drag */}
+      <button
+        {...attributes}
+        {...listeners}
+        style={{
+          flexShrink: 0,
+          width: 28,
+          alignSelf: "stretch",
+          border: "none",
+          background: "transparent",
+          color: "#6b6050",
+          fontSize: 18,
+          cursor: "grab",
+          touchAction: "none",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          padding: 0,
+        }}
+        aria-label="Trage pentru reordonare"
+      >
+        ⠿
+      </button>
+
+      {/* Miniatura: poza sau emoji */}
+      <div
+        style={{
+          width: 110,
+          height: 80,
+          borderRadius: 12,
+          overflow: "hidden",
+          flexShrink: 0,
+          background: "linear-gradient(135deg,#4a3322,#2a1d13)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          fontSize: 36,
+        }}
+      >
+        {item.image_url ? (
+          <img
+            src={item.image_url}
+            alt={item.name}
+            style={{ width: "100%", height: "100%", objectFit: "cover" }}
+          />
+        ) : (
+          item.emoji || "🍽️"
+        )}
+      </div>
+
+      {/* Info */}
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div
+          style={{
+            fontWeight: 600,
+            fontSize: 14,
+            lineHeight: 1.25,
+            marginBottom: 3,
+          }}
+        >
+          {item.name}
+          {item.is_vegetarian && (
+            <span
+              style={{
+                fontSize: 9,
+                padding: "2px 6px",
+                borderRadius: 8,
+                background: "rgba(74,110,74,.2)",
+                color: "#6b9e6b",
+                marginLeft: 6,
+                whiteSpace: "nowrap",
+              }}
+            >
+              🌿 Veg
+            </span>
+          )}
+          {item.is_available === false && (
+            <span style={{ color: "#c0392b", fontSize: 11, fontWeight: 400 }}>
+              {" "}
+              · indisponibil
+            </span>
+          )}
+        </div>
+        {item.description && (
+          <div
+            style={{
+              fontSize: 12,
+              color: "#8a7a6a",
+              lineHeight: 1.4,
+              marginBottom: 5,
+            }}
+          >
+            {item.description}
+          </div>
+        )}
+        <div
+          style={{
+            fontFamily: "'Fraunces',serif",
+            fontWeight: 700,
+            fontSize: 15,
+            color: "#c8a97e",
+          }}
+        >
+          {item.price} lei
+        </div>
+      </div>
+
+      {/* Butoane editare / stergere */}
+      <div
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          gap: 6,
+          flexShrink: 0,
+        }}
+      >
+        <button
+          onClick={onEdit}
+          style={{
+            width: 32,
+            height: 32,
+            borderRadius: 9,
+            border: "none",
+            background: "#252018",
+            color: "#c8a97e",
+            fontSize: 13,
+            cursor: "pointer",
+          }}
+          aria-label="Editează produs"
+        >
+          ✏️
+        </button>
+        <button
+          onClick={onDelete}
+          style={{
+            width: 32,
+            height: 32,
+            borderRadius: 9,
+            border: "none",
+            background: "rgba(192,57,43,.15)",
+            color: "#e07060",
+            fontSize: 13,
+            cursor: "pointer",
+          }}
+          aria-label="Șterge produs"
+        >
+          🗑
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ─── Tab categorie sortabil (drag & drop orizontal) ───
+function SortableTab({ cat, active, onSelect }) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: cat.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    flexShrink: 0,
+    display: "flex",
+    alignItems: "center",
+    gap: 6,
+    padding: "10px 14px",
+    borderRadius: 99,
+    background: active ? "#c0622f" : "#1e1a14",
+    border: `1px solid ${isDragging ? "#e07a47" : active ? "#c0622f" : "#2a2218"}`,
+    color: active ? "#fff" : "#8a7a6a",
+    fontSize: 12.5,
+    fontWeight: 700,
+    letterSpacing: "0.02em",
+    textTransform: "uppercase",
+    whiteSpace: "nowrap",
+    opacity: isDragging ? 0.85 : 1,
+    boxShadow: isDragging ? "0 8px 20px rgba(0,0,0,.4)" : "none",
+    zIndex: isDragging ? 10 : "auto",
+  };
+
+  return (
+    <div ref={setNodeRef} style={style}>
+      {/* Maner de drag */}
+      <span
+        {...attributes}
+        {...listeners}
+        style={{
+          cursor: "grab",
+          touchAction: "none",
+          color: active ? "rgba(255,255,255,.6)" : "#6b6050",
+          fontSize: 14,
+          display: "flex",
+          alignItems: "center",
+        }}
+        aria-label="Trage pentru reordonare"
+      >
+        ⠿
+      </span>
+      {/* Numele - click pentru selectare */}
+      <button
+        onClick={onSelect}
+        style={{
+          border: "none",
+          background: "transparent",
+          color: "inherit",
+          font: "inherit",
+          letterSpacing: "inherit",
+          textTransform: "inherit",
+          cursor: "pointer",
+          display: "flex",
+          alignItems: "center",
+          gap: 6,
+          padding: 0,
+        }}
+      >
+        {cat.emoji && <span>{cat.emoji}</span>}
+        {cat.name}
+        <span style={{ opacity: 0.7, fontSize: 11 }}>
+          {(cat.items || []).length}
+        </span>
+      </button>
+    </div>
   );
 }
