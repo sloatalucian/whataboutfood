@@ -931,11 +931,12 @@ export function Meniu() {
             </div>
 
             {/* Produse */}
-            {(activeCatObj?.items || []).map((item) => {
+            {(activeCatObj?.items || []).map((item, idx) => {
               const qty = cartQty(item.id);
               return (
                 <div
-                  key={item.id}
+                  key={`${activeCatObj?.id}-${item.id}`}
+                  className="menu-item-pop"
                   style={{
                     background: "var(--card)",
                     border: "1px solid var(--border)",
@@ -945,6 +946,7 @@ export function Meniu() {
                     alignItems: "flex-start",
                     gap: 12,
                     marginBottom: 10,
+                    animationDelay: `${Math.min(idx * 60, 480)}ms`,
                   }}
                 >
                   <div

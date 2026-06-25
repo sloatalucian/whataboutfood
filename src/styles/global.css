@@ -465,3 +465,23 @@ h3 {
     border-right: 1px solid #1e1a14;
   }
 }
+
+/* Animatie produse meniu - "pop" elastic in cascada la schimbarea categoriei */
+.menu-item-pop {
+  animation: menuItemPop 0.7s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+@keyframes menuItemPop {
+  from {
+    opacity: 0;
+    transform: scale(0.92);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .menu-item-pop {
+    animation: none;
+  }
+}
