@@ -25,6 +25,10 @@ export function EditorMeniu() {
   const [deleteConfirm, setDeleteConfirm] = useState(null); // produsul de sters
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
 
+  // Modal categorie: {_isNew, id?, name} sau null (inchis)
+  const [editingCat, setEditingCat] = useState(null);
+  const [deleteCatConfirm, setDeleteCatConfirm] = useState(null); // categoria de sters
+
   const activeRest = myRestaurants.find((r) => r.id === restId) || null;
   const activeCat =
     categories.find((c) => c.id === activeCatId) || categories[0] || null;
@@ -186,6 +190,93 @@ export function EditorMeniu() {
   const updateField = (key, value) =>
     setEditingItem((prev) => ({ ...prev, [key]: value }));
 
+  // ─── Categorii ───
+  const openNewCat = () => setEditingCat({ _isNew: true, name: "" });
+  const openEditCat = (cat) =>
+    setEditingCat({ _isNew: false, id: cat.id, name: cat.name });
+
+  const saveCat = async () => {
+    if (!editingCat) return;
+    const name = (editingCat.name || "").trim();
+    if (!name) {
+      showToast("⚠️ Completează numele categoriei.");
+      return;
+    }
+    setSaving(true);
+    try {
+      if (editingCat._isNew) {
+        const maxOrder = categories.reduce(
+          (m, c) => Math.max(m, c.category_order ?? 0),
+          -1,
+        );
+        const { data, error } = await supabase
+          .from("menu_categories")
+          .insert({
+            restaurant_id: restId,
+            name,
+            category_order: maxOrder + 1,
+          })
+          .select()
+          .single();
+        if (error) throw error;
+        showToast("✅ Categorie adăugată!");
+        setEditingCat(null);
+        await loadMenu();
+        if (data?.id) setActiveCatId(data.id); // sari pe categoria noua
+        setSaving(false);
+        return;
+      } else {
+        const { error } = await supabase
+          .from("menu_categories")
+          .update({ name })
+          .eq("id", editingCat.id);
+        if (error) throw error;
+        showToast("✅ Categorie actualizată!");
+      }
+      setEditingCat(null);
+      await loadMenu();
+    } catch {
+      showToast("❌ Eroare la salvare. Încearcă din nou.");
+    }
+    setSaving(false);
+  };
+
+  // Sterge categoria SI toate produsele din ea (cascada)
+  const deleteCat = async () => {
+    if (!deleteCatConfirm) return;
+    setSaving(true);
+    try {
+      // 1. sterge produsele categoriei
+      const { error: itemsErr } = await supabase
+        .from("menu_items")
+        .delete()
+        .eq("category_id", deleteCatConfirm.id);
+      if (itemsErr) throw itemsErr;
+      // 2. sterge categoria
+      const { error: catErr } = await supabase
+        .from("menu_categories")
+        .delete()
+        .eq("id", deleteCatConfirm.id);
+      if (catErr) throw catErr;
+      showToast("🗑️ Categorie ștearsă.");
+      setDeleteCatConfirm(null);
+      // muta pe alta categorie daca am sters-o pe cea activa
+      if (activeCatId === deleteCatConfirm.id) {
+        const remaining = categories.filter(
+          (c) => c.id !== deleteCatConfirm.id,
+        );
+        setActiveCatId(remaining[0]?.id || null);
+      }
+      await loadMenu();
+    } catch {
+      showToast("❌ Eroare la ștergere.");
+    }
+    setSaving(false);
+  };
+
+  const updateCatField = (value) =>
+    setEditingCat((prev) => ({ ...prev, name: value }));
+
   // Upload poza produs: comprima -> incarca in Storage -> seteaza image_url
   const handlePhotoSelect = async (e) => {
     const file = e.target.files?.[0];
@@ -343,9 +434,23 @@ export function EditorMeniu() {
           >
             Acest restaurant nu are încă nicio categorie în meniu.
             <br />
-            <span style={{ fontSize: 13, color: "#6b6050" }}>
-              (În pasul următor vei putea adăuga categorii și produse.)
-            </span>
+            <button
+              onClick={openNewCat}
+              style={{
+                marginTop: 18,
+                padding: "12px 22px",
+                borderRadius: 14,
+                border: "none",
+                background: "linear-gradient(135deg,#e07a47,#8b3a18)",
+                color: "#fff",
+                fontWeight: 700,
+                fontSize: 14,
+                cursor: "pointer",
+                fontFamily: "inherit",
+              }}
+            >
+              + Adaugă prima categorie
+            </button>
           </div>
         ) : (
           <>
@@ -392,7 +497,77 @@ export function EditorMeniu() {
                   </button>
                 );
               })}
+
+              {/* Buton adauga categorie */}
+              <button
+                onClick={openNewCat}
+                style={{
+                  flexShrink: 0,
+                  padding: "10px 16px",
+                  borderRadius: 99,
+                  background: "transparent",
+                  border: "1px dashed rgba(192,98,47,.45)",
+                  color: "#e07a47",
+                  fontSize: 12.5,
+                  fontWeight: 700,
+                  whiteSpace: "nowrap",
+                  cursor: "pointer",
+                }}
+              >
+                + Categorie
+              </button>
             </div>
+
+            {/* Actiuni pentru categoria activa */}
+            {activeCat && (
+              <div
+                style={{
+                  display: "flex",
+                  gap: 8,
+                  marginBottom: 16,
+                  marginTop: -6,
+                }}
+              >
+                <button
+                  onClick={() => openEditCat(activeCat)}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 6,
+                    padding: "6px 12px",
+                    borderRadius: 9,
+                    border: "1px solid #2a2218",
+                    background: "#1e1a14",
+                    color: "#c8a97e",
+                    fontSize: 12,
+                    fontWeight: 600,
+                    cursor: "pointer",
+                    fontFamily: "inherit",
+                  }}
+                >
+                  ✏️ Redenumește „{activeCat.name}"
+                </button>
+                <button
+                  onClick={() => setDeleteCatConfirm(activeCat)}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 6,
+                    padding: "6px 12px",
+                    borderRadius: 9,
+                    border: "1px solid rgba(192,57,43,.3)",
+                    background: "rgba(192,57,43,.1)",
+                    color: "#e07060",
+                    fontSize: 12,
+                    fontWeight: 600,
+                    cursor: "pointer",
+                    fontFamily: "inherit",
+                  }}
+                >
+                  🗑 Șterge categoria
+                </button>
+              </div>
+            )}
 
             {/* Produsele din categoria activa */}
             <div style={{ display: "flex", flexDirection: "column", gap: 11 }}>
@@ -968,6 +1143,208 @@ export function EditorMeniu() {
                 }}
               >
                 {saving ? "Se șterge..." : "Șterge"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL editare/adaugare categorie */}
+      {editingCat && (
+        <div
+          onClick={() => !saving && setEditingCat(null)}
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 9999,
+            background: "rgba(0,0,0,0.8)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: 20,
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              background: "#1a1510",
+              border: "1px solid #2c2419",
+              borderRadius: 20,
+              padding: 22,
+              maxWidth: 380,
+              width: "100%",
+            }}
+          >
+            <h3
+              style={{
+                fontFamily: "'Fraunces',serif",
+                fontWeight: 700,
+                fontSize: 20,
+                margin: "0 0 18px",
+              }}
+            >
+              {editingCat._isNew ? "Adaugă categorie" : "Redenumește categoria"}
+            </h3>
+
+            <div className="form-group">
+              <label className="form-label">Nume categorie</label>
+              <input
+                className="form-input"
+                type="text"
+                value={editingCat.name}
+                placeholder="ex: Aperitivos, Deserturi..."
+                onChange={(e) => updateCatField(e.target.value)}
+                autoFocus
+              />
+            </div>
+
+            <div style={{ display: "flex", gap: 10, marginTop: 8 }}>
+              <button
+                onClick={() => setEditingCat(null)}
+                disabled={saving}
+                style={{
+                  flex: 1,
+                  padding: 13,
+                  borderRadius: 12,
+                  border: "none",
+                  background: "#252018",
+                  color: "#8a7a6a",
+                  fontWeight: 700,
+                  fontSize: 14,
+                  cursor: "pointer",
+                  fontFamily: "inherit",
+                }}
+              >
+                Anulează
+              </button>
+              <button
+                onClick={saveCat}
+                disabled={saving}
+                style={{
+                  flex: 1,
+                  padding: 13,
+                  borderRadius: 12,
+                  border: "none",
+                  background: "linear-gradient(135deg,#e07a47,#8b3a18)",
+                  color: "#fff",
+                  fontWeight: 700,
+                  fontSize: 14,
+                  cursor: saving ? "not-allowed" : "pointer",
+                  fontFamily: "inherit",
+                  opacity: saving ? 0.6 : 1,
+                }}
+              >
+                {saving ? "Se salvează..." : "Salvează"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* CONFIRMARE stergere categorie (cu produsele ei) */}
+      {deleteCatConfirm && (
+        <div
+          onClick={() => !saving && setDeleteCatConfirm(null)}
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 10000,
+            background: "rgba(0,0,0,0.8)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: 20,
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              background: "#1a1510",
+              border: "1px solid #2c2419",
+              borderRadius: 20,
+              padding: 24,
+              maxWidth: 360,
+              width: "100%",
+            }}
+          >
+            <h3
+              style={{
+                fontFamily: "'Fraunces',serif",
+                fontWeight: 700,
+                fontSize: 18,
+                margin: "0 0 8px",
+              }}
+            >
+              Ștergi categoria?
+            </h3>
+            <p
+              style={{
+                fontSize: 13.5,
+                color: "#8a7a6a",
+                margin: "0 0 8px",
+                lineHeight: 1.5,
+              }}
+            >
+              Categoria „{deleteCatConfirm.name}" va fi ștearsă definitiv.
+            </p>
+            {(deleteCatConfirm.items || []).length > 0 && (
+              <p
+                style={{
+                  fontSize: 13,
+                  color: "#e07060",
+                  margin: "0 0 20px",
+                  lineHeight: 1.5,
+                  padding: "10px 12px",
+                  background: "rgba(192,57,43,.1)",
+                  borderRadius: 10,
+                  border: "1px solid rgba(192,57,43,.25)",
+                }}
+              >
+                ⚠️ Vor fi șterse și cele{" "}
+                <b>{(deleteCatConfirm.items || []).length} produse</b> din ea.
+                Această acțiune nu poate fi anulată.
+              </p>
+            )}
+            {(deleteCatConfirm.items || []).length === 0 && (
+              <div style={{ marginBottom: 12 }} />
+            )}
+            <div style={{ display: "flex", gap: 10 }}>
+              <button
+                onClick={() => setDeleteCatConfirm(null)}
+                disabled={saving}
+                style={{
+                  flex: 1,
+                  padding: 12,
+                  borderRadius: 11,
+                  border: "none",
+                  background: "#252018",
+                  color: "#8a7a6a",
+                  fontWeight: 700,
+                  fontSize: 14,
+                  cursor: "pointer",
+                  fontFamily: "inherit",
+                }}
+              >
+                Anulează
+              </button>
+              <button
+                onClick={deleteCat}
+                disabled={saving}
+                style={{
+                  flex: 1,
+                  padding: 12,
+                  borderRadius: 11,
+                  border: "none",
+                  background: "#c0392b",
+                  color: "#fff",
+                  fontWeight: 700,
+                  fontSize: 14,
+                  cursor: saving ? "not-allowed" : "pointer",
+                  fontFamily: "inherit",
+                  opacity: saving ? 0.6 : 1,
+                }}
+              >
+                {saving ? "Se șterge..." : "Șterge tot"}
               </button>
             </div>
           </div>
