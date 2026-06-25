@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import imageCompression from "browser-image-compression";
 import { useApp } from "../context/AppContext";
 import { supabase } from "../supabase";
 
@@ -22,6 +23,7 @@ export function EditorMeniu() {
   const [editingItem, setEditingItem] = useState(null);
   const [saving, setSaving] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState(null); // produsul de sters
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
 
   const activeRest = myRestaurants.find((r) => r.id === restId) || null;
   const activeCat =
@@ -130,6 +132,7 @@ export function EditorMeniu() {
         emoji: (editingItem.emoji || "🍽️").trim() || "🍽️",
         is_vegetarian: !!editingItem.is_vegetarian,
         is_available: editingItem.is_available !== false,
+        image_url: editingItem.image_url || null,
       };
       if (editingItem._isNew) {
         // item_order = ultimul + 1 in categorie
@@ -182,6 +185,40 @@ export function EditorMeniu() {
   // Helper: actualizeaza un camp din produsul editat
   const updateField = (key, value) =>
     setEditingItem((prev) => ({ ...prev, [key]: value }));
+
+  // Upload poza produs: comprima -> incarca in Storage -> seteaza image_url
+  const handlePhotoSelect = async (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = ""; // permite re-selectarea aceluiasi fisier
+    if (!file) return;
+    setUploadingPhoto(true);
+    try {
+      const compressed = await imageCompression(file, {
+        maxSizeMB: 0.8,
+        maxWidthOrHeight: 1200,
+        useWebWorker: true,
+      });
+      // nume unic de fisier (produsul nou n-are inca id)
+      const ext = (file.name?.split(".").pop() || "jpg").toLowerCase();
+      const baseId = editingItem.id || `new_${Date.now()}`;
+      const path = `${restId}/${baseId}_${Date.now()}.${ext}`;
+      const { error: upErr } = await supabase.storage
+        .from("menu-items")
+        .upload(path, compressed, {
+          upsert: true,
+          contentType: compressed.type || file.type,
+        });
+      if (upErr) throw upErr;
+      const {
+        data: { publicUrl },
+      } = supabase.storage.from("menu-items").getPublicUrl(path);
+      updateField("image_url", publicUrl);
+      showToast("✅ Poză încărcată!");
+    } catch {
+      showToast("❌ Eroare la încărcarea pozei.");
+    }
+    setUploadingPhoto(false);
+  };
 
   return (
     <div className="page fade-in">
@@ -591,6 +628,120 @@ export function EditorMeniu() {
             >
               {editingItem._isNew ? "Adaugă produs" : "Editează produs"}
             </h3>
+
+            {/* Zona poza produs */}
+            <label
+              style={{
+                position: "relative",
+                display: "block",
+                width: "100%",
+                height: 150,
+                borderRadius: 14,
+                overflow: "hidden",
+                marginBottom: 16,
+                cursor: uploadingPhoto ? "wait" : "pointer",
+                border: "1px solid #2a2218",
+                background: editingItem.image_url
+                  ? "transparent"
+                  : "linear-gradient(135deg,#4a3322,#2a1d13)",
+              }}
+            >
+              {editingItem.image_url ? (
+                <img
+                  src={editingItem.image_url}
+                  alt="Poză produs"
+                  style={{
+                    width: "100%",
+                    height: "100%",
+                    objectFit: "cover",
+                  }}
+                />
+              ) : (
+                <div
+                  style={{
+                    width: "100%",
+                    height: "100%",
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: 8,
+                    color: "#c8a97e",
+                  }}
+                >
+                  <span style={{ fontSize: 32 }}>📷</span>
+                  <span style={{ fontSize: 13, fontWeight: 600 }}>
+                    Adaugă o poză (opțional)
+                  </span>
+                </div>
+              )}
+              {/* overlay text cand exista poza */}
+              {editingItem.image_url && (
+                <div
+                  style={{
+                    position: "absolute",
+                    inset: 0,
+                    background:
+                      "linear-gradient(to top, rgba(0,0,0,.6), transparent 50%)",
+                    display: "flex",
+                    alignItems: "flex-end",
+                    padding: 12,
+                  }}
+                >
+                  <span
+                    style={{ fontSize: 12, fontWeight: 600, color: "#fff" }}
+                  >
+                    📷 Schimbă poza
+                  </span>
+                </div>
+              )}
+              {/* spinner la upload */}
+              {uploadingPhoto && (
+                <div
+                  style={{
+                    position: "absolute",
+                    inset: 0,
+                    background: "rgba(0,0,0,.6)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    color: "#fff",
+                    fontSize: 13,
+                    fontWeight: 600,
+                  }}
+                >
+                  Se încarcă...
+                </div>
+              )}
+              <input
+                type="file"
+                accept="image/*"
+                onChange={handlePhotoSelect}
+                disabled={uploadingPhoto}
+                style={{ display: "none" }}
+              />
+            </label>
+
+            {/* buton stergere poza */}
+            {editingItem.image_url && !uploadingPhoto && (
+              <button
+                onClick={() => updateField("image_url", null)}
+                style={{
+                  display: "block",
+                  margin: "-8px 0 14px auto",
+                  padding: "4px 10px",
+                  borderRadius: 8,
+                  border: "none",
+                  background: "transparent",
+                  color: "#8a7a6a",
+                  fontSize: 12,
+                  cursor: "pointer",
+                  fontFamily: "inherit",
+                }}
+              >
+                🗑 Elimină poza
+              </button>
+            )}
 
             <div className="form-group">
               <label className="form-label">Nume produs</label>
