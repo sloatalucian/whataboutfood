@@ -2,8 +2,9 @@ import { useRef, useEffect } from "react";
 
 // Selector de durata pentru o rezervare. 3 optiuni exclusive:
 //  1. "Stau cel mult o ora"        -> 60 min
-//  2. "Stau aproximativ 2-3 ore"   -> 165 min (2h45)
-//  3. "Eveniment special (>3 ore)" -> roata cu nr de ore (4-8h) -> N*60 min
+//  2. "Stau aproximativ 1-2 ore"   -> 90 min (standard, preselectat)
+//  3. "Stau aproximativ 2-3 ore"   -> 165 min (2h45)
+//  4. "Eveniment special (>3 ore)" -> roata cu nr de ore (4-8h) -> N*60 min
 //
 // Props:
 //  - value: number - durata curenta in minute (60 / 165 / 240..480)
@@ -18,12 +19,13 @@ const PAD = 80;
 // Determina ce optiune e activa pe baza valorii in minute
 function activeOption(minutes) {
   if (minutes === 60) return "scurt";
+  if (minutes === 90) return "standard";
   if (minutes === 165) return "mediu";
   if (minutes >= 240) return "special"; // 4h+ = eveniment special
-  return "mediu"; // fallback
+  return "standard"; // fallback = standardul (90 min)
 }
 
-export default function DurationPicker({ value = 165, onChange }) {
+export default function DurationPicker({ value = 90, onChange }) {
   const active = activeOption(value);
   const wheelRef = useRef(null);
 
@@ -89,6 +91,15 @@ export default function DurationPicker({ value = 165, onChange }) {
       >
         <span style={radioStyle(active === "scurt")} />
         Stau cel mult o oră
+      </button>
+
+      <button
+        type="button"
+        onClick={() => onChange?.(90)}
+        style={optStyle(active === "standard")}
+      >
+        <span style={radioStyle(active === "standard")} />
+        Stau aproximativ 1-2 ore
       </button>
 
       <button
