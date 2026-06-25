@@ -958,9 +958,22 @@ export function Meniu() {
                       justifyContent: "center",
                       fontSize: 24,
                       flexShrink: 0,
+                      overflow: "hidden",
                     }}
                   >
-                    {item.emoji}
+                    {item.image_url ? (
+                      <img
+                        src={item.image_url}
+                        alt={item.name}
+                        style={{
+                          width: "100%",
+                          height: "100%",
+                          objectFit: "cover",
+                        }}
+                      />
+                    ) : (
+                      item.emoji
+                    )}
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div
