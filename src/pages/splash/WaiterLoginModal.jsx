@@ -30,7 +30,11 @@ function WaiterLoginModal({ onLogin, onClose }) {
         .select("id, full_name, role, restaurant_id, status")
         .eq("id", authData.user.id)
         .single();
-      if (dbError || !data || data.role !== "waiter") {
+      if (
+        dbError ||
+        !data ||
+        (data.role !== "waiter" && data.role !== "kitchen")
+      ) {
         setError("Cont inexistent sau dezactivat.");
         await supabase.auth.signOut();
         setLoading(false);
@@ -45,7 +49,7 @@ function WaiterLoginModal({ onLogin, onClose }) {
         id: data.id,
         name: data.full_name || email,
         email: authData.user.email,
-        role: "waiter",
+        role: data.role,
         restaurantId: data.restaurant_id,
         restaurantName: rest?.name || "Restaurant",
       });
@@ -106,10 +110,10 @@ function WaiterLoginModal({ onLogin, onClose }) {
               marginBottom: 4,
             }}
           >
-            Tabletă Ospătar
+            Tabletă Staff
           </div>
           <div style={{ fontSize: 13, color: "#6b6050" }}>
-            Intră în contul tău de ospătar
+            Intră în contul tău de ospătar sau bucătar
           </div>
         </div>
         {error && (

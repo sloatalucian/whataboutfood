@@ -344,6 +344,7 @@ export function WaiterTablet({
         .from("orders")
         .update({
           status: "cooking",
+          accepted_at: new Date().toISOString(),
           items: remainingItems.map((i) => ({ ...i, is_new: false })),
           total: newTotal,
           cancelled_items: cancelledItems,

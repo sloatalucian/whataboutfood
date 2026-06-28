@@ -23,6 +23,14 @@ import "./styles/global.css";
 const WaiterTablet = lazy(() =>
   import("./pages/WaiterTablet").then((m) => ({ default: m.WaiterTablet })),
 );
+const BucatarTablet = lazy(() =>
+  import("./pages/BucatarTablet").then((m) => ({ default: m.BucatarTablet })),
+);
+const KitchenManagement = lazy(() =>
+  import("./pages/KitchenManagement").then((m) => ({
+    default: m.KitchenManagement,
+  })),
+);
 const DashboardLive = lazy(() => import("./pages/DashboardLive"));
 const HartaPage = lazy(() => import("./pages/HartaPage"));
 const StatisticiProprietar = lazy(
@@ -176,7 +184,7 @@ function Router() {
             await supabase.auth.signOut();
             return;
           }
-          if (profile?.role === "waiter") {
+          if (profile?.role === "waiter" || profile?.role === "kitchen") {
             await supabase.auth.signOut();
             return;
           }
@@ -224,8 +232,8 @@ function Router() {
           await supabase.auth.signOut();
           return;
         }
-        // Ospătarii nu pot intra prin fluxul normal de client
-        if (profile?.role === "waiter") {
+        // Ospătarii și bucătarii nu pot intra prin fluxul normal de client
+        if (profile?.role === "waiter" || profile?.role === "kitchen") {
           await supabase.auth.signOut();
           return;
         }
@@ -300,7 +308,7 @@ function Router() {
       if (rest) dispatch({ type: "SET_REST", payload: rest });
     }
     setSplashDone(true);
-    navigate("waiter");
+    navigate(waiter.role === "kitchen" ? "kitchen" : "waiter");
     showToast(`👋 Bun venit, ${waiter.name}!`);
   };
   const handleWaiterLogout = async () => {
@@ -498,6 +506,21 @@ function Router() {
     );
   }
 
+  if (screen === "kitchen") {
+    return (
+      <div className="app">
+        {toast && <div className="toast">{toast}</div>}
+        <Suspense fallback={<PageLoader />}>
+          <BucatarTablet
+            restaurantId={waiterUser?.restaurantId || selectedRest?.id}
+            kitchenName={waiterUser?.restaurantName || "Bucătărie"}
+            onBack={handleWaiterLogout}
+          />
+        </Suspense>
+      </div>
+    );
+  }
+
   if (screen === "waiter") {
     return (
       <TableProvider restaurantId={selectedRest?.id}>
@@ -538,6 +561,7 @@ function Router() {
         onLogout={handleLogout}
       />
     ),
+    kitchenManagement: <KitchenManagement onBack={() => navigate("home")} />,
     adminFloor: <FloorEditor />,
     statistici: <StatisticiProprietar />,
     dashboardLive: <DashboardLive />,

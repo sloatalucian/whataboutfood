@@ -87,10 +87,10 @@ export default function SplashScreen({ onComplete, onWaiterLogin }) {
         setError("Cererea ta a fost respinsă. Contactează-ne pentru detalii.");
         return;
       }
-      if (profile?.role === "waiter") {
+      if (profile?.role === "waiter" || profile?.role === "kitchen") {
         await supabase.auth.signOut();
         setError(
-          "Contul tău este de ospătar. Folosește secțiunea de login pentru ospătari.",
+          "Contul tău este de personal (ospătar/bucătar). Folosește secțiunea de login pentru staff.",
         );
         return;
       }

@@ -653,6 +653,14 @@ function HomeOwner({ onLogout }) {
                 color: "rgba(200,169,126,.2)",
                 border: "rgba(200,169,126,.3)",
               },
+              {
+                icon: "👨‍🍳",
+                label: "Gestionare Bucătari",
+                desc: "Adaugă / modifică",
+                screen: "kitchenManagement",
+                color: "rgba(224,122,71,.2)",
+                border: "rgba(224,122,71,.3)",
+              },
             ].map((btn) => (
               <div
                 key={btn.screen}
