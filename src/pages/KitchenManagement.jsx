@@ -147,7 +147,7 @@ export function KitchenManagement({ onBack }) {
       setNewWaiter({ name: "", email: "", password: "" });
       setShowAdd(false);
       showToast("✅ Bucătar adăugat! Se poate loga cu datele setate.");
-    } catch {
+    } catch (err) {
       showToast(`❌ ${err.message || "Eroare la adăugare. Verifică datele."}`);
     }
     setSaving(false);
