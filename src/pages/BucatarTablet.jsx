@@ -91,7 +91,7 @@ export function BucatarTablet({ restaurantId, kitchenName, onBack }) {
     const { data, error } = await supabase
       .from("orders")
       .select(
-        "id, table_label, status, items, observations, waiter_name, accepted_at, completed_at, created_at",
+        "id, table_label, status, items, observations, waiter_name, accepted_at, completed_at, created_at, cooked_count, prev_cooked_count",
       )
       .eq("restaurant_id", restaurantId)
       .in("status", ["cooking", "ready", "paying", "paid"])
@@ -134,20 +134,49 @@ export function BucatarTablet({ restaurantId, kitchenName, onBack }) {
     return "gata"; // ready, paying, paid = bucatarul a terminat
   }
 
-  function kitchenItems(order) {
-    return (order.items || []).filter((it) => {
+  // Produsele relevante pentru bucatarie, dupa logica de loturi:
+  //   - "noua" (cooking): produsele negatite = items.slice(cooked_count)
+  //   - "gata" (ready):   ultimul lot terminat = items.slice(prev_cooked_count, cooked_count)
+  // Apoi se filtreaza bauturile.
+  function kitchenItems(order, kStatus) {
+    const allItems = order.items || [];
+    const cooked = order.cooked_count || 0;
+    const prev = order.prev_cooked_count || 0;
+
+    let batch;
+    if (kStatus === "noua") {
+      batch = allItems.slice(cooked); // produsele inca nefacute
+    } else {
+      // gata: ultimul lot terminat (daca exista granite valide), altfel tot
+      batch =
+        cooked > prev
+          ? allItems.slice(prev, cooked)
+          : allItems.slice(0, cooked);
+    }
+
+    // filtrare bauturi
+    return batch.filter((it) => {
       const catName = catMap[it.category_id];
       return !isDrinkCategory(catName);
     });
   }
 
+  // E o adaugire la o masa care a primit deja mancare? (lot nou, nu prima comanda)
+  function isAddonBatch(order) {
+    return (order.cooked_count || 0) > 0 && order.status === "cooking";
+  }
+
   // Comenzile care au cel putin un preparat (dupa filtrarea bauturilor)
   const processed = orders
-    .map((o) => ({
-      ...o,
-      kStatus: kitchenStatus(o.status),
-      cookItems: kitchenItems(o),
-    }))
+    .map((o) => {
+      const kStatus = kitchenStatus(o.status);
+      return {
+        ...o,
+        kStatus,
+        cookItems: kitchenItems(o, kStatus),
+        isAddon: isAddonBatch(o),
+      };
+    })
     .filter((o) => o.cookItems.length > 0);
 
   // Vizualizare
@@ -233,6 +262,7 @@ export function BucatarTablet({ restaurantId, kitchenName, onBack }) {
 
 function OrderCard({ order, now }) {
   const isNew = order.kStatus === "noua";
+  const isAddon = order.isAddon; // lot nou adaugat la o masa cu mancare deja facuta
 
   // Durata: pentru "noua" = cronometru live (acum - accepted_at)
   //         pentru "gata" = inghetat (completed_at - accepted_at)
@@ -263,7 +293,13 @@ function OrderCard({ order, now }) {
     : null;
 
   return (
-    <div style={{ ...S.card, ...(isNew ? S.cardNew : S.cardDone) }}>
+    <div
+      style={{
+        ...S.card,
+        ...(isNew ? S.cardNew : S.cardDone),
+        ...(isAddon ? S.cardAddon : {}),
+      }}
+    >
       {/* Header card */}
       <div style={S.cardHead}>
         <div style={S.table}>{order.table_label || "—"}</div>
@@ -271,17 +307,23 @@ function OrderCard({ order, now }) {
           style={{
             ...S.badge,
             ...(isNew ? S.badgeNew : S.badgeDone),
+            ...(isAddon ? S.badgeAddon : {}),
           }}
         >
-          {isNew ? "🔥 Nouă" : "✅ Gata"}
+          {isAddon ? "+ Nouă" : isNew ? "🔥 Nouă" : "✅ Gata"}
         </span>
       </div>
 
       {/* Ospatar + durata */}
       <div style={S.metaRow}>
-        {order.waiter_name && (
-          <span style={S.waiter}>🤵 {order.waiter_name}</span>
-        )}
+        <span style={S.waiter}>
+          {order.waiter_name && <>🤵 {order.waiter_name}</>}
+          {isAddon && (
+            <span style={S.addonFlag}>
+              {order.waiter_name ? " · " : ""}adăugat la comandă
+            </span>
+          )}
+        </span>
         <span style={{ ...S.duration, color: isNew ? waitColor : "#888" }}>
           ⏱ {fmtDuration(durationMs)}
           {!isNew && durationMs != null ? " (preparare)" : ""}
@@ -295,13 +337,6 @@ function OrderCard({ order, now }) {
         {order.cookItems.map((it, idx) => (
           <div key={idx} style={S.itemRow}>
             <span style={S.itemQty}>{it.qty || 1}×</span>
-            <div style={S.itemThumb}>
-              {it.image_url ? (
-                <img src={it.image_url} alt={it.name} style={S.itemImg} />
-              ) : (
-                <span style={S.itemThumbEmoji}>{it.emoji || "🍽️"}</span>
-              )}
-            </div>
             <span style={S.itemName}>{it.name}</span>
           </div>
         ))}
@@ -427,6 +462,12 @@ const S = {
     opacity: 0.5,
     filter: "saturate(.4)",
   },
+  cardAddon: {
+    borderColor: "rgba(96,165,250,.5)",
+    boxShadow: "0 0 0 1px rgba(96,165,250,.2), 0 8px 24px rgba(96,165,250,.1)",
+    opacity: 1,
+    filter: "none",
+  },
   cardHead: {
     display: "flex",
     alignItems: "center",
@@ -457,6 +498,11 @@ const S = {
     color: "#4ade80",
     border: "1px solid rgba(34,197,94,.3)",
   },
+  badgeAddon: {
+    background: "rgba(96,165,250,.2)",
+    color: "#93c5fd",
+    border: "1px solid rgba(96,165,250,.4)",
+  },
   metaRow: {
     display: "flex",
     alignItems: "center",
@@ -465,37 +511,25 @@ const S = {
     gap: 8,
   },
   waiter: { fontSize: 12.5, color: "#aaa", fontWeight: 600 },
+  addonFlag: { color: "#93c5fd", fontWeight: 700 },
   duration: { fontSize: 13, fontWeight: 700 },
   divider: { height: 1, background: "#222", margin: "0 16px" },
-  items: { padding: "14px 16px" },
+  items: { padding: "10px 14px" },
   itemRow: {
     display: "flex",
-    alignItems: "center",
+    alignItems: "baseline",
     gap: 10,
-    padding: "8px 0",
+    padding: "5px 0",
     borderBottom: "1px solid #1a1a1a",
   },
   itemQty: {
     fontFamily: "'Fraunces',serif",
     fontWeight: 900,
-    fontSize: 22,
+    fontSize: 20,
     color: "#fff",
     flexShrink: 0,
-    minWidth: 30,
+    minWidth: 28,
   },
-  itemThumb: {
-    width: 44,
-    height: 44,
-    borderRadius: 10,
-    overflow: "hidden",
-    flexShrink: 0,
-    background: "#252018",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  itemImg: { width: "100%", height: "100%", objectFit: "cover" },
-  itemThumbEmoji: { fontSize: 20 },
   itemName: {
     fontWeight: 600,
     fontSize: 15,

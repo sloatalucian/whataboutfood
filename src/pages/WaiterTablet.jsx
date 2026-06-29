@@ -447,17 +447,34 @@ export function WaiterTablet({
   // ── Marchează gata ──
   const markReady = async (orderId) => {
     try {
+      // Loturi: la "Gata" marcam ca terminate toate produsele curente.
+      // prev_cooked_count = cate erau terminate inainte; cooked_count = toate cele curente.
+      const ord = orders.find((o) => o.id === orderId);
+      const itemsLen = (ord?.items || []).length;
+      const prevCooked = ord?.cooked_count || 0;
+
       const { error } = await supabase
         .from("orders")
         .update({
           status: "ready",
           completed_at: new Date().toISOString(),
+          prev_cooked_count: prevCooked,
+          cooked_count: itemsLen,
         })
         .eq("id", orderId);
       if (error) throw error;
 
       setOrders((prev) =>
-        prev.map((o) => (o.id === orderId ? { ...o, status: "ready" } : o)),
+        prev.map((o) =>
+          o.id === orderId
+            ? {
+                ...o,
+                status: "ready",
+                prev_cooked_count: prevCooked,
+                cooked_count: itemsLen,
+              }
+            : o,
+        ),
       );
 
       dispatch({
