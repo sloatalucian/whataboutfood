@@ -61,13 +61,59 @@ export function BucatarTablet({ restaurantId, kitchenName, onBack }) {
   const [view, setView] = useState("active"); // 'active' | 'all'
   const [loading, setLoading] = useState(true);
   const [now, setNow] = useState(Date.now());
+  const [soundOn, setSoundOn] = useState(false);
   const channelRef = useRef(null);
+  const audioCtxRef = useRef(null);
+  const seenBatchesRef = useRef(null); // Set de semnaturi loturi vazute (pt sunet)
+  const soundOnRef = useRef(false); // oglinda soundOn pt closure-uri
 
   // Ceas live (actualizeaza duratele la fiecare secunda)
   useEffect(() => {
     const t = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(t);
   }, []);
+
+  // ─── Sunet: clopotel placut la comanda noua ───
+  const playDing = useCallback(() => {
+    const ctx = audioCtxRef.current;
+    if (!ctx) return;
+    const t0 = ctx.currentTime;
+    const tone = (freq, start, dur, vol) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = "sine";
+      osc.frequency.value = freq;
+      gain.gain.setValueAtTime(0, start);
+      gain.gain.linearRampToValueAtTime(vol, start + 0.01);
+      gain.gain.exponentialRampToValueAtTime(0.001, start + dur);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(start);
+      osc.stop(start + dur);
+    };
+    // ding-dong: doua tonuri armonioase (A5 + E5)
+    tone(880, t0, 0.5, 0.25);
+    tone(659.25, t0 + 0.12, 0.6, 0.22);
+  }, []);
+
+  const toggleSound = useCallback(() => {
+    setSoundOn((prev) => {
+      const next = !prev;
+      soundOnRef.current = next;
+      if (next) {
+        // Initializeaza AudioContext la interactiunea user-ului (cerinta browser)
+        if (!audioCtxRef.current) {
+          const AC = window.AudioContext || window.webkitAudioContext;
+          audioCtxRef.current = new AC();
+        }
+        if (audioCtxRef.current.state === "suspended") {
+          audioCtxRef.current.resume();
+        }
+        playDing(); // confirmare
+      }
+      return next;
+    });
+  }, [playDing]);
 
   // Incarca categoriile restaurantului (pt filtrarea bauturilor dupa nume)
   useEffect(() => {
@@ -195,6 +241,37 @@ export function BucatarTablet({ restaurantId, kitchenName, onBack }) {
   const activeCount = processed.filter((o) => o.kStatus === "noua").length;
   const doneCount = processed.filter((o) => o.kStatus === "gata").length;
 
+  // ─── Detectare lot nou -> sunet ───
+  // Semnatura unui lot activ = orderId + accepted_at (se schimba la fiecare preluare,
+  // deci si la comanda noua, si la produse adaugate re-preluate).
+  useEffect(() => {
+    const activeSigs = new Set(
+      processed
+        .filter((o) => o.kStatus === "noua")
+        .map((o) => `${o.id}:${o.accepted_at}`),
+    );
+
+    // Prima incarcare: doar memoram, nu sunam (altfel ar suna pt toate comenzile existente)
+    if (seenBatchesRef.current === null) {
+      seenBatchesRef.current = activeSigs;
+      return;
+    }
+
+    // Loturi noi = cele care nu erau in setul anterior
+    let hasNew = false;
+    for (const sig of activeSigs) {
+      if (!seenBatchesRef.current.has(sig)) {
+        hasNew = true;
+        break;
+      }
+    }
+    if (hasNew && soundOnRef.current) {
+      playDing();
+    }
+    seenBatchesRef.current = activeSigs;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [orders]);
+
   return (
     <div style={S.page}>
       {/* HEADER */}
@@ -209,6 +286,12 @@ export function BucatarTablet({ restaurantId, kitchenName, onBack }) {
             {activeCount} active
           </span>
           <span style={{ ...S.pill, ...S.pillDone }}>{doneCount} gata</span>
+          <button
+            onClick={toggleSound}
+            style={{ ...S.soundBtn, ...(soundOn ? S.soundBtnOn : {}) }}
+          >
+            {soundOn ? "🔔 Sunet activat" : "🔕 Activează sunetul"}
+          </button>
           {onBack && (
             <button onClick={onBack} style={S.logout}>
               Ieși
@@ -300,9 +383,15 @@ function OrderCard({ order, now }) {
         ...(isAddon ? S.cardAddon : {}),
       }}
     >
-      {/* Header card */}
+      {/* Header card: masa + durata sus, badge pe rand propriu */}
       <div style={S.cardHead}>
-        <div style={S.table}>{order.table_label || "—"}</div>
+        <div style={S.cardHeadTop}>
+          <span style={S.table}>{order.table_label || "—"}</span>
+          <span style={{ ...S.duration, color: isNew ? waitColor : "#888" }}>
+            ⏱ {fmtDuration(durationMs)}
+            {!isNew && durationMs != null ? " (prep)" : ""}
+          </span>
+        </div>
         <span
           style={{
             ...S.badge,
@@ -310,25 +399,16 @@ function OrderCard({ order, now }) {
             ...(isAddon ? S.badgeAddon : {}),
           }}
         >
-          {isAddon ? "+ Nouă" : isNew ? "🔥 Nouă" : "✅ Gata"}
+          {isAddon ? "+ Nouă · adăugat" : isNew ? "🔥 Nouă" : "✅ Gata"}
         </span>
       </div>
 
-      {/* Ospatar + durata */}
-      <div style={S.metaRow}>
-        <span style={S.waiter}>
-          {order.waiter_name && <>🤵 {order.waiter_name}</>}
-          {isAddon && (
-            <span style={S.addonFlag}>
-              {order.waiter_name ? " · " : ""}adăugat la comandă
-            </span>
-          )}
-        </span>
-        <span style={{ ...S.duration, color: isNew ? waitColor : "#888" }}>
-          ⏱ {fmtDuration(durationMs)}
-          {!isNew && durationMs != null ? " (preparare)" : ""}
-        </span>
-      </div>
+      {/* Ospatar */}
+      {order.waiter_name && (
+        <div style={S.metaRow}>
+          <span style={S.waiter}>🤵 {order.waiter_name}</span>
+        </div>
+      )}
 
       <div style={S.divider} />
 
@@ -422,6 +502,23 @@ const S = {
     cursor: "pointer",
     fontFamily: "inherit",
   },
+  soundBtn: {
+    fontSize: 12,
+    fontWeight: 700,
+    padding: "6px 12px",
+    borderRadius: 9,
+    border: "1px solid #333",
+    background: "#1a1a1a",
+    color: "#bbb",
+    cursor: "pointer",
+    fontFamily: "inherit",
+    whiteSpace: "nowrap",
+  },
+  soundBtnOn: {
+    background: "rgba(34,197,94,.15)",
+    borderColor: "rgba(34,197,94,.4)",
+    color: "#4ade80",
+  },
   tabs: {
     display: "flex",
     gap: 0,
@@ -443,19 +540,21 @@ const S = {
   tabOn: { color: "#e07a47", borderBottomColor: "#e07a47" },
   grid: {
     display: "grid",
-    gridTemplateColumns: "repeat(auto-fill,minmax(280px,1fr))",
-    gap: 16,
-    padding: 20,
+    gridTemplateColumns: "repeat(auto-fill,minmax(240px,1fr))",
+    gap: 12,
+    padding: 14,
+    maxWidth: 1200,
+    margin: "0 auto",
   },
   card: {
     background: "#141414",
-    border: "2px solid #2a2a2a",
-    borderRadius: 20,
+    border: "1.5px solid #2a2a2a",
+    borderRadius: 14,
     overflow: "hidden",
   },
   cardNew: {
     borderColor: "rgba(245,158,11,.5)",
-    boxShadow: "0 0 0 1px rgba(245,158,11,.2), 0 8px 24px rgba(245,158,11,.1)",
+    boxShadow: "0 0 0 1px rgba(245,158,11,.15)",
   },
   cardDone: {
     borderColor: "#222",
@@ -464,29 +563,40 @@ const S = {
   },
   cardAddon: {
     borderColor: "rgba(96,165,250,.5)",
-    boxShadow: "0 0 0 1px rgba(96,165,250,.2), 0 8px 24px rgba(96,165,250,.1)",
+    boxShadow: "0 0 0 1px rgba(96,165,250,.15)",
     opacity: 1,
     filter: "none",
   },
   cardHead: {
     display: "flex",
+    flexDirection: "column",
+    gap: 6,
+    padding: "10px 12px 8px",
+  },
+  cardHeadTop: {
+    display: "flex",
     alignItems: "center",
     justifyContent: "space-between",
-    padding: "14px 16px 10px",
+    gap: 8,
   },
   table: {
     fontFamily: "'Fraunces',serif",
     fontWeight: 900,
-    fontSize: 26,
+    fontSize: 22,
     color: "#fff",
+    lineHeight: 1,
   },
   badge: {
-    fontSize: 11,
+    display: "inline-flex",
+    alignItems: "center",
+    alignSelf: "flex-start",
+    fontSize: 10.5,
     fontWeight: 800,
-    letterSpacing: "0.06em",
+    letterSpacing: "0.04em",
     textTransform: "uppercase",
-    padding: "5px 11px",
+    padding: "4px 10px",
     borderRadius: 99,
+    whiteSpace: "nowrap",
   },
   badgeNew: {
     background: "rgba(245,158,11,.2)",
@@ -506,48 +616,44 @@ const S = {
   metaRow: {
     display: "flex",
     alignItems: "center",
-    justifyContent: "space-between",
-    padding: "0 16px 12px",
-    gap: 8,
+    padding: "0 12px 8px",
   },
-  waiter: { fontSize: 12.5, color: "#aaa", fontWeight: 600 },
-  addonFlag: { color: "#93c5fd", fontWeight: 700 },
-  duration: { fontSize: 13, fontWeight: 700 },
-  divider: { height: 1, background: "#222", margin: "0 16px" },
-  items: { padding: "10px 14px" },
+  waiter: { fontSize: 11.5, color: "#aaa", fontWeight: 600 },
+  duration: { fontSize: 12, fontWeight: 700, whiteSpace: "nowrap" },
+  divider: { height: 1, background: "#222", margin: "0 12px" },
+  items: { padding: "8px 12px" },
   itemRow: {
     display: "flex",
-    alignItems: "baseline",
-    gap: 10,
-    padding: "5px 0",
+    flexDirection: "column",
+    gap: 1,
+    padding: "6px 0",
     borderBottom: "1px solid #1a1a1a",
   },
   itemQty: {
     fontFamily: "'Fraunces',serif",
     fontWeight: 900,
-    fontSize: 20,
-    color: "#fff",
-    flexShrink: 0,
-    minWidth: 28,
+    fontSize: 16,
+    color: "#fbbf24",
+    lineHeight: 1,
   },
   itemName: {
     fontWeight: 600,
-    fontSize: 15,
+    fontSize: 14.5,
     color: "#e8e8e8",
-    lineHeight: 1.3,
+    lineHeight: 1.25,
   },
   note: {
-    margin: "0 16px 14px",
-    padding: "10px 12px",
+    margin: "0 12px 10px",
+    padding: "8px 10px",
     background: "#1a1a1a",
-    borderRadius: 10,
+    borderRadius: 8,
     borderLeft: "3px solid #fbbf24",
-    fontSize: 12.5,
+    fontSize: 11.5,
     color: "#bbb",
-    lineHeight: 1.5,
+    lineHeight: 1.45,
   },
   noteLabel: {
-    fontSize: 10,
+    fontSize: 9,
     fontWeight: 800,
     color: "#fbbf24",
     letterSpacing: "0.08em",
@@ -558,11 +664,11 @@ const S = {
     display: "flex",
     alignItems: "center",
     justifyContent: "space-between",
-    padding: "12px 16px",
+    padding: "8px 12px",
     background: "#111",
     borderTop: "1px solid #1e1e1e",
   },
-  footText: { fontSize: 12, color: "#666", fontWeight: 600 },
+  footText: { fontSize: 11, color: "#666", fontWeight: 600 },
   empty: { textAlign: "center", padding: "80px 20px", color: "#555" },
   emptyIco: { fontSize: 48, marginBottom: 16 },
   emptyTitle: {
